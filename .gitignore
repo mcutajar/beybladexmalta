@@ -18,3 +18,5 @@
 ###< symfony/asset-mapper ###
 
 /.idea/*
+
+.idea/
