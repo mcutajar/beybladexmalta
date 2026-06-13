@@ -17,4 +17,4 @@
 /assets/vendor/
 ###< symfony/asset-mapper ###
 
-/.idea
+/.idea/*
