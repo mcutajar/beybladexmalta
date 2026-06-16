@@ -1,8 +1,5 @@
----
-# Development environment override
 services:
   php:
-    image: ${IMAGES_PREFIX:-}app-php-dev
     build:
       context: .
       target: frankenphp_dev
@@ -10,21 +7,17 @@ services:
       - ./:/app
       - ./frankenphp/Caddyfile:/etc/frankenphp/Caddyfile:ro
       - ./frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
-      # Keep var/ off the bind-mount for faster I/O on Mac/Windows; comment to inspect from the host.
       - /app/var
-      # If you develop on Mac or Windows you can remove the vendor/ directory
-      #  from the bind-mount for better performance by enabling the next line:
-      #- /app/vendor
     environment:
       FRANKENPHP_WORKER_CONFIG: watch
       FRANKENPHP_SITE_CONFIG: hot_reload
-      MERCURE_EXTRA_DIRECTIVES: demo
-      # See https://xdebug.org/docs/all_settings#mode
       XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
-      APP_ENV: "${APP_ENV:-dev}"
-    extra_hosts:
-      # Ensure that host.docker.internal is correctly defined on Linux
-      - host.docker.internal:host-gateway
+      APP_ENV: dev
+    ports:
+      - target: 80
+        published: ${HTTP_PORT:-80}
+        protocol: tcp
+      - target: 443
+        published: ${HTTPS_PORT:-443}
+        protocol: tcp
     tty: true
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###

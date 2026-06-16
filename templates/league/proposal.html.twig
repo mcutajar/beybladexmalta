@@ -1,9 +1,9 @@
 {# templates/league/proposal.html.twig #}
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<html lang="en" class="h-full bg-slate-950 text-slate-100 scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" class="w-full" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Malta Beyblade Community League | Season 1 Proposal</title>
 
     {% block stylesheets %}
@@ -11,183 +11,215 @@
         <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
     {% endblock %}
 </head>
-<body class="min-h-full font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+<body class="min-h-full font-sans antialiased selection:bg-cyan-500 selection:text-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
 
-<div class="h-2 bg-gradient-to-r from-cyan-500 via-amber-500 to-red-500"></div>
+<!-- Top accent bar -->
+<div class="h-1.5 w-full bg-gradient-to-r from-cyan-500 via-amber-500 to-red-500 sticky top-0 z-50"></div>
 
-<main class="max-w-5xl mx-auto px-4 py-12 md:py-20">
+<main class="max-w-5xl mx-auto px-4 py-8 sm:px-6 md:py-16 lg:py-20">
 
-    <header class="text-center mb-16 space-y-4">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 ring-1 ring-inset ring-cyan-500/20 tracking-wider uppercase">
+    <!-- Header Section -->
+    <header class="text-center mb-12 md:mb-20 space-y-5">
+        <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-cyan-950/50 text-cyan-400 ring-1 ring-inset ring-cyan-500/30 tracking-widest uppercase shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+            <span class="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
             Official League Proposal
         </span>
-        <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white uppercase">
-            Malta Beyblade Community <br class="hidden sm:inline">
-            <span class="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">Beyblade X League</span>
+        <h1 class="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight text-white uppercase leading-[1.1]">
+            Malta Beyblade <br class="hidden sm:block">
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 drop-shadow-sm">Community League</span>
         </h1>
-        <p class="text-xl font-bold text-amber-400 tracking-wide uppercase">Season 1 Core Framework</p>
+        <p class="text-lg md:text-xl font-bold text-amber-400 tracking-widest uppercase">Season 1 Core Framework</p>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+    <!-- Key Info Grid (Timeline & Fee) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 mb-12 md:mb-16">
 
-        <div class="md:col-span-2 relative overflow-hidden rounded-2xl bg-slate-900 border border-slate-800 p-6 sm:p-8 shadow-xl">
-            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl"></div>
-            <h3 class="text-xs font-bold uppercase text-slate-400 tracking-widest mb-2">Duration</h3>
-            <h2 class="text-2xl md:text-3xl font-black text-white mb-4">Season Timeline</h2>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800/50">
+        <!-- Timeline Card -->
+        <div class="lg:col-span-2 relative overflow-hidden rounded-3xl bg-slate-900/80 backdrop-blur-sm border border-slate-800 p-6 md:p-8 shadow-2xl">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-cyan-400 border border-slate-700">⏱️</div>
                 <div>
-                    <p class="text-xs uppercase font-bold text-cyan-400">Launch Date</p>
-                    <p class="text-xl font-extrabold text-white">4th July 2026</p>
+                    <h3 class="text-xs font-bold uppercase text-slate-400 tracking-widest">Duration</h3>
+                    <h2 class="text-xl md:text-2xl font-black text-white">Season Timeline</h2>
                 </div>
-                <div class="hidden sm:block text-slate-600 font-bold">➔</div>
-                <div>
-                    <p class="text-xs uppercase font-bold text-red-400">Conclusion</p>
-                    <p class="text-xl font-extrabold text-white">4th October 2026</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between gap-4 bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80">
+                <div class="flex-1">
+                    <p class="text-xs uppercase font-bold text-cyan-500 tracking-wider mb-1">Launch Date</p>
+                    <p class="text-lg md:text-xl font-extrabold text-white">4th July 2026</p>
+                </div>
+
+                <div class="hidden sm:flex items-center justify-center text-slate-600">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                </div>
+                <div class="sm:hidden h-px w-full bg-slate-800 my-2"></div>
+
+                <div class="flex-1 sm:text-right">
+                    <p class="text-xs uppercase font-bold text-red-500 tracking-wider mb-1">Conclusion</p>
+                    <p class="text-lg md:text-xl font-extrabold text-white">4th October 2026</p>
                 </div>
             </div>
         </div>
 
-        <div class="rounded-2xl bg-gradient-to-b from-amber-500/10 to-transparent border border-amber-500/20 p-6 sm:p-8 shadow-xl flex flex-col justify-between gap-6">
+        <!-- Entry Fee Card -->
+        <div class="rounded-3xl bg-gradient-to-br from-amber-900/40 to-slate-900 border border-amber-500/30 p-6 md:p-8 shadow-2xl flex flex-col justify-between gap-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div>
-                <h3 class="text-xs font-bold uppercase text-amber-400 tracking-widest mb-2">Registration</h3>
-                <h2 class="text-2xl font-black text-white mb-2">Entry Fee</h2>
+                <h3 class="text-xs font-bold uppercase text-amber-500/80 tracking-widest mb-1">Registration</h3>
+                <h2 class="text-xl md:text-2xl font-black text-white">Entry Fee</h2>
             </div>
-            <div class="my-2">
-                <span class="text-5xl font-black text-white">€25</span>
-                <span class="text-sm font-semibold text-slate-400 block mt-1">Per Blader for Season 1</span>
+
+            <div>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-amber-100">€25</span>
+                </div>
+                <span class="text-sm font-semibold text-amber-200/60 block mt-2 uppercase tracking-wide">Per Blader / Season 1</span>
             </div>
-            <div class="text-xs text-amber-300/80 font-medium leading-relaxed bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg">
-                🛡️ Managed with absolute financial transparency.
+
+            <div class="flex items-start gap-3 bg-black/40 border border-amber-500/20 p-3.5 rounded-xl backdrop-blur-md">
+                <span class="text-amber-400 text-lg">🛡️</span>
+                <p class="text-xs text-amber-200/80 font-medium leading-relaxed">Managed with absolute financial transparency.</p>
             </div>
         </div>
 
     </div>
 
-    <div class="space-y-6 mb-12">
+    <!-- Main Content Stack -->
+    <div class="space-y-6 md:space-y-8 mb-12 md:mb-16">
 
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 md:p-12 shadow-xl w-full">
-            <h2 class="text-2xl font-black text-white mb-8 pb-2 border-b border-slate-800/60 flex items-center gap-2.5">
-                <span class="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"></span>
-                Points & Standings System
-            </h2>
+        <!-- Points & Standings -->
+        <div class="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl">
+            <div class="flex items-center gap-3 mb-8 pb-4 border-b border-slate-800">
+                <div class="w-3 h-3 rounded-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.6)]"></div>
+                <h2 class="text-xl md:text-2xl font-black text-white uppercase tracking-wide">Points & Standings System</h2>
+            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="flex flex-col gap-3 bg-slate-950/50 p-6 rounded-xl border border-slate-800/40 hover:border-slate-800 transition-colors">
-                    <span class="text-3xl">🏎️</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+                <!-- Point 1 -->
+                <div class="group flex flex-col gap-4 bg-slate-950 p-6 rounded-2xl border border-slate-800/60 hover:border-cyan-500/50 transition-all duration-300">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏎️</div>
                     <div>
-                        <h3 class="font-extrabold text-white text-base mb-1.5">Formula 1 Structure</h3>
-                        <p class="text-slate-300 text-sm leading-relaxed">League ranking points are awarded at the end of **every single tournament** exclusively to the top 10 placing players.</p>
+                        <h3 class="font-bold text-white text-base mb-2">Formula 1 Structure</h3>
+                        <p class="text-slate-400 text-sm leading-relaxed">Ranking points are awarded at the end of <strong class="text-slate-200 font-bold">every tournament</strong> exclusively to the top 10 placing players.</p>
                     </div>
                 </div>
-                <div class="flex flex-col gap-3 bg-slate-950/50 p-6 rounded-xl border border-slate-800/40 hover:border-slate-800 transition-colors">
-                    <span class="text-3xl">🔹</span>
+                <!-- Point 2 -->
+                <div class="group flex flex-col gap-4 bg-slate-950 p-6 rounded-2xl border border-slate-800/60 hover:border-amber-500/50 transition-all duration-300">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🔹</div>
                     <div>
-                        <h3 class="font-extrabold text-white text-base mb-1.5">The Best 12 Rule</h3>
-                        <p class="text-slate-300 text-sm leading-relaxed">To allow for missed events, final standings are calculated using only each blader's **top 12 tournament performances**.</p>
+                        <h3 class="font-bold text-white text-base mb-2">The Best 12 Rule</h3>
+                        <p class="text-slate-400 text-sm leading-relaxed">To allow for missed events, final standings are calculated using only each blader's <strong class="text-slate-200 font-bold">top 12 performances</strong>.</p>
                     </div>
                 </div>
-                <div class="flex flex-col gap-3 bg-slate-950/50 p-6 rounded-xl border border-slate-800/40 hover:border-slate-800 transition-colors">
-                    <span class="text-3xl">🏆</span>
+                <!-- Point 3 -->
+                <div class="group flex flex-col gap-4 bg-slate-950 p-6 rounded-2xl border border-slate-800/60 hover:border-red-500/50 transition-all duration-300">
+                    <div class="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">🏆</div>
                     <div>
-                        <h3 class="font-extrabold text-white text-base mb-1.5">Determining the Winner</h3>
-                        <p class="text-slate-300 text-sm leading-relaxed">The player who aggregates the highest cumulative point totals from their best 12 placements wins the Championship.</p>
+                        <h3 class="font-bold text-white text-base mb-2">Determining the Winner</h3>
+                        <p class="text-slate-400 text-sm leading-relaxed">The player aggregating the highest cumulative points from their best 12 placements wins the Championship.</p>
                     </div>
                 </div>
             </div>
 
-            <details class="group bg-slate-950 border border-slate-800/80 rounded-xl cursor-pointer transition-all duration-200 open:ring-1 open:ring-cyan-500/30">
-                <summary class="flex justify-between items-center text-xs font-bold tracking-wider uppercase text-cyan-400 list-none select-none p-4 sm:p-5 hover:text-cyan-300 hover:bg-slate-900/40 transition-colors rounded-xl group-open:rounded-b-none group-open:border-b group-open:border-slate-800">
-                    <div class="flex items-center gap-2">
-                        <span>📊</span>
+            <!-- Expandable Table -->
+            <details class="group bg-slate-950 border border-slate-800 rounded-2xl cursor-pointer transition-all duration-300 open:ring-1 open:ring-cyan-500/30 overflow-hidden">
+                <summary class="flex justify-between items-center text-xs font-bold tracking-widest uppercase text-cyan-400 list-none select-none p-5 hover:bg-slate-900/50 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg">📊</span>
                         <span>View F1 Points Allocation Matrix</span>
                     </div>
-                    <span class="text-slate-500 group-open:rotate-180 transition-transform duration-200 text-xs">▼</span>
+                    <div class="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center group-open:rotate-180 transition-transform duration-300 border border-slate-800">
+                        <svg class="w-4 h-4 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
                 </summary>
 
-                <div class="p-6 sm:p-8 bg-slate-950/40 rounded-b-xl">
-                    <div class="max-w-xl mx-auto bg-slate-900/60 border border-slate-800/80 rounded-xl overflow-hidden shadow-2xl">
-                        <div class="px-6 py-4 bg-slate-900 border-b border-slate-800/60">
-                            <h4 class="text-sm font-bold text-white tracking-wide">F1 Points System Overview</h4>
-                            <p class="text-xs text-slate-400 mt-1">Point breakdown structure per tournament finishing placement:</p>
-                        </div>
+                <div class="p-4 sm:p-6 bg-slate-900/30 border-t border-slate-800/50">
+                    <div class="max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-inner">
 
-                        <table class="w-full text-left text-sm">
-                            <thead>
-                            <tr class="border-b border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-950/40">
-                                <th class="px-6 py-3">Position</th>
-                                <th class="px-6 py-3 text-right">Championship Points</th>
-                            </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-800/40 text-slate-300 font-medium">
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3 text-white font-bold">1st Place</td><td class="px-6 py-3 text-right text-amber-400 font-black text-base">25</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">2nd Place</td><td class="px-6 py-3 text-right font-bold text-slate-200">18</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">3rd Place</td><td class="px-6 py-3 text-right font-bold text-amber-600">15</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">4th Place</td><td class="px-6 py-3 text-right">12</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">5th Place</td><td class="px-6 py-3 text-right">10</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">6th Place</td><td class="px-6 py-3 text-right">8</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">7th Place</td><td class="px-6 py-3 text-right">6</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">8th Place</td><td class="px-6 py-3 text-right">4</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">9th Place</td><td class="px-6 py-3 text-right">2</td></tr>
-                            <tr class="hover:bg-slate-800/30 transition-colors"><td class="px-6 py-3">10th Place</td><td class="px-6 py-3 text-right text-cyan-400 font-bold">1</td></tr>
-                            </tbody>
-                        </table>
+                        <!-- Mobile-friendly overflow wrapper -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead>
+                                <tr class="border-b border-slate-800 text-xs font-bold uppercase tracking-widest text-slate-500 bg-slate-900/50">
+                                    <th class="px-6 py-4">Position</th>
+                                    <th class="px-6 py-4 text-right">Championship Points</th>
+                                </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800/50 text-slate-300 font-medium">
+                                <tr class="bg-amber-500/5 hover:bg-amber-500/10 transition-colors"><td class="px-6 py-3.5 text-white font-bold flex items-center gap-2">🥇 1st Place</td><td class="px-6 py-3.5 text-right text-amber-400 font-black text-lg">25</td></tr>
+                                <tr class="bg-slate-300/5 hover:bg-slate-300/10 transition-colors"><td class="px-6 py-3.5 flex items-center gap-2">🥈 2nd Place</td><td class="px-6 py-3.5 text-right font-bold text-slate-200 text-base">18</td></tr>
+                                <tr class="bg-amber-700/5 hover:bg-amber-700/10 transition-colors"><td class="px-6 py-3.5 flex items-center gap-2">🥉 3rd Place</td><td class="px-6 py-3.5 text-right font-bold text-amber-600 text-base">15</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">4th Place</td><td class="px-6 py-3 text-right">12</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">5th Place</td><td class="px-6 py-3 text-right">10</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">6th Place</td><td class="px-6 py-3 text-right">8</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">7th Place</td><td class="px-6 py-3 text-right">6</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">8th Place</td><td class="px-6 py-3 text-right">4</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">9th Place</td><td class="px-6 py-3 text-right">2</td></tr>
+                                <tr class="hover:bg-slate-800/40 transition-colors"><td class="px-6 py-3">10th Place</td><td class="px-6 py-3 text-right text-cyan-400 font-bold">1</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </details>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Format & Prizes Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-md flex flex-col justify-between gap-4">
-                <div>
-                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-red-500"></span>
+            <!-- Format Structure -->
+            <div class="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 md:p-8 shadow-lg flex flex-col justify-between">
+                <div class="mb-6">
+                    <h2 class="text-lg font-black text-white mb-3 flex items-center gap-3 uppercase tracking-wide">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-red-500 rotate-45"></span>
                         Eligible Format Structure
                     </h2>
-                    <p class="text-sm text-slate-300 leading-relaxed">
-                        To maintain standard ranking integrity, only events meeting the following formatting criteria qualify for tracking:
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        To maintain ranking integrity, only events meeting the following criteria qualify for tracking:
                     </p>
                 </div>
-                <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 text-sm space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Match Format</span>
-                        <span class="font-semibold text-white">5-Round Swiss System</span>
+                <div class="bg-slate-950 rounded-2xl border border-slate-800 text-sm flex flex-col overflow-hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-1 hover:bg-slate-900/50 transition-colors border-b border-slate-800/50">
+                        <span class="text-slate-500 font-medium">Match Format</span>
+                        <span class="font-bold text-white">5-Round Swiss System</span>
                     </div>
-                    <div class="h-px bg-slate-800 my-1"></div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Target Score Limit</span>
-                        <span class="font-semibold text-amber-400">7-Point Settings</span>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-1 hover:bg-slate-900/50 transition-colors border-b border-slate-800/50">
+                        <span class="text-slate-500 font-medium">Target Score Limit</span>
+                        <span class="font-bold text-amber-400">7-Point Settings</span>
                     </div>
-                    <div class="h-px bg-slate-800 my-1"></div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Final Stage Bracket</span>
-                        <span class="font-semibold text-white">King + Knock Out Only</span>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-1 hover:bg-slate-900/50 transition-colors">
+                        <span class="text-slate-500 font-medium">Final Stage Bracket</span>
+                        <span class="font-bold text-white">King + Knock Out Only</span>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-md flex flex-col justify-between gap-4">
-                <div>
-                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        Prize Allocation & Pool Breakdown
+            <!-- Prize Pool -->
+            <div class="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 md:p-8 shadow-lg flex flex-col justify-between">
+                <div class="mb-6">
+                    <h2 class="text-lg font-black text-white mb-3 flex items-center gap-3 uppercase tracking-wide">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 rotate-45"></span>
+                        Prize Pool Breakdown
                     </h2>
-                    <p class="text-sm text-slate-300 leading-relaxed">
-                        Every single euro collected via registration fees remains completely inside the competitive community framework.
+                    <p class="text-sm text-slate-400 leading-relaxed">
+                        Every collected euro via registration remains completely inside the competitive community.
                     </p>
                 </div>
 
                 <div class="space-y-3">
-                    <div class="flex items-start gap-2 text-sm bg-slate-950/40 p-3 rounded-xl border border-slate-800/50">
-                        <span class="text-emerald-400 font-bold">✓</span>
-                        <p class="text-slate-300">
-                            <strong class="text-white">Full Usage Framework:</strong> 100% of the collected entry fees are automatically converted directly into the overall performance prize pool for the league.
+                    <div class="flex items-start gap-4 text-sm bg-slate-950 p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-colors">
+                        <div class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5 border border-emerald-500/20">✓</div>
+                        <p class="text-slate-400 leading-relaxed">
+                            <strong class="text-white block mb-0.5">Full Usage Framework</strong> 100% of collected entry fees convert directly into the performance prize pool.
                         </p>
                     </div>
-                    <div class="flex items-start gap-2 text-sm bg-slate-950/40 p-3 rounded-xl border border-slate-800/50">
-                        <span class="text-emerald-400 font-bold">✓</span>
-                        <p class="text-slate-300">
-                            <strong class="text-white">Tier Distribution:</strong> The final resource pool will be awarded as financial payouts distributed across positions <span class="text-white font-semibold">1st through 5th place</span> at the end of the season.
+                    <div class="flex items-start gap-4 text-sm bg-slate-950 p-4 rounded-2xl border border-slate-800 hover:border-emerald-500/30 transition-colors">
+                        <div class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5 border border-emerald-500/20">✓</div>
+                        <p class="text-slate-400 leading-relaxed">
+                            <strong class="text-white block mb-0.5">Tier Distribution</strong> The resource pool provides financial payouts across <span class="text-emerald-400 font-bold">1st through 5th place</span> at season end.
                         </p>
                     </div>
                 </div>
@@ -197,58 +229,65 @@
 
     </div>
 
-    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl mb-12">
-        <div class="mb-8 pb-2">
-            <h2 class="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-sm bg-amber-500 rotate-45"></span>
+    <!-- Governance Section -->
+    <section class="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl mb-12 md:mb-16">
+        <div class="mb-8 text-center sm:text-left">
+            <h2 class="text-xl md:text-2xl font-black text-white uppercase tracking-wide flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3">
+                <span class="hidden sm:block w-3 h-3 rounded-sm bg-blue-500 rotate-45"></span>
                 Official Rulesets & Governance
             </h2>
-            <p class="text-sm text-slate-400 mt-3 mb-1 leading-relaxed pl-1">
-                Please read through the official framework requirements linked below to ensure competitive compliance.
+            <p class="text-sm text-slate-400 mt-3 leading-relaxed max-w-2xl">
+                Review the official framework requirements linked below to ensure full competitive compliance before entering.
             </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
+            <!-- Link 1 -->
             <a href="https://docs.google.com/document/d/1gDJ8HwERcYUK9SaMfJs6GMkSc_OFfl6D1pR_3Amqv3k/edit?tab=t.0#heading=h.kzgypszfov7"
-               target="_blank"
-               class="group block p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-cyan-500/40 transition duration-200">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Structure</span>
-                    <span class="text-slate-600 group-hover:text-cyan-400 transition transform group-hover:translate-x-0.5">↗</span>
+               target="_blank" rel="noopener noreferrer"
+               class="group flex flex-col p-5 bg-slate-950 rounded-2xl border border-slate-800 hover:border-cyan-500 hover:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_-10px_rgba(6,182,212,0.3)]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-black text-cyan-500 uppercase tracking-widest">Structure</span>
+                    <svg class="w-4 h-4 text-slate-600 group-hover:text-cyan-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </div>
-                <h3 class="text-sm font-bold text-white group-hover:text-cyan-300 transition mb-1">Tournament Organisation</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">Official rules regarding bracket pairing configurations, check-ins, and schedule compliance.</p>
+                <h3 class="text-base font-bold text-white group-hover:text-cyan-100 transition-colors mb-2">Tournament Organisation</h3>
+                <p class="text-xs text-slate-500 leading-relaxed mt-auto">Bracket pairing configurations, check-ins, and schedule compliance.</p>
             </a>
 
+            <!-- Link 2 -->
             <a href="https://worldbeyblade.org/Thread-Beyblade-X-Rules"
-               target="_blank"
-               class="group block p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-amber-500/40 transition duration-200">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Gameplay</span>
-                    <span class="text-slate-600 group-hover:text-amber-400 transition transform group-hover:translate-x-0.5">↗</span>
+               target="_blank" rel="noopener noreferrer"
+               class="group flex flex-col p-5 bg-slate-950 rounded-2xl border border-slate-800 hover:border-amber-500 hover:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_-10px_rgba(245,158,11,0.3)]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-black text-amber-500 uppercase tracking-widest">Gameplay</span>
+                    <svg class="w-4 h-4 text-slate-600 group-hover:text-amber-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </div>
-                <h3 class="text-sm font-bold text-white group-hover:text-amber-300 transition mb-1">Match & Game Rules</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">Standard WBO launch rules, battle finish points (burst, over, spin), and valid gear interactions.</p>
+                <h3 class="text-base font-bold text-white group-hover:text-amber-100 transition-colors mb-2">Match & Game Rules</h3>
+                <p class="text-xs text-slate-500 leading-relaxed mt-auto">Standard WBO launch rules, battle finish points, and valid gear interactions.</p>
             </a>
 
+            <!-- Link 3 -->
             <a href="https://docs.google.com/document/d/1JeA-SBWd5BJSq3NSVcKrTHfy1vogIpWLBlUUDb6gAKs/edit?tab=t.0#heading=h.p2wfoud5z957"
-               target="_blank"
-               class="group block p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-red-500/40 transition duration-200">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-xs font-bold text-red-400 uppercase tracking-wider">Judging</span>
-                    <span class="text-slate-600 group-hover:text-red-400 transition transform group-hover:translate-x-0.5">↗</span>
+               target="_blank" rel="noopener noreferrer"
+               class="group flex flex-col p-5 bg-slate-950 rounded-2xl border border-slate-800 hover:border-red-500 hover:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_20px_-10px_rgba(239,68,68,0.3)]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs font-black text-red-500 uppercase tracking-widest">Judging</span>
+                    <svg class="w-4 h-4 text-slate-600 group-hover:text-red-400 transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                 </div>
-                <h3 class="text-sm font-bold text-white group-hover:text-red-300 transition mb-1">Judge Regulations</h3>
-                <p class="text-xs text-slate-400 leading-relaxed">Protocols for resolving ties, processing penalties, handling stadium anomalies, and ruling protests.</p>
+                <h3 class="text-base font-bold text-white group-hover:text-red-100 transition-colors mb-2">Judge Regulations</h3>
+                <p class="text-xs text-slate-500 leading-relaxed mt-auto">Protocols for resolving ties, penalties, anomalies, and ruling protests.</p>
             </a>
 
         </div>
     </section>
 
-    <footer class="mt-16 pt-8 border-t border-slate-900 text-center text-xs text-slate-500 space-y-2">
-        <p>© 2026 Malta Beyblade Community. All Rights Reserved.</p>
-        <p class="text-slate-600">Powered by Symfony & FrankenPHP Server Engine.</p>
+    <!-- Footer -->
+    <footer class="mt-8 border-t border-slate-800/60 pt-8 text-center space-y-3">
+        <p class="text-sm font-medium text-slate-400">© 2026 Malta Beyblade Community. All Rights Reserved.</p>
+        <p class="text-xs text-slate-600 flex items-center justify-center gap-1.5">
+            Powered by Symfony & FrankenPHP
+        </p>
     </footer>
 
 </main>
