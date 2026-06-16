@@ -193,6 +193,42 @@
 
     </div>
 
+    <!-- Tentative Player List Section -->
+    {% set tentative_bladers = [
+        'Derius', 'Giglio', 'Kemical', 'Obelix', 'L-anzjan',
+        'Mezz', 'il-karm', 'Shadowblade', 'Beastblade',
+        'Markulegend', 'Il-butcher', 'Faenza', 'il-belti'
+    ] %}
+
+    <section class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-6">
+        <!-- Fixed Adaptive Header Layout -->
+        <div class="mb-8 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-5 border-b border-slate-800/60 pb-6">
+            <div>
+                <h2 class="text-xl md:text-2xl font-black text-white uppercase tracking-wide inline-flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 animate-pulse"></span>
+                    Tentative Blader Roster
+                </h2>
+                <p class="text-sm text-slate-400 mt-1 max-w-md mx-auto sm:mx-0">Current unconfirmed list of competitors expressing entry intent for Season 1</p>
+            </div>
+
+            <!-- Dynamic Total Counter Box (Centered on mobile, snaps to right side on desktop) -->
+            <div class="bg-slate-950 px-5 py-2.5 rounded-xl border border-slate-800 text-xs font-bold text-slate-400 mx-auto sm:mx-0 shadow-inner tracking-wide uppercase whitespace-nowrap">
+                Current Total Intent: <span class="text-cyan-400 text-sm font-black ml-1.5">{{ tentative_bladers|length }} Bladers</span>
+            </div>
+        </div>
+
+        <!-- Responsive Grid Container -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 justify-center">
+
+            {% for blader in tentative_bladers %}
+                <div class="flex items-center justify-center p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80 hover:border-cyan-500/40 hover:bg-slate-950 transition-all duration-200 group">
+                    <h3 class="font-bold text-slate-200 text-base tracking-wide group-hover:text-white transition-colors">{{ blader }}</h3>
+                </div>
+            {% endfor %}
+
+        </div>
+    </section>
+
     <!-- Governance Section -->
     <section class="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl mb-12 md:mb-16">
         <div class="mb-8 text-center sm:text-left">
