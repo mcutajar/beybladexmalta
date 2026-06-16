@@ -8,9 +8,15 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class LeagueController extends AbstractController
 {
-    #[Route('/', name: 'app_league_proposal')]
-    public function index(): Response
+    #[Route(['/', '/v1'], name: 'app_league_proposal_v1')]
+    public function v1(): Response
     {
-        return $this->render('league/proposal.html.twig');
+        return $this->render('league/proposal-v1.html.twig');
+    }
+
+    #[Route('/v0', name: 'app_league_proposal_v0')]
+    public function v0(): Response
+    {
+        return $this->render('league/proposal-v0.html.twig');
     }
 }
