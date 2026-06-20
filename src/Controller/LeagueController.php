@@ -8,7 +8,19 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class LeagueController extends AbstractController
 {
-    #[Route(['/', '/v1'], name: 'app_league_proposal_v1')]
+    #[Route('/preseason', name: 'preseason')]
+    public function preseason(): Response
+    {
+        return $this->render('league/preseason.html.twig');
+    }
+
+    #[Route(['/', '/v2'], name: 'app_league_proposal_v2')]
+    public function v2(): Response
+    {
+        return $this->render('league/proposal-v2.html.twig');
+    }
+
+    #[Route(['/v1'], name: 'app_league_proposal_v1')]
     public function v1(): Response
     {
         return $this->render('league/proposal-v1.html.twig');

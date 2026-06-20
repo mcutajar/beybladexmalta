@@ -1,0 +1,155 @@
+{# templates/league/preseason.html.twig #}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" class="w-full" content="width=device-width, initial-scale=1.0">
+    <title>Malta Beyblade Community League | Preseason Leaderboard</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.svg">
+
+    {% block stylesheets %}
+        {{ encore_entry_link_tags('app') }}
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% endblock %}
+</head>
+<body class="min-h-full font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+<div class="h-2 bg-gradient-to-r from-cyan-500 via-amber-500 to-red-500"></div>
+
+<main class="max-w-5xl mx-auto px-4 py-12 md:py-20">
+
+    <!-- Back Navigation Link to Framework Page -->
+    <div class="mb-6 text-left">
+        <a href="/" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-700 transition-colors">
+            ⬅ Return to League Framework
+        </a>
+    </div>
+
+    <!-- Top Navigation Header Links / Branding -->
+    <header class="text-center mb-12 space-y-4">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 ring-1 ring-inset ring-cyan-500/20 tracking-wider uppercase">
+            Live Preview Dashboard
+        </span>
+        <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white uppercase">
+            Malta Community Beyblade <br class="hidden sm:inline">
+            <span class="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-red-500">Preseason Standings</span>
+        </h1>
+        For <strong>the players</strong> By <strong>the players</strong>
+    </header>
+
+    <!-- Leaderboard Engine Data Setup -->
+    {% set leaderboard_data = [
+        { 'rank': 1, 'name': 'L-anzjan', 'f1_pts': 25, 'bonus': 10, 'total': 35, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 2, 'name': 'Southboy15', 'f1_pts': 20, 'bonus': 0, 'total': 18, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 3, 'name': 'Giglio', 'f1_pts': 15, 'bonus': 0, 'total': 15, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 4, 'name': 'Mezz', 'f1_pts': 12, 'bonus': 0, 'total': 12, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 5, 'name': 'Il-karm', 'f1_pts': 10, 'bonus': 0, 'total': 10, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 6, 'name': 'Sanya', 'f1_pts': 8, 'bonus': 0, 'total': 8, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 7, 'name': 'Myers', 'f1_pts': 6, 'bonus': 0, 'total': 6, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 8, 'name': 'Obelix', 'f1_pts': 4, 'bonus': 0, 'total': 4, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 9, 'name': 'Markinu', 'f1_pts': 2, 'bonus': 0, 'total': 2, 'dates_participated': ['2026-06-20'] },
+        { 'rank': 10, 'name': 'Amanda', 'f1_pts': 1, 'bonus': 0, 'total': 1, 'dates_participated': ['2026-06-20'] }
+    ] %}
+
+    <!-- Main Table Card Wrapper Component -->
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-8 shadow-2xl w-full">
+
+        <!-- Table Card Header Meta Info -->
+        <div class="flex flex-col sm:flex-row justify-between items-center border-b border-slate-800/60 pb-6 mb-6 gap-5 text-center sm:text-left">
+            <div>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 ring-1 ring-inset ring-cyan-500/20 tracking-wider uppercase mb-3">
+                    🔥 Preseason Standings Simulation
+                </span>
+                <h2 class="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">Preseason leaderboard</h2>
+                <p class="text-sm text-slate-400 mt-1 max-w-md mx-auto sm:mx-0">Simulating points tracking to preview real ranking distributions.</p>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl px-5 py-2.5 shadow-inner tracking-wide uppercase whitespace-nowrap">
+                <span class="text-xs font-bold text-slate-400 block mb-0.5">Ruleset Engine</span>
+                <span class="text-sm font-black text-cyan-400">F1 Structure + Top Cut Bonus</span>
+            </div>
+        </div>
+
+        <!-- Leaderboard Responsive Container -->
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
+            <div class="inline-block min-w-full align-middle px-4 sm:px-0">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                    <tr class="border-b border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-950/40">
+                        <th class="px-3 sm:px-6 py-4 text-center w-12 sm:w-16">Rank</th>
+                        <th class="px-3 sm:px-6 py-4">Blader Name</th>
+                        <th class="px-3 sm:px-6 py-4 text-center hidden sm:table-cell">Last Active</th>
+                        <th class="px-3 sm:px-6 py-4 text-center">Base F1</th>
+                        <th class="px-3 sm:px-6 py-4 text-center">KO Win</th>
+                        <th class="px-3 sm:px-6 py-4 text-right text-cyan-400 font-bold pr-4 sm:pr-8">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/40 text-slate-300 font-medium">
+                    {% for player in leaderboard_data %}
+                        <tr class="hover:bg-slate-800/30 transition-colors group">
+                            <!-- Rank Placement Badge -->
+                            <td class="px-3 sm:px-6 py-4 text-center">
+                                {% if player.rank == 1 %}
+                                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-slate-950 font-black text-xs shadow-md shadow-amber-400/20">1</span>
+                                {% elseif player.rank == 2 %}
+                                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-300 text-slate-950 font-black text-xs">2</span>
+                                {% elseif player.rank == 3 %}
+                                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-700 text-white font-black text-xs">3</span>
+                                {% else %}
+                                    <span class="text-slate-500 font-bold text-xs">{{ player.rank }}</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Player Name & Mobile Date Integration -->
+                            <td class="px-3 sm:px-6 py-4">
+                                <div class="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2.5">
+                                    <span class="text-white font-bold tracking-wide group-hover:text-cyan-400 transition-colors">{{ player.name }}</span>
+                                    <!-- Mobile Only Active Date Label -->
+                                    <span class="text-[10px] text-slate-500 font-mono sm:hidden">
+                                        Active: {{ player.dates_participated|last|date('d M Y') }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- Desktop Only Last Active Date (Extracting the last entry in array) -->
+                            <td class="px-3 sm:px-6 py-4 text-center text-xs text-slate-400 font-mono hidden sm:table-cell">
+                                {{ player.dates_participated|last|date('Y-m-d') }}
+                            </td>
+
+                            <!-- Base F1 Point Matrix Distribution -->
+                            <td class="px-3 sm:px-6 py-4 text-center font-semibold text-slate-300">
+                                {{ player.f1_pts }} <span class="text-[10px] font-normal text-slate-500 sm:hidden">pts</span>
+                            </td>
+
+                            <!-- Knockout Top Cut Winner Reward -->
+                            <td class="px-3 sm:px-6 py-4 text-center">
+                                {% if player.bonus > 0 %}
+                                    <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                                        +{{ player.bonus }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-slate-600 text-xs">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Total Aggregated Score Points -->
+                            <td class="px-3 sm:px-6 py-4 text-right font-black text-base text-white pr-4 sm:pr-8">
+                                {{ player.total }}<span class="text-xs font-normal text-slate-500 ml-0.5 hidden sm:inline">pts</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Structural Footer Consistent with V1 Layout Framework -->
+    <footer class="mt-16 pt-8 border-t border-slate-900 text-center text-xs text-slate-500 space-y-2">
+        <p>© 2026 Malta Beyblade Community. All Rights Reserved.</p>
+    </footer>
+
+</main>
+
+</body>
+</html>
