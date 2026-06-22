@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Repository\PlayerRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -9,9 +10,19 @@ use Symfony\Component\Routing\Attribute\Route;
 class LeagueController extends AbstractController
 {
     #[Route('/preseason', name: 'preseason')]
-    public function preseason(): Response
+    public function preseason(PlayerRepository $playerRepository): Response
     {
-        return $this->render('league/preseason.html.twig');
+        // Fetches your calculated real-time top-14 leaderboard array
+        $leaderboardData = $playerRepository->getLeagueLeaderboard();
+
+        // Inject rank indices programmatically for Twig loop alignment
+        foreach ($leaderboardData as $index => &$row) {
+            $row['rank'] = $index + 1;
+        }
+
+        return $this->render('league/preseason.html.twig', [
+            'leaderboard_data' => $leaderboardData,
+        ]);
     }
 
     #[Route(['/', '/v2'], name: 'app_league_proposal_v2')]

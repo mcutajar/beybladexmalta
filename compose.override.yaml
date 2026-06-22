@@ -13,6 +13,7 @@ services:
       FRANKENPHP_WORKER_CONFIG: watch
       XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
       APP_ENV: dev
+      DATABASE_URL: ${DATABASE_URL}
     ports:
       - target: 80
         published: ${HTTP_PORT:-80}
@@ -21,3 +22,23 @@ services:
         published: ${HTTPS_PORT:-443}
         protocol: tcp
     tty: true
+
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bbx_malta}
+      POSTGRES_USER: ${POSTGRES_USER:-symfony}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMe}
+    volumes:
+      - ./docker/db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare_tunnel_sidecar
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - php

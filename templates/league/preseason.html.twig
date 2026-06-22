@@ -1,4 +1,3 @@
-{# templates/league/preseason.html.twig #}
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
@@ -36,20 +35,6 @@
         </h1>
         For <strong>the players</strong> By <strong>the players</strong>
     </header>
-
-    <!-- Leaderboard Engine Data Setup -->
-    {% set leaderboard_data = [
-        { 'rank': 1, 'name': 'L-anzjan', 'f1_pts': 25, 'bonus': 10, 'total': 35, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 2, 'name': 'Southboy15', 'f1_pts': 20, 'bonus': 0, 'total': 18, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 3, 'name': 'Giglio', 'f1_pts': 15, 'bonus': 0, 'total': 15, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 4, 'name': 'Mezz', 'f1_pts': 12, 'bonus': 0, 'total': 12, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 5, 'name': 'Il-karm', 'f1_pts': 10, 'bonus': 0, 'total': 10, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 6, 'name': 'Sanya', 'f1_pts': 8, 'bonus': 0, 'total': 8, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 7, 'name': 'Myers', 'f1_pts': 6, 'bonus': 0, 'total': 6, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 8, 'name': 'Obelix', 'f1_pts': 4, 'bonus': 0, 'total': 4, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 9, 'name': 'Markinu', 'f1_pts': 2, 'bonus': 0, 'total': 2, 'dates_participated': ['2026-06-20'] },
-        { 'rank': 10, 'name': 'Amanda', 'f1_pts': 1, 'bonus': 0, 'total': 1, 'dates_participated': ['2026-06-20'] }
-    ] %}
 
     <!-- Main Table Card Wrapper Component -->
     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-8 shadow-2xl w-full">
@@ -106,26 +91,26 @@
                                     <span class="text-white font-bold tracking-wide group-hover:text-cyan-400 transition-colors">{{ player.name }}</span>
                                     <!-- Mobile Only Active Date Label -->
                                     <span class="text-[10px] text-slate-500 font-mono sm:hidden">
-                                        Active: {{ player.dates_participated|last|date('d M Y') }}
+                                        Active: {{ player.last_active|date('d M Y') }}
                                     </span>
                                 </div>
                             </td>
 
-                            <!-- Desktop Only Last Active Date (Extracting the last entry in array) -->
+                            <!-- Desktop Only Last Active Date -->
                             <td class="px-3 sm:px-6 py-4 text-center text-xs text-slate-400 font-mono hidden sm:table-cell">
-                                {{ player.dates_participated|last|date('Y-m-d') }}
+                                {{ player.last_active|date('Y-m-d') }}
                             </td>
 
                             <!-- Base F1 Point Matrix Distribution -->
                             <td class="px-3 sm:px-6 py-4 text-center font-semibold text-slate-300">
-                                {{ player.f1_pts }} <span class="text-[10px] font-normal text-slate-500 sm:hidden">pts</span>
+                                {{ player.base_f1 }} <span class="text-[10px] font-normal text-slate-500 sm:hidden">pts</span>
                             </td>
 
                             <!-- Knockout Top Cut Winner Reward -->
                             <td class="px-3 sm:px-6 py-4 text-center">
-                                {% if player.bonus > 0 %}
+                                {% if player.total_bonus > 0 %}
                                     <span class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
-                                        +{{ player.bonus }}
+                                        +{{ player.total_bonus }}
                                     </span>
                                 {% else %}
                                     <span class="text-slate-600 text-xs">—</span>

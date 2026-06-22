@@ -1,19 +1,23 @@
 {
-    "name": "symfony/skeleton",
+    "name": "matthewc/bbxmalta",
     "type": "project",
     "license": "MIT",
-    "description": "A minimal Symfony project recommended to create bare bones applications",
+    "description": "A league ranking website mainly for the Beyblade x community in Malta",
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
         "php": ">=8.5.7",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "doctrine/doctrine-bundle": "^3.2",
+        "doctrine/doctrine-migrations-bundle": "^4.0",
+        "doctrine/orm": "^3.6",
         "symfony/asset": "8.1.*",
         "symfony/console": "8.1.*",
         "symfony/dotenv": "8.1.*",
         "symfony/flex": "^2",
         "symfony/framework-bundle": "8.1.*",
+        "symfony/monolog-bundle": "^4.0",
         "symfony/routing": "8.1.*",
         "symfony/runtime": "8.1.*",
         "symfony/twig-bundle": "8.1.*",
@@ -73,5 +77,9 @@
             "require": "8.1.*",
             "docker": true
         }
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "symfony/maker-bundle": "^1.67"
     }
 }

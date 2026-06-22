@@ -8,6 +8,19 @@ services:
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}
       APP_ENV: prod
+      DATABASE_URL: ${DATABASE_URL}
+
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bbx_malta}
+      POSTGRES_USER: ${POSTGRES_USER:-symfony}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMe}
+    volumes:
+      - ./docker/db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
 
   tunnel:
     image: cloudflare/cloudflared:latest
