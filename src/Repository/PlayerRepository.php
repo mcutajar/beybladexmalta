@@ -54,4 +54,43 @@ class PlayerRepository extends ServiceEntityRepository
 
         return $resultSet->fetchAllAssociative();
     }
+
+    /**
+     * Fetches only the top 14 contributing tournament results for a single player.
+     */
+    public function getPlayerContributingTournaments(int $playerId): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = '
+            WITH RankedResults AS (
+                SELECT 
+                    tr.player_id,
+                    tr.tournament_id, -- Added this to expose the ID
+                    tr.f1_points,
+                    tr.bonus_points,
+                    tr.total_points,
+                    t.title as tournament_name,
+                    t.held_on,
+                    ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC) as tournament_nth
+                FROM tournament_results tr
+                JOIN tournaments t ON t.id = tr.tournament_id
+                WHERE tr.player_id = :playerId
+            )
+            SELECT 
+                tournament_id, -- Select the ID for Twig linking
+                tournament_name,
+                held_on,
+                f1_points,
+                bonus_points,
+                total_points
+            FROM RankedResults
+            WHERE tournament_nth <= 14
+            ORDER BY held_on DESC
+        ';
+
+        $resultSet = $conn->executeQuery($sql, ['playerId' => $playerId]);
+
+        return $resultSet->fetchAllAssociative();
+    }
 }
