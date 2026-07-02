@@ -27,6 +27,8 @@ php bin/console app:import-tournament \
   "Gamebreaker 20-06" \
   "2026-06-20" \
   "./docs/tournament-results/swiss-20260620.csv" \
-  "https://worldbeyblade.challonge.com/co5nncw8" \
-  "L-Anzjan" -vv
+  --challonge="https://worldbeyblade.challonge.com/co5nncw8" \
+  -s "preseason" \
+  -k "l-anzjan" \
+  -vv
 ```

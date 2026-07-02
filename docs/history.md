@@ -103,5 +103,4 @@ php bin/console app:import-tournament \
   -s "preseason" \
   -k "l-anzjan" \
   -vv
-
 ```
