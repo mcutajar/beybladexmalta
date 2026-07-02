@@ -19,14 +19,18 @@ class Tournament
     #[ORM\Column(length: 255)]
     private ?string $title = null;
 
-    #[ORM\Column(type: 'date')]
-    private ?\DateTimeInterface $heldOn = null;
+    #[ORM\Column(type: 'date_immutable')]
+    private ?\DateTimeImmutable $heldOn = null;
 
     #[ORM\OneToMany(targetEntity: TournamentResult::class, mappedBy: 'tournament', orphanRemoval: true)]
     private Collection $results;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $challongeUrl = null;
+
+    #[ORM\ManyToOne(inversedBy: 'tournaments')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Season $season = null;
 
     public function __construct()
     {
@@ -53,12 +57,12 @@ class Tournament
         $this->title = $title;
     }
 
-    public function getHeldOn(): ?\DateTimeInterface
+    public function getHeldOn(): ?\DateTimeImmutable
     {
         return $this->heldOn;
     }
 
-    public function setHeldOn(?\DateTimeInterface $heldOn): void
+    public function setHeldOn(?\DateTimeImmutable $heldOn): void
     {
         $this->heldOn = $heldOn;
     }
@@ -82,6 +86,17 @@ class Tournament
     {
         $this->challongeUrl = $challongeUrl;
 
+        return $this;
+    }
+
+    public function getSeason(): ?Season
+    {
+        return $this->season;
+    }
+
+    public function setSeason(?Season $season): self
+    {
+        $this->season = $season;
         return $this;
     }
 }

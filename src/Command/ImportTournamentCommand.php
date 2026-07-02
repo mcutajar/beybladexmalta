@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Entity\Player;
 use App\Entity\Tournament;
 use App\Entity\TournamentResult;
+use App\Entity\Season;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -26,6 +27,8 @@ class ImportTournamentCommand extends Command
         6 => 8,  7 => 6,  8 => 4,  9 => 2,  10 => 1,
     ];
 
+    private const int KNOCKOUT_WINNER_BONUS = 10;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger
@@ -38,9 +41,10 @@ class ImportTournamentCommand extends Command
         $this
             ->addArgument('title', InputArgument::REQUIRED, 'The title of the tournament')
             ->addArgument('date', InputArgument::REQUIRED, 'The date of the tournament (YYYY-MM-DD)')
-            ->addArgument('file', InputArgument::REQUIRED, 'Path to the ordered names CSV file')
-            ->addArgument('challonge_url', InputArgument::OPTIONAL, 'The Challonge URL of the tournament bracket')
-            ->addArgument('winner',  InputArgument::OPTIONAL, 'The name of the Blader who won the Knockout Stage top-cut');
+            ->addArgument('file', InputArgument::REQUIRED, 'Path to the text/csv file with player names')
+            ->addOption('challonge', null, InputOption::VALUE_OPTIONAL, 'Optional Challonge bracket URL')
+            ->addOption('season', 's', InputOption::VALUE_REQUIRED, 'The target season slug this tournament belongs to')
+            ->addOption('knockout', 'k', InputOption::VALUE_OPTIONAL, 'The name of the player who won the overall knockout bracket');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -49,101 +53,119 @@ class ImportTournamentCommand extends Command
         $title = $input->getArgument('title');
         $dateStr = $input->getArgument('date');
         $filePath = $input->getArgument('file');
-        $challongeUrl = $input->getArgument('challonge_url');
-        $koWinnerName = $input->getArgument('winner');
-
-        $this->logger->info('Starting tournament import sequence.', [
-            'title' => $title,
-            'date' => $dateStr,
-            'file' => $filePath,
-            'winner_option' => $koWinnerName,
-            'challonge_url' => $challongeUrl
-        ]);
+        $challongeUrl = $input->getOption('challonge');
+        $seasonSlug = $input->getOption('season');
+        $knockoutWinnerName = $input->getOption('knockout'); // Capture the knockout option flag
 
         if (!file_exists($filePath) || !is_readable($filePath)) {
-            $this->logger->error('Target CSV file path is missing or unreadable.', ['path' => $filePath]);
-            $io->error(sprintf('File "%s" does not exist or is not readable.', $filePath));
+            $io->error(sprintf('File path "%s" is unreadable or does not exist.', $filePath));
+            return Command::FAILURE;
+        }
+
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            $io->error('Failed to open file stream sequence handles.');
             return Command::FAILURE;
         }
 
         try {
-            $date = new \DateTime($dateStr);
+            $date = new \DateTimeImmutable($dateStr);
         } catch (\Exception $e) {
-            $this->logger->error('Failed parsing execution date string constraint.', ['input_date' => $dateStr, 'exception' => $e->getMessage()]);
             $io->error('Invalid date format provided. Please use YYYY-MM-DD.');
-            return Command::INVALID;
+            fclose($handle);
+            return Command::FAILURE;
         }
 
-        if (($handle = fopen($filePath, 'r')) === false) {
-            $this->logger->error('Low-level filesystem handle execution failed on open operation.', ['path' => $filePath]);
-            $io->error('Failed to open the target CSV file.');
-            return Command::FAILURE;
+        $seasons = $this->entityManager->getRepository(Season::class)->findAll();
+
+        if (null === $seasonSlug) {
+            if (empty($seasons)) {
+                $io->error('No seasons found in the database. Please specify a new season via the --season flag to auto-create it.');
+                fclose($handle);
+                return Command::FAILURE;
+            }
+
+            $seasonChoices = [];
+            foreach ($seasons as $s) {
+                $seasonChoices[$s->getSlug()] = $s->getName();
+            }
+
+            $io->section('Season Selection Context');
+            $selectedName = $io->choice(
+                'This tournament must belong to a season. Please select from the available options:',
+                array_values($seasonChoices)
+            );
+
+            $seasonSlug = array_search($selectedName, $seasonChoices, true);
         }
 
         $this->entityManager->beginTransaction();
-        $this->logger->debug('Database relational transaction scope opened.');
-
         try {
+            $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
+
+            if (!$season) {
+                $inferredName = ucwords(str_replace(['-', '_'], ' ', $seasonSlug));
+
+                $io->section(sprintf('New Season Generation: "%s"', $seasonSlug));
+                $confirm = $io->confirm(
+                    sprintf('The season context "%s" does not exist. Would you like to create it automatically now?', $inferredName),
+                    true
+                );
+
+                if (!$confirm) {
+                    $io->warning('Tournament import cancelled by user due to missing season context.');
+                    $this->entityManager->rollback();
+                    fclose($handle);
+                    return Command::INVALID;
+                }
+
+                $season = new Season();
+                $season->setSlug($seasonSlug);
+                $season->setName($inferredName);
+
+                $this->entityManager->persist($season);
+                $this->entityManager->flush();
+
+                $io->info(sprintf('Created new seasonal registry: %s', $inferredName));
+            }
+
+            $this->logger->info('Initializing database generation execution layout block maps.');
+
             $tournament = new Tournament();
             $tournament->setTitle($title);
             $tournament->setHeldOn($date);
             $tournament->setChallongeUrl($challongeUrl);
+            $tournament->setSeason($season);
+
             $this->entityManager->persist($tournament);
 
             $rank = 1;
-            while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-                $playerName = isset($row[0]) ? trim($row[0]) : '';
-
-                if (empty($playerName)) {
-                    $this->logger->debug('Skipping empty row segment line entry inside target file.');
+            while (($line = fgets($handle)) !== false) {
+                $line = trim($line);
+                if (empty($line)) {
                     continue;
                 }
 
-                if ($rank > 10) {
-                    $this->logger->warning('CSV loop exceeded maximum top-10 processing bounds. Cap invoked.', ['rank_reached' => $rank, 'next_name' => $playerName]);
-                    break;
+                $parts = explode(',', $line);
+                $playerName = trim($parts[0]);
+
+                // Keep file-level bonus parsing fallback if you still use it ("Player, 3")
+                $bonusPoints = isset($parts[1]) ? (int) trim($parts[1]) : 0;
+
+                // Check if this specific line matches the explicit command-line --knockout flag option
+                if (null !== $knockoutWinnerName && strcasecmp($playerName, trim($knockoutWinnerName)) === 0) {
+                    $bonusPoints += self::KNOCKOUT_WINNER_BONUS;
                 }
 
-                $f1Points = self::F1_MATRIX[$rank] ?? 0;
-
-                // Debug string values exactly as they are captured before comparison evaluation
-                $cleanPlayer = strtolower($playerName);
-                $cleanWinner = $koWinnerName ? strtolower(trim($koWinnerName)) : null;
-
-                $this->logger->debug(sprintf('Evaluating row match credentials for rank #%d.', $rank), [
-                    'raw_csv_name' => $playerName,
-                    'lowered_csv_name' => $cleanPlayer,
-                    'raw_winner_option' => $koWinnerName,
-                    'lowered_winner_option' => $cleanWinner
-                ]);
-
-                $bonusPoints = 0;
-                if ($cleanWinner && $cleanPlayer === $cleanWinner) {
-                    $bonusPoints = 10;
-                    $this->logger->info('Matching criterion successfully satisfied. Injecting +10 bonus units.', [
-                        'player' => $playerName,
-                        'assigned_rank' => $rank
-                    ]);
-                }
-
-                // CASE-INSENSITIVE PLAYER LOOKUP
-                $this->logger->debug('Dispatching DB query criteria lookup.', ['search_term' => $playerName]);
-
-                $player = $this->entityManager->getRepository(Player::class)
-                    ->createQueryBuilder('p')
-                    ->where('LOWER(p.name) = LOWER(:name)')
-                    ->setParameter('name', $playerName)
-                    ->getQuery()
-                    ->getOneOrNullResult();
-
+                $player = $this->entityManager->getRepository(Player::class)->findOneBy(['name' => $playerName]);
                 if (!$player) {
-                    $this->logger->notice('Identity record missed database constraints mapping. Allocating new profile.', ['name' => $playerName]);
                     $player = new Player();
                     $player->setName($playerName);
                     $this->entityManager->persist($player);
-                } else {
-                    $this->logger->debug('Located pre-existing identity entry record.', ['id' => $player->getId(), 'db_stored_name' => $player->getName()]);
+                    $this->logger->notice(sprintf('Implicit auto-generation of new player record proxy: "%s".', $playerName));
                 }
+
+                $f1Points = self::F1_MATRIX[$rank] ?? 0;
 
                 $result = new TournamentResult();
                 $result->setTournament($tournament);
@@ -169,9 +191,7 @@ class ImportTournamentCommand extends Command
             $this->entityManager->flush();
 
             $this->entityManager->commit();
-            $this->logger->info('Database sequence safely locked and committed permanently.');
-
-            $io->success(sprintf('Successfully imported "%s". Logged %d player placements.', $title, $rank - 1));
+            $io->success(sprintf('Successfully imported "%s" into %s. Logged %d player placements.', $title, $season->getName(), $rank - 1));
             return Command::SUCCESS;
         } catch (\Exception $e) {
             $this->logger->critical('Fatal validation breakdown halted deployment loop execution wrapper.', [
@@ -180,8 +200,14 @@ class ImportTournamentCommand extends Command
                 'trace' => $e->getTraceAsString()
             ]);
 
-            $this->entityManager->rollback();
-            fclose($handle);
+            if ($this->entityManager->getConnection()->isTransactionActive()) {
+                $this->entityManager->rollback();
+            }
+
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+
             $io->error('Transaction aborted: '.$e->getMessage());
             return Command::FAILURE;
         }

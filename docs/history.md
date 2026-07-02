@@ -16,7 +16,12 @@ Rank,Participant,Match W-L-T,Score,Buchholz,TB,Pts Diff,Match History
 ```
 
 ```
-php bin/console app:import-tournament "Gamesplus 28-06" "2026-06-28" "./docs/tournament-results/swiss-20260628.csv" "https://challonge.com/4luqbuv4" -vv
+php bin/console app:import-tournament \
+  "Gamesplus 28-06" \
+  "2026-06-28" \
+  "./docs/tournament-results/swiss-20260628.csv" \
+  --challonge="https://challonge.com/4luqbuv4" \
+  -vv
 ```
 
 
@@ -38,7 +43,12 @@ Rank,Participant,Match W-L-T,Score,Buchholz,TB,Pts Diff,Match History
 ```
 
 ```
-php bin/console app:import-tournament "Gamebreaker CX Only 27-06" "2026-06-27" "./docs/tournament-results/swiss-20260627.csv" "https://challonge.com/wc0vkczl" -vv
+php bin/console app:import-tournament \
+  "Gamebreaker CX Only 27-06" \
+  "2026-06-27" \
+  "./docs/tournament-results/swiss-20260627.csv" \
+  --challonge="https://challonge.com/wc0vkczl" \
+  -vv
 ```
 
 results from June 21 https://challonge.com/vcxocrcg
@@ -58,7 +68,14 @@ Rank,Participant,Match W-L-T,Score,Buchholz,TB,Pts Diff,Match History
 ```
 
 ```
-php bin/console app:import-tournament "Gamesplus BX Only 21-06" "2026-06-21" "./docs/tournament-results/swiss-20260621.csv" "https://challonge.com/vcxocrcg" "Markinu" -vv
+php bin/console app:import-tournament \
+  "Gamesplus BX Only 21-06" \
+  "2026-06-21" \
+  "./docs/tournament-results/swiss-20260621.csv" \
+  --challonge="https://challonge.com/vcxocrcg" \
+  -s "preseason" \
+  -k "Markinu" \
+  -vv
 ```
 
 Results from June 20 https://worldbeyblade.challonge.com/co5nncw8/groups
@@ -78,5 +95,13 @@ Rank,Participant,Match W-L-T,Score,Buchholz,TB,Pts Diff,Match History
 ```
 
 ```
-php bin/console app:import-tournament "Gamebreaker 20-06" "2026-06-20" "./docs/tournament-results/swiss-20260620.csv" "https://worldbeyblade.challonge.com/co5nncw8" "L-Anzjan" -vv
+php bin/console app:import-tournament \
+  "Gamebreaker 20-06" \
+  "2026-06-20" \
+  "./docs/tournament-results/swiss-20260620.csv" \
+  --challonge="https://worldbeyblade.challonge.com/co5nncw8" \
+  -s "preseason" \
+  -k "l-anzjan" \
+  -vv
+
 ```

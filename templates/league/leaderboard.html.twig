@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" class="w-full" content="width=device-width, initial-scale=1.0">
-    <title>Malta Beyblade Community League | Preseason Leaderboard</title>
+    <title>Malta Beyblade Community League | {{ current_season.name }} Leaderboard</title>
     <link rel="icon" type="image/x-icon" href="/assets/favicon.svg">
 
     {% block stylesheets %}
@@ -31,7 +31,7 @@
         </span>
         <h1 class="text-4xl md:text-6xl font-black tracking-tight text-white uppercase">
             Malta Community Beyblade <br class="hidden sm:inline">
-            <span class="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-red-500">Preseason Standings</span>
+            <span class="text-gradient bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-red-500">{{ current_season.name }} Standings</span>
         </h1>
         For <strong>the players</strong> By <strong>the players</strong>
     </header>
@@ -43,9 +43,9 @@
         <div class="flex flex-col sm:flex-row justify-between items-center border-b border-slate-800/60 pb-6 mb-6 gap-5 text-center sm:text-left">
             <div>
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 ring-1 ring-inset ring-cyan-500/20 tracking-wider uppercase mb-3">
-                    🔥 Preseason Standings Simulation
+                    🔥 {{ current_season.name }} Standings Simulation
                 </span>
-                <h2 class="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">Preseason leaderboard</h2>
+                <h2 class="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">{{ current_season.name }} leaderboard</h2>
                 <p class="text-sm text-slate-400 mt-1 max-w-md mx-auto sm:mx-0">Simulating points tracking to preview real ranking distributions.</p>
             </div>
 
@@ -88,7 +88,7 @@
                             <!-- Player Name & Mobile Date Integration -->
                             <td class="px-3 sm:px-6 py-4">
                                 <div class="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2.5">
-                                    <a href="{{ path('player_preseason_details', {'id': player.id}) }}" class="text-white font-bold tracking-wide hover:text-cyan-400 focus:text-cyan-400 outline-none transition-colors group-hover:text-cyan-400">
+                                    <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': player.id}) }}">
                                         {{ player.name }}
                                     </a>
                                     <span class="text-[10px] text-slate-500 font-mono sm:hidden">

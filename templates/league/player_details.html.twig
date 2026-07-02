@@ -17,8 +17,8 @@
 <main class="max-w-5xl mx-auto px-4 py-12 md:py-20">
 
     <div class="mb-6 text-left">
-        <a href="{{ path('preseason') }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-700 transition-colors">
-            ⬅ Return to Preseason Leaderboard
+        <a href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}">
+            ⬅ Return to {{ current_season.name }} Leaderboard
         </a>
     </div>
 
@@ -46,7 +46,7 @@
                 {% for match in contributions %}
                     <tr class="hover:bg-slate-800/30 transition-colors">
                         <td class="px-3 sm:px-6 py-4">
-                            <a href="{{ path('tournament_details', {'id': match.tournament_id}) }}" class="text-white font-bold hover:text-cyan-400 focus:text-cyan-400 outline-none transition-colors">
+                            <a href="{{ path('tournament_details', {'slug': current_season.slug, 'id': match.tournament_id}) }}" class="text-white font-bold hover:text-cyan-400 focus:text-cyan-400 outline-none transition-colors">
                                 {{ match.tournament_name }}
                             </a>
                         </td>
