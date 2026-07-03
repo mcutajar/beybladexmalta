@@ -14,6 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:register-payment',
@@ -21,8 +22,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class RegisterPlayerPaymentCommand extends Command
 {
+    // Inject KernelInterface to safely resolve your project's root directory paths
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly KernelInterface $kernel
     ) {
         parent::__construct();
     }
@@ -38,12 +41,14 @@ class RegisterPlayerPaymentCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        // Fetch arguments passed explicitly via CLI flags if any
         $seasonSlug = $input->getArgument('season');
         $playerName = $input->getArgument('name');
 
+        // Define the location of your command source ledger file
+        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
+
         while (true) {
-            // 1. Interactive Selection for Season Context (if not already provided)
+            // 1. Interactive Selection for Season Context
             if (null === $seasonSlug) {
                 $seasons = $this->entityManager->getRepository(Season::class)->findAll();
 
@@ -67,14 +72,13 @@ class RegisterPlayerPaymentCommand extends Command
                 $seasonSlug = array_search($selectedName, $seasonChoices, true);
             }
 
-            // Verify target season exists
             $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
             if (!$season) {
                 $io->error(sprintf('Season context "%s" does not exist in the system database maps.', $seasonSlug));
                 return Command::FAILURE;
             }
 
-            // 2. Interactive Autocomplete Prompt for Player Identity (if not already provided)
+            // 2. Interactive Autocomplete Prompt for Player Identity
             if (null === $playerName) {
                 $players = $this->entityManager->getRepository(Player::class)->findAll();
                 $playerNames = array_map(static fn(Player $p) => $p->getName(), $players);
@@ -143,20 +147,28 @@ class RegisterPlayerPaymentCommand extends Command
                 $this->entityManager->persist($registration);
                 $this->entityManager->flush();
 
+                // --- EVENT SOURCING VIA FLAT FILE ---
+                // Escape arguments to guarantee safe string shell processing later
+                $escapedSeason = escapeshellarg($seasonSlug);
+                $escapedName = escapeshellarg($playerName);
+
+                // Construct the exact non-interactive console command executable line
+                $commandString = sprintf("php bin/console app:register-payment %s %s\n", $escapedSeason, $escapedName);
+
+                // Append it directly to your file tracking sequence
+                file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
+                // ------------------------------------
+
                 $io->success(sprintf('Successfully processed cleared entry transaction! "%s" is marked PAID for %s.', $player->getName(), $season->getName()));
             }
 
-            // Label fallback target to handle internal early exit scenarios cleanly
             check_loop_continue:
 
-            // Ask if user wants to run another player entry
             $continue = $io->confirm('Would you like to register another player payment?', true);
             if (!$continue) {
                 break;
             }
 
-            // Clear the player name variable so the prompt runs fresh on the next loop iteration.
-            // We keep the $seasonSlug cached so you don't have to re-select the season over and over.
             $playerName = null;
             $io->newLine();
         }

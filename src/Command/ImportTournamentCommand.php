@@ -15,6 +15,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:import-tournament',
@@ -29,9 +30,11 @@ class ImportTournamentCommand extends Command
 
     private const int KNOCKOUT_WINNER_BONUS = 10;
 
+    // Inject KernelInterface to securely get our app root log folders
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly KernelInterface $kernel
     ) {
         parent::__construct();
     }
@@ -55,7 +58,9 @@ class ImportTournamentCommand extends Command
         $filePath = $input->getArgument('file');
         $challongeUrl = $input->getOption('challonge');
         $seasonSlug = $input->getOption('season');
-        $knockoutWinnerName = $input->getOption('knockout'); // Capture the knockout option flag
+        $knockoutWinnerName = $input->getOption('knockout');
+
+        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
 
         if (!file_exists($filePath) || !is_readable($filePath)) {
             $io->error(sprintf('File path "%s" is unreadable or does not exist.', $filePath));
@@ -149,10 +154,8 @@ class ImportTournamentCommand extends Command
                 $parts = explode(',', $line);
                 $playerName = trim($parts[0]);
 
-                // Keep file-level bonus parsing fallback if you still use it ("Player, 3")
                 $bonusPoints = isset($parts[1]) ? (int) trim($parts[1]) : 0;
 
-                // Check if this specific line matches the explicit command-line --knockout flag option
                 if (null !== $knockoutWinnerName && strcasecmp($playerName, trim($knockoutWinnerName)) === 0) {
                     $bonusPoints += self::KNOCKOUT_WINNER_BONUS;
                 }
@@ -189,8 +192,37 @@ class ImportTournamentCommand extends Command
 
             $this->logger->debug('Flushing transactions tracking maps into processing container pipeline.');
             $this->entityManager->flush();
-
             $this->entityManager->commit();
+
+            // --- EVENT SOURCING LOGGER ADDITION ---
+            // Build non-interactive console command executable line
+            $escapedTitle = escapeshellarg($title);
+            $escapedDate = escapeshellarg($dateStr);
+            $escapedFile = escapeshellarg($filePath); // Preserves original path file structure reference
+            $escapedSeason = escapeshellarg($seasonSlug);
+
+            $commandString = sprintf(
+                "php bin/console app:import-tournament %s %s %s --season=%s",
+                $escapedTitle,
+                $escapedDate,
+                $escapedFile,
+                $escapedSeason
+            );
+
+            // Dynamically evaluate variable option states
+            if (null !== $challongeUrl) {
+                $commandString .= sprintf(" --challonge=%s", escapeshellarg($challongeUrl));
+            }
+            if (null !== $knockoutWinnerName) {
+                $commandString .= sprintf(" --knockout=%s", escapeshellarg($knockoutWinnerName));
+            }
+
+            $commandString .= "\n";
+
+            // Safely write line to unified ledger
+            file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
+            // --------------------------------------
+
             $io->success(sprintf('Successfully imported "%s" into %s. Logged %d player placements.', $title, $season->getName(), $rank - 1));
             return Command::SUCCESS;
         } catch (\Exception $e) {

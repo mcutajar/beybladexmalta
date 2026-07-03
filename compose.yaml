@@ -9,6 +9,9 @@ services:
       SERVER_NAME: ${SERVER_NAME:-localhost}
       APP_ENV: prod
       DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - /app/var
+      - ./var/log:/app/var/log
 
   database:
     image: postgres:16-alpine

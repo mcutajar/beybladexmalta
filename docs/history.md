@@ -73,7 +73,6 @@ php bin/console app:import-tournament \
   "2026-06-21" \
   "./docs/tournament-results/swiss-20260621.csv" \
   --challonge="https://challonge.com/vcxocrcg" \
-  -s "preseason" \
   -k "Markinu" \
   -vv
 ```
@@ -100,7 +99,6 @@ php bin/console app:import-tournament \
   "2026-06-20" \
   "./docs/tournament-results/swiss-20260620.csv" \
   --challonge="https://worldbeyblade.challonge.com/co5nncw8" \
-  -s "preseason" \
   -k "l-anzjan" \
   -vv
 ```
