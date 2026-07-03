@@ -1,5 +1,5 @@
-php bin/console app:create-season 'preseason-1' 'Preseason 1'
-php bin/console app:create-season '1' 'Season 1'
+php bin/console app:create-season 'preseason-1' 'Preseason 1' 0
+php bin/console app:create-season '1' 'Season 1' 1
 php bin/console app:register-payment '1' 'Giglio'
 php bin/console app:register-payment '1' 'Obelix'
 php bin/console app:register-payment '1' 'L-Anzjan'
@@ -15,6 +15,7 @@ php bin/console app:register-payment '1' 'Markulegend'
 php bin/console app:register-payment '1' 'BladerZ'
 php bin/console app:register-payment '1' 'Otrebor'
 php bin/console app:register-payment '1' 'Guzman93'
-php bin/console app:register-payment '1' 'Kaori'
-php bin/console app:create-season 'preseason-1' 'Preseason 1'
-php bin/console app:create-season '1' 'Season 1'
+php bin/console app:import-tournament 'Gamebreaker 20-06' '2026-06-20' '/app/var/data/imports/2026-06-20-gamebreaker-20-06.txt' --season='preseason-1' --challonge='https://worldbeyblade.challonge.com/co5nncw8' --knockout='L-Anzjan'
+php bin/console app:import-tournament 'Gamesplus BX Only 21-06' '2026-06-21' '/app/var/data/imports/2026-06-21-gamesplus-bx-only-21-06.txt' --season='preseason-1' --challonge='https://challonge.com/vcxocrcg' --knockout='Markinu'
+php bin/console app:import-tournament 'Gamebreaker CX Only 27-06' '2026-06-27' '/app/var/data/imports/2026-06-27-gamebreaker-cx-only-27-06.txt' --season='preseason-1' --challonge='https://challonge.com/wc0vkczl'
+php bin/console app:import-tournament 'Gamesplus 28-06' '2026-06-28' '/app/var/data/imports/2026-06-28-gamesplus-28-06.txt' --season='preseason-1' --challonge='https://challonge.com/4luqbuv4'
