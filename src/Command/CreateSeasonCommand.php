@@ -9,6 +9,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -30,7 +31,8 @@ class CreateSeasonCommand extends Command
     {
         $this
             ->addArgument('slug', InputArgument::OPTIONAL, 'The unique URL-safe identifier (e.g., season-x)')
-            ->addArgument('name', InputArgument::OPTIONAL, 'The display name of the season (e.g., Season X)');
+            ->addArgument('name', InputArgument::OPTIONAL, 'The display name of the season (e.g., Season X)')
+            ->addArgument('requiresPayment', InputArgument::OPTIONAL, 'Does this competitive season context require entry payment validation? (1 for yes, 0 for no)');
     }
 
     protected function interact(InputInterface $input, OutputInterface $output): void
@@ -44,8 +46,7 @@ class CreateSeasonCommand extends Command
                 if (empty(trim($answer))) {
                     throw new \RuntimeException('The season slug cannot be left blank.');
                 }
-                // Basic slug validation format helper
-                if (!preg_match('/^[a-z0-match0-9-_]+$/', trim($answer))) {
+                if (!preg_match('/^[a-z0-9-_]+$/', trim($answer))) {
                     throw new \RuntimeException('The slug must contain only lowercase letters, numbers, hyphens, or underscores.');
                 }
                 return trim($answer);
@@ -69,6 +70,13 @@ class CreateSeasonCommand extends Command
             $name = $io->askQuestion($question);
             $input->setArgument('name', $name);
         }
+
+        // 3. Prompt for Payment Validation toggle if missing
+        if (null === $input->getArgument('requiresPayment')) {
+            $question = new ConfirmationQuestion('Does this season require entry dues/payment authorization verification? (yes/no) [no]:', false);
+            $requiresPayment = $io->askQuestion($question);
+            $input->setArgument('requiresPayment', $requiresPayment ? '1' : '0');
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -76,6 +84,10 @@ class CreateSeasonCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $slug = $input->getArgument('slug');
         $name = $input->getArgument('name');
+
+        // Read raw argument input and securely parse it into a real boolean state
+        $rawRequiresPayment = $input->getArgument('requiresPayment');
+        $requiresPayment = filter_var($rawRequiresPayment, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
         $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
 
@@ -87,7 +99,6 @@ class CreateSeasonCommand extends Command
         $slug = trim($slug);
         $name = trim($name);
 
-        // Check if the season already exists
         $seasonRepository = $this->entityManager->getRepository(Season::class);
         $existingSeason = $seasonRepository->findOneBy(['slug' => $slug]);
 
@@ -96,26 +107,29 @@ class CreateSeasonCommand extends Command
             return Command::SUCCESS;
         }
 
-        // Persist the new season row record mapping
         $season = new Season();
         $season->setSlug($slug);
         $season->setName($name);
 
+        // Assumes your Season Entity contains a setRequiresPayment() or setIsPaidRequired() mapping setter method
+        if (method_exists($season, 'setRequiresPayment')) {
+            $season->setRequiresPayment($requiresPayment);
+        }
+
         $this->entityManager->persist($season);
         $this->entityManager->flush();
 
-        // --- EVENT SOURCING LOGGER ADDITION ---
+        // --- EVENT SOURCING LEDGER REPLICATION ---
         $escapedSlug = escapeshellarg($slug);
         $escapedName = escapeshellarg($name);
+        $paymentFlagValue = $requiresPayment ? '1' : '0';
 
-        // Build the non-interactive variant execution line
-        $commandString = sprintf("php bin/console app:create-season %s %s\n", $escapedSlug, $escapedName);
-
-        // Append to the target recovery shell ledger script file
+        // Persist the explicit headless variant string directly down to the ledger
+        $commandString = sprintf("php bin/console app:create-season %s %s %s\n", $escapedSlug, $escapedName, $paymentFlagValue);
         file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
-        // --------------------------------------
+        // ------------------------------------------
 
-        $io->success(sprintf('Successfully initialized season "%s" [%s] and recorded it to the ledger!', $name, $slug));
+        $io->success(sprintf('Successfully initialized season "%s" [%s] (Requires Payment: %s) and updated the ledger!', $name, $slug, $requiresPayment ? 'YES' : 'NO'));
         return Command::SUCCESS;
     }
 }

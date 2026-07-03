@@ -13,6 +13,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class LeagueController extends AbstractController
 {
     #[Route('/season/{slug}', name: 'season_leaderboard', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
+    #[Route('/seasons/{slug}', name: 'season_leaderboard_2', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     #[Route('/preseason', name: 'season_leaderboard_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     public function seasonLeaderboard(string $slug, PlayerRepository $playerRepository, SeasonRepository $seasonRepository): Response
     {
@@ -34,6 +35,7 @@ class LeagueController extends AbstractController
     }
 
     #[Route('/season/{slug}/player/{id}', name: 'player_season_details', methods: ['GET'])]
+    #[Route('/seasons/{slug}/player/{id}', name: 'player_season_details_2', methods: ['GET'])]
     #[Route('/preseason/player/{id}', name: 'player_season_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, SeasonRepository $seasonRepository): Response
     {
@@ -55,6 +57,7 @@ class LeagueController extends AbstractController
 
     #[Route('/preseason/tournament/{id}', name: 'tournament_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     #[Route('/season/{slug}/tournament/{id}', name: 'tournament_details', methods: ['GET'])]
+    #[Route('/seasons/{slug}/tournament/{id}', name: 'tournament_details_2', methods: ['GET'])]
     public function tournamentDetails(string $slug, int $id, TournamentRepository $tournamentRepository, SeasonRepository $seasonRepository): Response
     {
         // 1. Fetch and validate the active season context

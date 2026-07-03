@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBC League | Remote Registration Management</title>
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.svg">
+    {% block stylesheets %}
+        {{ encore_entry_link_tags('app') }}
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% endblock %}
+</head>
+<body class="min-h-full font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+<div class="h-2 bg-gradient-to-r from-cyan-500 via-amber-500 to-red-500"></div>
+
+<main class="max-w-2xl mx-auto px-4 py-8 md:py-16">
+
+    <!-- Back to Hub Navigation Row -->
+    <div class="mb-8 text-left">
+        <a href="/" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-700 transition-colors">
+            ⬅ Return to Hub
+        </a>
+    </div>
+
+    <!-- Standings Style Centered Header Group -->
+    <header class="text-center mb-10 space-y-3">
+        <div class="flex justify-center">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/60 uppercase tracking-wider">
+                Administrative Terminal
+            </span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase leading-none">
+            Remote Payment Terminal
+        </h1>
+        <p class="text-slate-400 text-sm max-w-md mx-auto">
+            Log financial clearances remotely. Transactions auto-append directly into the app disaster recovery log ledger.
+        </p>
+    </header>
+
+    <!-- Symfony Flash Notification Loop -->
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="mb-4 p-4 rounded-xl text-sm font-bold border
+                {% if label == 'success' %} bg-emerald-500/10 text-emerald-400 border-emerald-500/20
+                {% elseif label == 'warning' %} bg-amber-500/10 text-amber-400 border-amber-500/20
+                {% elseif label == 'error' %} bg-red-500/10 text-red-400 border-red-500/20
+                {% else %} bg-cyan-500/10 text-cyan-400 border-cyan-500/20 {% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Main Entry Panel Wrapper (Matches Preseason Standings layout card formatting style) -->
+    <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 rounded-2xl p-6 md:p-8 shadow-2xl">
+
+        {{ form_start(registration_form, {
+            'action': path('admin_register_payment'),
+            'method': 'POST',
+            'attr': {'class': 'space-y-6'}
+        }) }}
+
+        <!-- Season Dropdown Field -->
+        <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Target Competitive Season</label>
+            {{ form_widget(registration_form.season) }}
+        </div>
+
+        <!-- Blader Name Field -->
+        <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Blader Identification Name</label>
+            {{ form_widget(registration_form.playerName) }}
+            <p class="text-[11px] text-slate-500 italic">If the input identity doesn't exist in the database repository maps, a clean baseline profile token automatically initializes.</p>
+        </div>
+
+        <!-- Passphrase Security Field -->
+        <div class="space-y-2">
+            <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block">System Access Key</label>
+            {{ form_widget(registration_form.passphrase) }}
+        </div>
+
+        <!-- Submit Button Row -->
+        <div class="pt-4">
+            <button type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black uppercase tracking-wider text-sm py-3 px-4 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.2)] transition-all transform active:scale-[0.98]">
+                Verify & Process Payment Dues ✓
+            </button>
+        </div>
+
+        {{ form_end(registration_form) }}
+    </div>
+
+    <!-- Layout Footer -->
+    <footer class="mt-16 text-center text-xs text-slate-600 tracking-wide">
+        <p>© 2026 Malta Beyblade Community. All Rights Reserved.</p>
+    </footer>
+
+</main>
+
+</body>
+</html>

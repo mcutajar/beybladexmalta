@@ -9,12 +9,14 @@ services:
       - ./frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
       - /app/var
       - ./var/log:/app/var/log
+      - ./var/data:/app/var/data
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}
       FRANKENPHP_WORKER_CONFIG: watch
       XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
       APP_ENV: dev
       DATABASE_URL: ${DATABASE_URL}
+      CADDY_SERVER_LOG_OPTIONS: "output discard"
     ports:
       - target: 80
         published: ${HTTP_PORT:-80}

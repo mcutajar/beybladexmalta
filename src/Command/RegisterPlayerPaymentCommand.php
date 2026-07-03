@@ -6,8 +6,8 @@ use App\Entity\Player;
 use App\Entity\Season;
 use App\Entity\SeasonRegistration;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -22,7 +22,6 @@ use Symfony\Component\HttpKernel\KernelInterface;
 )]
 class RegisterPlayerPaymentCommand extends Command
 {
-    // Inject KernelInterface to safely resolve your project's root directory paths
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly KernelInterface $kernel
@@ -44,11 +43,17 @@ class RegisterPlayerPaymentCommand extends Command
         $seasonSlug = $input->getArgument('season');
         $playerName = $input->getArgument('name');
 
-        // Define the location of your command source ledger file
+        // --- CORE PHILOSOPHY BINDING ---
+        // If the arguments are specified, treat the context as strictly headless/non-interactive.
+        if (null !== $seasonSlug && null !== $playerName) {
+            return $this->processPaymentSinglePass((string)$seasonSlug, (string)$playerName, $io);
+        }
+        // --------------------------------
+
         $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
 
+        // Full multi-pass interactive prompt loop for live terminal execution
         while (true) {
-            // 1. Interactive Selection for Season Context
             if (null === $seasonSlug) {
                 $seasons = $this->entityManager->getRepository(Season::class)->findAll();
 
@@ -78,7 +83,6 @@ class RegisterPlayerPaymentCommand extends Command
                 return Command::FAILURE;
             }
 
-            // 2. Interactive Autocomplete Prompt for Player Identity
             if (null === $playerName) {
                 $players = $this->entityManager->getRepository(Player::class)->findAll();
                 $playerNames = array_map(static fn(Player $p) => $p->getName(), $players);
@@ -98,15 +102,12 @@ class RegisterPlayerPaymentCommand extends Command
 
             $playerName = trim($playerName);
 
-            // 3. Perform case-insensitive check for the blader name
-            $playerRepository = $this->entityManager->getRepository(Player::class);
-            $player = $playerRepository->createQueryBuilder('p')
+            $player = $this->entityManager->getRepository(Player::class)->createQueryBuilder('p')
                 ->where('LOWER(p.name) = LOWER(:name)')
                 ->setParameter('name', $playerName)
                 ->getQuery()
                 ->getOneOrNullResult();
 
-            // 4. Prompt confirmation option if player profile does not exist
             if (!$player) {
                 $io->section(sprintf('Identity Not Discovered: "%s"', $playerName));
                 $confirm = $io->confirm(
@@ -127,9 +128,7 @@ class RegisterPlayerPaymentCommand extends Command
                 $io->info(sprintf('Created new player profile token: %s', $playerName));
             }
 
-            // 5. Update Seasonal Registration
-            $registrationRepository = $this->entityManager->getRepository(SeasonRegistration::class);
-            $registration = $registrationRepository->findOneBy([
+            $registration = $this->entityManager->getRepository(SeasonRegistration::class)->findOneBy([
                 'player' => $player,
                 'season' => $season
             ]);
@@ -147,17 +146,8 @@ class RegisterPlayerPaymentCommand extends Command
                 $this->entityManager->persist($registration);
                 $this->entityManager->flush();
 
-                // --- EVENT SOURCING VIA FLAT FILE ---
-                // Escape arguments to guarantee safe string shell processing later
-                $escapedSeason = escapeshellarg($seasonSlug);
-                $escapedName = escapeshellarg($playerName);
-
-                // Construct the exact non-interactive console command executable line
-                $commandString = sprintf("php bin/console app:register-payment %s %s\n", $escapedSeason, $escapedName);
-
-                // Append it directly to your file tracking sequence
+                $commandString = sprintf("php bin/console app:register-payment %s %s\n", escapeshellarg($seasonSlug), escapeshellarg($playerName));
                 file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
-                // ------------------------------------
 
                 $io->success(sprintf('Successfully processed cleared entry transaction! "%s" is marked PAID for %s.', $player->getName(), $season->getName()));
             }
@@ -174,6 +164,60 @@ class RegisterPlayerPaymentCommand extends Command
         }
 
         $io->success('All seasonal entry updates finalized. Exiting ledger module.');
+        return Command::SUCCESS;
+    }
+
+    private function processPaymentSinglePass(string $seasonSlug, string $playerName, SymfonyStyle $io): int
+    {
+        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
+
+        $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
+        if (!$season) {
+            $io->error(sprintf('Season context "%s" does not exist in the system database maps.', $seasonSlug));
+            return Command::FAILURE;
+        }
+
+        $playerName = trim($playerName);
+
+        $player = $this->entityManager->getRepository(Player::class)->createQueryBuilder('p')
+            ->where('LOWER(p.name) = LOWER(:name)')
+            ->setParameter('name', $playerName)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        // If the player isn't registered, create them automatically without prompting
+        if (!$player) {
+            $io->note(sprintf('Programmatic context: Auto-generating missing player profile: "%s"', $playerName));
+            $player = new Player();
+            $player->setName($playerName);
+            $this->entityManager->persist($player);
+            $this->entityManager->flush();
+        }
+
+        $registration = $this->entityManager->getRepository(SeasonRegistration::class)->findOneBy([
+            'player' => $player,
+            'season' => $season
+        ]);
+
+        if (!$registration) {
+            $registration = new SeasonRegistration();
+            $registration->setPlayer($player);
+            $registration->setSeason($season);
+        }
+
+        if ($registration->isPaid()) {
+            $io->warning(sprintf('Blader "%s" has already cleared their entry balance sheets for %s.', $player->getName(), $season->getName()));
+        } else {
+            $registration->setPaid(true);
+            $this->entityManager->persist($registration);
+            $this->entityManager->flush();
+
+            $commandString = sprintf("php bin/console app:register-payment %s %s\n", escapeshellarg($seasonSlug), escapeshellarg($playerName));
+            file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
+
+            $io->success(sprintf('Successfully processed transaction! "%s" is PAID for %s.', $player->getName(), $season->getName()));
+        }
+
         return Command::SUCCESS;
     }
 }

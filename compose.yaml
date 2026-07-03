@@ -9,9 +9,11 @@ services:
       SERVER_NAME: ${SERVER_NAME:-localhost}
       APP_ENV: prod
       DATABASE_URL: ${DATABASE_URL}
+      CADDY_SERVER_LOG_OPTIONS: "output discard"
     volumes:
       - /app/var
       - ./var/log:/app/var/log
+      - ./var/data:/app/var/data
 
   database:
     image: postgres:16-alpine
