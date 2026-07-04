@@ -24,39 +24,38 @@ class PlayerRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
 
         $sql = '
-            WITH RankedResults AS (
-                SELECT 
-                    tr.player_id,
-                    tr.f1_points,
-                    tr.bonus_points,
-                    tr.total_points,
-                    t.held_on,
-                    ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC) as tournament_nth
-                FROM tournament_results tr
-                JOIN tournaments t ON t.id = tr.tournament_id
-                JOIN seasons s ON s.id = t.season_id
-                WHERE s.slug = :seasonSlug
-            )
+        WITH RankedResults AS (
             SELECT 
-                p.id,
-                p.name,
-                COALESCE(SUM(rr.f1_points), 0) as base_f1,
-                COALESCE(SUM(rr.bonus_points), 0) as total_bonus,
-                COALESCE(SUM(rr.total_points), 0) as total,
-                MAX(rr.held_on) as last_active
-            FROM players p
-            CROSS JOIN seasons target_s
-            LEFT JOIN RankedResults rr ON p.id = rr.player_id AND rr.tournament_nth <= 14
-            LEFT JOIN season_registrations sr ON sr.player_id = p.id AND sr.season_id = target_s.id
-            WHERE target_s.slug = :seasonSlug
-              AND (
-                target_s.requires_payment = false 
-                OR COALESCE(sr.paid, false) = true 
-                OR rr.player_id IS NOT NULL
-              )
-            GROUP BY p.id, p.name
-            ORDER BY total DESC, name ASC
-        ';
+                tr.player_id,
+                tr.f1_points,
+                tr.bonus_points,
+                tr.total_points,
+                t.held_on,
+                ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC) as tournament_nth
+            FROM tournament_results tr
+            JOIN tournaments t ON t.id = tr.tournament_id
+            JOIN seasons s ON s.id = t.season_id
+            WHERE s.slug = :seasonSlug
+        )
+        SELECT 
+            p.id,
+            p.name,
+            COALESCE(SUM(rr.f1_points), 0) as base_f1,
+            COALESCE(SUM(rr.bonus_points), 0) as total_bonus,
+            COALESCE(SUM(rr.total_points), 0) as total,
+            MAX(rr.held_on) as last_active
+        FROM players p
+        CROSS JOIN seasons target_s
+        LEFT JOIN RankedResults rr ON p.id = rr.player_id AND rr.tournament_nth <= 14
+        LEFT JOIN season_registrations sr ON sr.player_id = p.id AND sr.season_id = target_s.id
+        WHERE target_s.slug = :seasonSlug
+          AND (
+            target_s.requires_payment = false 
+            OR COALESCE(sr.paid, false) = true
+          )
+        GROUP BY p.id, p.name
+        ORDER BY total DESC, name ASC
+    ';
 
         $resultSet = $conn->executeQuery($sql, ['seasonSlug' => $seasonSlug]);
         return $resultSet->fetchAllAssociative();
