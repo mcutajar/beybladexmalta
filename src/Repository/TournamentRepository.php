@@ -33,7 +33,7 @@ class TournamentRepository extends ServiceEntityRepository
             FROM tournament_results tr
             JOIN players p ON p.id = tr.player_id
             WHERE tr.tournament_id = :tournamentId
-            ORDER BY tr.total_points DESC, p.name ASC
+            ORDER BY tr.rank ASC, p.name ASC
         ';
 
         $resultSet = $conn->executeQuery($sql, ['tournamentId' => $tournamentId]);
