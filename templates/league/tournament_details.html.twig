@@ -27,6 +27,7 @@
             Official Event Record
         </span>
         <h1 class="text-4xl font-black tracking-tight text-white uppercase">{{ tournament.title }}</h1>
+        <p class="text-slate-400 text-sm font-mono">Challonge url: <a href="{{ tournament.challongeUrl }}" target="_blank" class="text-cyan-400 hover:text-cyan-300 transition-colors">{{ tournament.challongeUrl }}</a></p>
         <p class="text-slate-400 text-sm font-mono">Held on {{ tournament.heldOn|date('Y-m-d') }}</p>
         <p class="text-slate-400 text-sm font-mono">{{ current_season.name }}</p>
     </header>
