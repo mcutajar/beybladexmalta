@@ -36,3 +36,4 @@ php bin/console app:import-tournament 'Gamesplus 12-07' '2026-07-12' '/app/var/d
 php bin/console app:import-tournament 'Gamebreaker 18th July' '2026-07-18' '/app/var/data/imports/2026-07-18-gamebreaker-18th-july.txt' --season='1' --challonge='https://challonge.com/vi/cd0ljdsv' --knockout='Markinu'
 php bin/console app:import-tournament '19th July Gamesplus 2v2 Player A' '2026-07-19' '/app/var/data/imports/2026-07-19-gamesplus-team-tournament-player-a-19th-july.txt' --season='1' --challonge='https://challonge.com/ivanixk6'
 php bin/console app:import-tournament '19th July Gamesplus 2v2 Player B' '2026-07-19' '/app/var/data/imports/2026-07-19-19th-july-gamesplus-2v2-player-b.txt' --season='1' --challonge='https://challonge.com/ivanixk6'
+php bin/console app:register-payment '1' 'Beastblade'
