@@ -26,3 +26,8 @@ docker/*
 ###< friendsofphp/php-cs-fixer ###
 
 .DS_Store
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
