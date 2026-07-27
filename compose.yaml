@@ -7,8 +7,6 @@ services:
       target: frankenphp_prod
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}
-      APP_ENV: prod
-      DATABASE_URL: ${DATABASE_URL}
       CADDY_SERVER_LOG_OPTIONS: "output discard"
     volumes:
       - /app/var
@@ -28,9 +26,11 @@ services:
       - "5432:5432"
 
   tunnel:
+    profiles:
+      - production
     image: cloudflare/cloudflared:latest
     container_name: cloudflare_tunnel_sidecar
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-ChangeMe!}
     depends_on:
       - php
