@@ -35,7 +35,7 @@ class AdminTournamentImportController extends AbstractController
         EntityManagerInterface $entityManager,
         KernelInterface $kernel,
         LoggerInterface $logger,
-        #[Autowire(env: 'TOURNAMENTS_ADMIN_PASSPHRASE')] string $adminPassphrase
+        #[Autowire(env: 'TOURNAMENTS_ADMIN_PASSPHRASE')] string $adminPassphrase,
     ): Response {
         $seasons = $entityManager->getRepository(Season::class)->findAll();
         $seasonChoices = [];
@@ -45,33 +45,33 @@ class AdminTournamentImportController extends AbstractController
 
         $form = $this->createFormBuilder()
             ->add('title', TextType::class, [
-                'attr' => ['placeholder' => 'e.g., Stage 1 Ranked', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none']
+                'attr' => ['placeholder' => 'e.g., Stage 1 Ranked', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none'],
             ])
             ->add('date', TextType::class, [
-                'attr' => ['placeholder' => 'YYYY-MM-DD', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none']
+                'attr' => ['placeholder' => 'YYYY-MM-DD', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none'],
             ])
             ->add('season', ChoiceType::class, [
                 'choices' => $seasonChoices,
                 'placeholder' => 'Select Season Context',
-                'attr' => ['class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none']
+                'attr' => ['class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none'],
             ])
             ->add('challongeUrl', UrlType::class, [
                 'required' => false,
-                'attr' => ['placeholder' => 'Challonge Link (Optional)', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none']
+                'attr' => ['placeholder' => 'Challonge Link (Optional)', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none'],
             ])
             ->add('knockoutWinner', TextType::class, [
                 'required' => false,
-                'attr' => ['placeholder' => 'Knockout Winner Name (Optional)', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none', 'autocomplete' => 'off']
+                'attr' => ['placeholder' => 'Knockout Winner Name (Optional)', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none', 'autocomplete' => 'off'],
             ])
             ->add('playerList', TextareaType::class, [
                 'attr' => [
                     'placeholder' => "Blader1\nBlader2\nBlader3\nBlader4\nBlader5\nBlader6\nBlader7\nBlader8\nBlader9\nBlader10",
                     'rows' => 11,
-                    'class' => 'w-full font-mono bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none'
-                ]
+                    'class' => 'w-full font-mono bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none',
+                ],
             ])
             ->add('passphrase', PasswordType::class, [
-                'attr' => ['placeholder' => 'Enter Admin Passphrase', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none']
+                'attr' => ['placeholder' => 'Enter Admin Passphrase', 'class' => 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none'],
             ])
             ->getForm();
 
@@ -83,6 +83,7 @@ class AdminTournamentImportController extends AbstractController
             if ($data['passphrase'] !== $adminPassphrase) {
                 $logger->warning('Tournament web import failed: Unauthorized passphrase input.');
                 $this->addFlash('error', 'Authentication failed. The administrative passphrase is incorrect.');
+
                 return $this->redirectToRoute('admin_tournament_import');
             }
 
@@ -90,9 +91,10 @@ class AdminTournamentImportController extends AbstractController
             $lines = array_filter(array_map('trim', explode("\n", $data['playerList'])));
             $lineCount = count($lines);
 
-            if ($lineCount !== 10) {
+            if (10 !== $lineCount) {
                 $logger->warning('Import rejected: List must contain exactly 10 players.', ['count_provided' => $lineCount]);
                 $this->addFlash('error', sprintf('Validation Error: The player list must contain exactly 10 players matching the F1 points system structure. You provided %d.', $lineCount));
+
                 return $this->redirectToRoute('admin_tournament_import');
             }
 
@@ -106,6 +108,7 @@ class AdminTournamentImportController extends AbstractController
             } catch (\Exception $e) {
                 $logger->warning('Import rejected: Invalid date formatting pattern used.', ['provided' => $dateStr]);
                 $this->addFlash('error', 'Validation Error: Please use the strict format structure YYYY-MM-DD for the date field.');
+
                 return $this->redirectToRoute('admin_tournament_import');
             }
 
@@ -126,12 +129,12 @@ class AdminTournamentImportController extends AbstractController
                 $sanitizedSlug = preg_replace('/[^a-z0-9_-]/', '', strtolower(str_replace(' ', '-', $data['title'])));
                 $dateString = $dateTime->format('Y-m-d');
 
-                $dataDir = $kernel->getProjectDir() . '/var/data/imports';
+                $dataDir = $kernel->getProjectDir().'/var/data/imports';
                 if (!is_dir($dataDir)) {
                     mkdir($dataDir, 0775, true);
                 }
                 $generatedImportFilePath = sprintf('%s/%s-%s.txt', $dataDir, $dateString, $sanitizedSlug);
-                $rawTextAccumulator = "";
+                $rawTextAccumulator = '';
                 $rank = 1;
 
                 foreach ($lines as $line) {
@@ -139,7 +142,7 @@ class AdminTournamentImportController extends AbstractController
                     $rawTextAccumulator .= sprintf("%s\n", $playerName);
 
                     $bonusPoints = 0;
-                    if ($data['knockoutWinner'] && strcasecmp($playerName, trim($data['knockoutWinner'])) === 0) {
+                    if ($data['knockoutWinner'] && 0 === strcasecmp($playerName, trim($data['knockoutWinner']))) {
                         $bonusPoints = self::KNOCKOUT_WINNER_BONUS;
                     }
 
@@ -170,15 +173,15 @@ class AdminTournamentImportController extends AbstractController
                     ++$rank;
                 }
 
-                file_put_contents($generatedImportFilePath, trim($rawTextAccumulator) . "\n", LOCK_EX);
+                file_put_contents($generatedImportFilePath, trim($rawTextAccumulator)."\n", LOCK_EX);
 
                 $entityManager->flush();
                 $entityManager->commit();
 
                 // --- APPEND STANDALONE REPLAY LEDGER STRING ---
-                $logFilePath = $kernel->getProjectDir() . '/var/log/command_ledger.sh';
+                $logFilePath = $kernel->getProjectDir().'/var/log/command_ledger.sh';
                 $commandString = sprintf(
-                    "php bin/console app:import-tournament %s %s %s --season=%s",
+                    'php bin/console app:import-tournament %s %s %s --season=%s',
                     escapeshellarg($data['title']),
                     escapeshellarg($dateString),
                     escapeshellarg($generatedImportFilePath),
@@ -186,29 +189,29 @@ class AdminTournamentImportController extends AbstractController
                 );
 
                 if ($data['challongeUrl']) {
-                    $commandString .= sprintf(" --challonge=%s", escapeshellarg($data['challongeUrl']));
+                    $commandString .= sprintf(' --challonge=%s', escapeshellarg($data['challongeUrl']));
                 }
                 if ($data['knockoutWinner']) {
-                    $commandString .= sprintf(" --knockout=%s", escapeshellarg($data['knockoutWinner']));
+                    $commandString .= sprintf(' --knockout=%s', escapeshellarg($data['knockoutWinner']));
                 }
                 $commandString .= "\n";
 
                 file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
 
                 $this->addFlash('success', sprintf('Successfully imported "%s" with 10 player ranks.', $data['title']));
-                return $this->redirectToRoute('admin_tournament_import');
 
+                return $this->redirectToRoute('admin_tournament_import');
             } catch (\Exception $e) {
                 if ($entityManager->getConnection()->isTransactionActive()) {
                     $entityManager->rollback();
                 }
                 $logger->critical('Tournament web import failed.', ['msg' => $e->getMessage()]);
-                $this->addFlash('error', 'Import aborted: ' . $e->getMessage());
+                $this->addFlash('error', 'Import aborted: '.$e->getMessage());
             }
         }
 
         return $this->render('admin/import_tournament.html.twig', [
-            'import_form' => $form->createView()
+            'import_form' => $form->createView(),
         ]);
     }
 }

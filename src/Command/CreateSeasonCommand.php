@@ -22,7 +22,7 @@ class CreateSeasonCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly KernelInterface $kernel
+        private readonly KernelInterface $kernel,
     ) {
         parent::__construct();
     }
@@ -49,6 +49,7 @@ class CreateSeasonCommand extends Command
                 if (!preg_match('/^[a-z0-9-_]+$/', trim($answer))) {
                     throw new \RuntimeException('The slug must contain only lowercase letters, numbers, hyphens, or underscores.');
                 }
+
                 return trim($answer);
             });
             $slug = $io->askQuestion($question);
@@ -65,6 +66,7 @@ class CreateSeasonCommand extends Command
                 if (empty(trim($answer))) {
                     throw new \RuntimeException('The season display name cannot be left blank.');
                 }
+
                 return trim($answer);
             });
             $name = $io->askQuestion($question);
@@ -89,10 +91,11 @@ class CreateSeasonCommand extends Command
         $rawRequiresPayment = $input->getArgument('requiresPayment');
         $requiresPayment = filter_var($rawRequiresPayment, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
-        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
+        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
 
         if (!$slug || !$name) {
             $io->error('Both a unique identifier slug and a display name are required.');
+
             return Command::FAILURE;
         }
 
@@ -104,6 +107,7 @@ class CreateSeasonCommand extends Command
 
         if ($existingSeason) {
             $io->warning(sprintf('The season context with slug "%s" already exists ("%s").', $slug, $existingSeason->getName()));
+
             return Command::SUCCESS;
         }
 
@@ -130,6 +134,7 @@ class CreateSeasonCommand extends Command
         // ------------------------------------------
 
         $io->success(sprintf('Successfully initialized season "%s" [%s] (Requires Payment: %s) and updated the ledger!', $name, $slug, $requiresPayment ? 'YES' : 'NO'));
+
         return Command::SUCCESS;
     }
 }

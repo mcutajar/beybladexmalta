@@ -33,14 +33,40 @@ class Season
         $this->tournaments = new ArrayCollection();
     }
 
-    public function getId(): ?int { return $this->id; }
-    public function getSlug(): ?string { return $this->slug; }
-    public function setSlug(string $slug): self { $this->slug = $slug; return $this; }
-    public function getName(): ?string { return $this->name; }
-    public function setName(string $name): self { $this->name = $name; return $this; }
+    public function getId(): ?int
+    {
+        return $this->id;
+    }
+
+    public function getSlug(): ?string
+    {
+        return $this->slug;
+    }
+
+    public function setSlug(string $slug): self
+    {
+        $this->slug = $slug;
+
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): self
+    {
+        $this->name = $name;
+
+        return $this;
+    }
 
     /** @return Collection<int, Tournament> */
-    public function getTournaments(): Collection { return $this->tournaments; }
+    public function getTournaments(): Collection
+    {
+        return $this->tournaments;
+    }
 
     public function requiresPayment(): bool
     {
@@ -50,6 +76,7 @@ class Season
     public function setRequiresPayment(bool $requiresPayment): self
     {
         $this->requiresPayment = $requiresPayment;
+
         return $this;
     }
 }

@@ -58,6 +58,7 @@ class PlayerRepository extends ServiceEntityRepository
     ';
 
         $resultSet = $conn->executeQuery($sql, ['seasonSlug' => $seasonSlug]);
+
         return $resultSet->fetchAllAssociative();
     }
 
@@ -98,7 +99,7 @@ class PlayerRepository extends ServiceEntityRepository
 
         $resultSet = $conn->executeQuery($sql, [
             'playerId' => $playerId,
-            'seasonSlug' => $seasonSlug
+            'seasonSlug' => $seasonSlug,
         ]);
 
         return $resultSet->fetchAllAssociative();
