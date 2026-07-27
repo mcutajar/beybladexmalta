@@ -10,7 +10,7 @@ services:
       - ./var:/app/var
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}
-      XDEBUG_MODE: "${XDEBUG_MODE:-develop}"
+      XDEBUG_MODE: "${XDEBUG_MODE:-coverage}"
       DATABASE_URL: ${DATABASE_URL}
       FRANKENPHP_WORKER_CONFIG: watch
       CADDY_SERVER_LOG_OPTIONS: "output discard"
