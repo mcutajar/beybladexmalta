@@ -30,7 +30,7 @@ class LeagueController extends AbstractController
 
         return $this->render('league/leaderboard.html.twig', [
             'leaderboard_data' => $leaderboardData,
-            'current_season'   => $season,
+            'current_season' => $season,
         ]);
     }
 
@@ -49,9 +49,9 @@ class LeagueController extends AbstractController
         $contributions = $playerRepository->getPlayerContributingTournaments($id, $slug);
 
         return $this->render('league/player_details.html.twig', [
-            'player'        => $player,
+            'player' => $player,
             'contributions' => $contributions,
-            'current_season'=> $season,
+            'current_season' => $season,
         ]);
     }
 
@@ -76,8 +76,8 @@ class LeagueController extends AbstractController
         $standings = $tournamentRepository->getTournamentStandings($id);
 
         return $this->render('league/tournament_details.html.twig', [
-            'tournament'     => $tournament,
-            'standings'      => $standings,
+            'tournament' => $tournament,
+            'standings' => $standings,
             'current_season' => $season,
         ]);
     }

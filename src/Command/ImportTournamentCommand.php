@@ -3,9 +3,9 @@
 namespace App\Command;
 
 use App\Entity\Player;
+use App\Entity\Season;
 use App\Entity\Tournament;
 use App\Entity\TournamentResult;
-use App\Entity\Season;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -34,7 +34,7 @@ class ImportTournamentCommand extends Command
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
-        private readonly KernelInterface $kernel
+        private readonly KernelInterface $kernel,
     ) {
         parent::__construct();
     }
@@ -60,16 +60,18 @@ class ImportTournamentCommand extends Command
         $seasonSlug = $input->getOption('season');
         $knockoutWinnerName = $input->getOption('knockout');
 
-        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
+        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
 
         if (!file_exists($filePath) || !is_readable($filePath)) {
             $io->error(sprintf('File path "%s" is unreadable or does not exist.', $filePath));
+
             return Command::FAILURE;
         }
 
         $handle = fopen($filePath, 'r');
         if (!$handle) {
             $io->error('Failed to open file stream sequence handles.');
+
             return Command::FAILURE;
         }
 
@@ -78,6 +80,7 @@ class ImportTournamentCommand extends Command
         } catch (\Exception $e) {
             $io->error('Invalid date format provided. Please use YYYY-MM-DD.');
             fclose($handle);
+
             return Command::FAILURE;
         }
 
@@ -87,6 +90,7 @@ class ImportTournamentCommand extends Command
             if (empty($seasons)) {
                 $io->error('No seasons found in the database. Please specify a new season via the --season flag to auto-create it.');
                 fclose($handle);
+
                 return Command::FAILURE;
             }
 
@@ -121,6 +125,7 @@ class ImportTournamentCommand extends Command
                     $io->warning('Tournament import cancelled by user due to missing season context.');
                     $this->entityManager->rollback();
                     fclose($handle);
+
                     return Command::INVALID;
                 }
 
@@ -156,7 +161,7 @@ class ImportTournamentCommand extends Command
 
                 $bonusPoints = isset($parts[1]) ? (int) trim($parts[1]) : 0;
 
-                if (null !== $knockoutWinnerName && strcasecmp($playerName, trim($knockoutWinnerName)) === 0) {
+                if (null !== $knockoutWinnerName && 0 === strcasecmp($playerName, trim($knockoutWinnerName))) {
                     $bonusPoints += self::KNOCKOUT_WINNER_BONUS;
                 }
 
@@ -183,7 +188,7 @@ class ImportTournamentCommand extends Command
                     'player' => $player->getName(),
                     'f1' => $f1Points,
                     'bonus' => $bonusPoints,
-                    'total_calculated' => $result->getTotalPoints()
+                    'total_calculated' => $result->getTotalPoints(),
                 ]);
 
                 ++$rank;
@@ -202,7 +207,7 @@ class ImportTournamentCommand extends Command
             $escapedSeason = escapeshellarg($seasonSlug);
 
             $commandString = sprintf(
-                "php bin/console app:import-tournament %s %s %s --season=%s",
+                'php bin/console app:import-tournament %s %s %s --season=%s',
                 $escapedTitle,
                 $escapedDate,
                 $escapedFile,
@@ -211,10 +216,10 @@ class ImportTournamentCommand extends Command
 
             // Dynamically evaluate variable option states
             if (null !== $challongeUrl) {
-                $commandString .= sprintf(" --challonge=%s", escapeshellarg($challongeUrl));
+                $commandString .= sprintf(' --challonge=%s', escapeshellarg($challongeUrl));
             }
             if (null !== $knockoutWinnerName) {
-                $commandString .= sprintf(" --knockout=%s", escapeshellarg($knockoutWinnerName));
+                $commandString .= sprintf(' --knockout=%s', escapeshellarg($knockoutWinnerName));
             }
 
             $commandString .= "\n";
@@ -224,12 +229,13 @@ class ImportTournamentCommand extends Command
             // --------------------------------------
 
             $io->success(sprintf('Successfully imported "%s" into %s. Logged %d player placements.', $title, $season->getName(), $rank - 1));
+
             return Command::SUCCESS;
         } catch (\Exception $e) {
             $this->logger->critical('Fatal validation breakdown halted deployment loop execution wrapper.', [
                 'exception_class' => get_class($e),
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             if ($this->entityManager->getConnection()->isTransactionActive()) {
@@ -241,6 +247,7 @@ class ImportTournamentCommand extends Command
             }
 
             $io->error('Transaction aborted: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }

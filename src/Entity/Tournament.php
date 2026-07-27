@@ -97,6 +97,7 @@ class Tournament
     public function setSeason(?Season $season): self
     {
         $this->season = $season;
+
         return $this;
     }
 }

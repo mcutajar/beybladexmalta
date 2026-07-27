@@ -6,8 +6,8 @@ use App\Entity\Player;
 use App\Entity\Season;
 use App\Entity\SeasonRegistration;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -24,7 +24,7 @@ class RegisterPlayerPaymentCommand extends Command
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly KernelInterface $kernel
+        private readonly KernelInterface $kernel,
     ) {
         parent::__construct();
     }
@@ -46,11 +46,11 @@ class RegisterPlayerPaymentCommand extends Command
         // --- CORE PHILOSOPHY BINDING ---
         // If the arguments are specified, treat the context as strictly headless/non-interactive.
         if (null !== $seasonSlug && null !== $playerName) {
-            return $this->processPaymentSinglePass((string)$seasonSlug, (string)$playerName, $io);
+            return $this->processPaymentSinglePass((string) $seasonSlug, (string) $playerName, $io);
         }
         // --------------------------------
 
-        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
+        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
 
         // Full multi-pass interactive prompt loop for live terminal execution
         while (true) {
@@ -59,6 +59,7 @@ class RegisterPlayerPaymentCommand extends Command
 
                 if (empty($seasons)) {
                     $io->error('No seasons found in the database. Please create a season first.');
+
                     return Command::FAILURE;
                 }
 
@@ -80,12 +81,13 @@ class RegisterPlayerPaymentCommand extends Command
             $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
             if (!$season) {
                 $io->error(sprintf('Season context "%s" does not exist in the system database maps.', $seasonSlug));
+
                 return Command::FAILURE;
             }
 
             if (null === $playerName) {
                 $players = $this->entityManager->getRepository(Player::class)->findAll();
-                $playerNames = array_map(static fn(Player $p) => $p->getName(), $players);
+                $playerNames = array_map(static fn (Player $p) => $p->getName(), $players);
 
                 $question = new Question('Enter the name of the Blader settling registration dues');
                 $question->setAutocompleterValues($playerNames);
@@ -94,6 +96,7 @@ class RegisterPlayerPaymentCommand extends Command
                     if (empty(trim($answer))) {
                         throw new \RuntimeException('The player name identity value cannot be left blank.');
                     }
+
                     return trim($answer);
                 });
 
@@ -130,7 +133,7 @@ class RegisterPlayerPaymentCommand extends Command
 
             $registration = $this->entityManager->getRepository(SeasonRegistration::class)->findOneBy([
                 'player' => $player,
-                'season' => $season
+                'season' => $season,
             ]);
 
             if (!$registration) {
@@ -164,16 +167,18 @@ class RegisterPlayerPaymentCommand extends Command
         }
 
         $io->success('All seasonal entry updates finalized. Exiting ledger module.');
+
         return Command::SUCCESS;
     }
 
     private function processPaymentSinglePass(string $seasonSlug, string $playerName, SymfonyStyle $io): int
     {
-        $logFilePath = $this->kernel->getProjectDir() . '/var/log/command_ledger.sh';
+        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
 
         $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
         if (!$season) {
             $io->error(sprintf('Season context "%s" does not exist in the system database maps.', $seasonSlug));
+
             return Command::FAILURE;
         }
 
@@ -196,7 +201,7 @@ class RegisterPlayerPaymentCommand extends Command
 
         $registration = $this->entityManager->getRepository(SeasonRegistration::class)->findOneBy([
             'player' => $player,
-            'season' => $season
+            'season' => $season,
         ]);
 
         if (!$registration) {
