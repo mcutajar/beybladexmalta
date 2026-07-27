@@ -6,6 +6,7 @@
 /public/bundles/
 /var/log
 /var/cache
+/var/tailwind
 /vendor/
 ###< symfony/framework-bundle ###
 
