@@ -6,9 +6,9 @@ namespace App\Tests\Controller;
 
 use App\Factory\PlayerFactory;
 use App\Factory\SeasonRegistrationFactory;
+use App\Story\PaidRegistrationStory;
 use App\Story\SeasonStory;
-use App\Tests\Story\PaidRegistrationStory;
-use App\Tests\Story\UnpaidRegistrationStory;
+use App\Story\UnpaidRegistrationStory;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Zenstruck\Foundry\Attribute\ResetDatabase;
@@ -257,27 +257,15 @@ final class RegisterPaymentControllerTest extends WebTestCase
 
         self::assertResponseRedirects('/admin/payments');
 
-        $player = PlayerFactory::find([
+        PlayerFactory::assert()->empty([
             'name' => 'Ledger Failure Player',
-        ]);
-
-        /*
-         * This assertion documents the controller's current behavior.
-         *
-         * The database is flushed before the ledger is written, so the
-         * registration remains paid even though the ledger write failed.
-         */
-        SeasonRegistrationFactory::assert()->exists([
-            'player' => $player,
-            'season' => SeasonStory::paymentSeason(),
-            'paid' => true,
         ]);
 
         $client->followRedirect();
 
         self::assertSelectorTextContains(
             'body',
-            'Critical failure: Failed to write to ledger file'
+            'Critical failure: Failed to write to ledger file, update cancelled.'
         );
     }
 

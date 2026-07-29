@@ -2,17 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Story;
+namespace App\Story;
 
 use App\Entity\Player;
 use App\Entity\SeasonRegistration;
 use App\Factory\PlayerFactory;
 use App\Factory\SeasonRegistrationFactory;
-use App\Story\SeasonStory;
 use Zenstruck\Foundry\Story;
 
 /**
- * @method static Player alice()
+ * @method static Player             alice()
  * @method static SeasonRegistration registration()
  */
 final class UnpaidRegistrationStory extends Story

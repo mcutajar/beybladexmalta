@@ -15,4 +15,9 @@ class SeasonRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Season::class);
     }
+
+    public function findBySlug(string $slug): ?Season
+    {
+        return $this->findOneBy(['slug' => $slug]);
+    }
 }

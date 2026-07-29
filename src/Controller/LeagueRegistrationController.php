@@ -2,10 +2,10 @@
 
 namespace App\Controller;
 
-use App\Entity\Player;
-use App\Entity\Season;
-use App\Entity\SeasonRegistration;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Exception\LedgerWriteException;
+use App\Repository\SeasonRepository;
+use App\Service\PlayerRegistrationService;
+use App\Service\RegisterSeasonPaymentResult;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -14,21 +14,24 @@ use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 class LeagueRegistrationController extends AbstractController
 {
+    public function __construct(
+        private SeasonRepository $seasonRepository,
+        private PlayerRegistrationService $playerRegistrationService,
+        private LoggerInterface $logger, )
+    {
+    }
+
     #[Route('/admin/payments', name: 'admin_register_payment', methods: ['GET', 'POST'])]
     public function registerPayment(
         Request $request,
-        EntityManagerInterface $entityManager,
-        KernelInterface $kernel,
-        LoggerInterface $logger,
         #[Autowire(env: 'PAYMENTS_ADMIN_PASSPHRASE')]
         string $adminPassphrase,
     ): Response {
-        $seasons = $entityManager->getRepository(Season::class)->findAll();
+        $seasons = $this->seasonRepository->findAll();
         $seasonChoices = [];
         foreach ($seasons as $season) {
             $seasonChoices[$season->getName()] = $season->getSlug();
@@ -52,71 +55,59 @@ class LeagueRegistrationController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $data = $form->getData();
-            $logger->info('Registration attempt initiated', ['player' => $data['playerName']]);
+            $this->logger->info('Registration attempt initiated', ['player' => $data['playerName']]);
 
             if ($data['passphrase'] !== $adminPassphrase) {
-                $logger->warning('Registration failed: Incorrect passphrase');
+                $this->logger->warning('Registration failed: Incorrect passphrase');
                 $this->addFlash('error', 'Authentication failed.');
 
                 return $this->redirectToRoute('admin_register_payment');
             }
 
-            $season = $entityManager->getRepository(Season::class)->findOneBy(['slug' => $data['season']]);
-            if (!$season) {
-                $logger->error('Season not found', ['slug' => $data['season']]);
-                $this->addFlash('error', 'The requested season context does not exist.');
+            try {
+                $result = $this->playerRegistrationService->register(
+                    $data['playerName'],
+                    $data['season'],
+                );
 
-                return $this->redirectToRoute('admin_register_payment');
-            }
+                match ($result) {
+                    RegisterSeasonPaymentResult::SeasonNotFound => $this->addFlash(
+                        'error',
+                        'The requested season context does not exist.',
+                    ),
 
-            $player = $entityManager->getRepository(Player::class)->createQueryBuilder('p')
-                ->where('LOWER(p.name) = LOWER(:name)')
-                ->setParameter('name', trim($data['playerName']))
-                ->getQuery()
-                ->getOneOrNullResult();
+                    RegisterSeasonPaymentResult::AlreadyPaid => $this->addFlash(
+                        'warning',
+                        'Blader has already cleared their balance.',
+                    ),
 
-            if (!$player) {
-                $player = new Player();
-                $player->setName(trim($data['playerName']));
-                $entityManager->persist($player);
-                $entityManager->flush();
-                $logger->info('New player record generated', ['name' => $player->getName()]);
-            }
+                    RegisterSeasonPaymentResult::Registered => $this->addFlash(
+                        'success',
+                        'Successfully processed transaction.',
+                    ),
+                };
+            } catch (LedgerWriteException $exception) {
+                $this->logger->critical('Critical failure: Failed to write to ledger file, update cancelled.', [
+                    'exception' => $exception,
+                    'playerName' => $data['playerName'],
+                    'season' => $data['season'],
+                ]);
 
-            $registration = $entityManager->getRepository(SeasonRegistration::class)->findOneBy([
-                'player' => $player,
-                'season' => $season,
-            ]);
+                $this->addFlash(
+                    'error',
+                    'Critical failure: Failed to write to ledger file, update cancelled.',
+                );
+            } catch (\Throwable $exception) {
+                $this->logger->error('Payment registration failed', [
+                    'exception' => $exception,
+                    'playerName' => $data['playerName'],
+                    'season' => $data['season'],
+                ]);
 
-            if (!$registration) {
-                $registration = new SeasonRegistration();
-                $registration->setPlayer($player);
-                $registration->setSeason($season);
-            }
-
-            if ($registration->isPaid()) {
-                $logger->info('Payment already registered', ['player' => $player->getName()]);
-                $this->addFlash('warning', 'Blader has already cleared their balance.');
-            } else {
-                try {
-                    $registration->setPaid(true);
-                    $entityManager->persist($registration);
-                    $entityManager->flush();
-
-                    // Ledger write attempt
-                    $logFilePath = $kernel->getProjectDir().'/var/log/command_ledger.sh';
-                    $commandLine = sprintf("php bin/console app:register-payment %s %s\n", escapeshellarg($season->getSlug()), escapeshellarg($player->getName()));
-
-                    if (false === @file_put_contents($logFilePath, $commandLine, FILE_APPEND | LOCK_EX)) {
-                        throw new \Exception('Failed to write to ledger file: '.$logFilePath);
-                    }
-
-                    $logger->info('Registration successful & ledger updated', ['player' => $player->getName()]);
-                    $this->addFlash('success', 'Successfully processed transaction.');
-                } catch (\Exception $e) {
-                    $logger->critical('Ledger or DB write failure', ['message' => $e->getMessage()]);
-                    $this->addFlash('error', 'Critical failure: '.$e->getMessage());
-                }
+                $this->addFlash(
+                    'error',
+                    'A critical failure occurred while processing the transaction.',
+                );
             }
 
             return $this->redirectToRoute('admin_register_payment');

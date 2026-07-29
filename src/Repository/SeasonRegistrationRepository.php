@@ -2,6 +2,8 @@
 
 namespace App\Repository;
 
+use App\Entity\Player;
+use App\Entity\Season;
 use App\Entity\SeasonRegistration;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -38,5 +40,18 @@ class SeasonRegistrationRepository extends ServiceEntityRepository
         ';
 
         return $conn->executeQuery($sql)->fetchAllAssociative();
+    }
+
+    public function findForPlayerAndSeason(Player $player, Season $season): ?SeasonRegistration
+    {
+        return $this->findOneBy([
+            'player' => $player,
+            'season' => $season,
+        ]);
+    }
+
+    public function save(SeasonRegistration $registration): void
+    {
+        $this->getEntityManager()->persist($registration);
     }
 }
