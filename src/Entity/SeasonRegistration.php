@@ -66,4 +66,15 @@ class SeasonRegistration
 
         return $this;
     }
+
+    public function markAsPaid(): bool
+    {
+        if ($this->paid) {
+            return false;
+        }
+
+        $this->paid = true;
+
+        return true;
+    }
 }

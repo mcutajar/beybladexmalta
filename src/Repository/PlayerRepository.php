@@ -9,7 +9,7 @@ use Doctrine\Persistence\ManagerRegistry;
 /**
  * @extends ServiceEntityRepository<Player>
  */
-class PlayerRepository extends ServiceEntityRepository
+class PlayerRepository extends ServiceEntityRepository implements PlayerRepositoryInterface
 {
     public function __construct(ManagerRegistry $registry)
     {
@@ -49,10 +49,10 @@ class PlayerRepository extends ServiceEntityRepository
         LEFT JOIN RankedResults rr ON p.id = rr.player_id AND rr.tournament_nth <= 14
         LEFT JOIN season_registrations sr ON sr.player_id = p.id AND sr.season_id = target_s.id
         WHERE target_s.slug = :seasonSlug
-          AND (
+        AND (
             target_s.requires_payment = false 
             OR COALESCE(sr.paid, false) = true
-          )
+        )
         GROUP BY p.id, p.name
         ORDER BY total DESC, name ASC
     ';
@@ -103,5 +103,37 @@ class PlayerRepository extends ServiceEntityRepository
         ]);
 
         return $resultSet->fetchAllAssociative();
+    }
+
+    public function getPlayerByName(string $name): ?Player
+    {
+        return $this->createQueryBuilder('p')
+                ->where('LOWER(p.name) = LOWER(:name)')
+                ->setParameter('name', trim($name))
+                ->getQuery()
+                ->getOneOrNullResult();
+    }
+
+    public function createPlayerWithName(string $name): Player
+    {
+        $player = new Player();
+        $player->setName(trim($name));
+        $this->getEntityManager()->persist($player);
+
+        return $player;
+    }
+
+    public function save(Player $player): void
+    {
+        $this->getEntityManager()->persist($player);
+    }
+
+    public function findByName(string $name): ?Player
+    {
+        return $this->createQueryBuilder('p')
+            ->where('LOWER(p.name) = LOWER(:name)')
+            ->setParameter('name', trim($name))
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }
