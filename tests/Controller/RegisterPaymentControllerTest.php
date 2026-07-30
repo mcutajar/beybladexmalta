@@ -26,10 +26,6 @@ final class RegisterPaymentControllerTest extends WebTestCase
     {
         parent::setUp();
 
-        /*
-         * Assuming this test is located at:
-         * tests/Controller/RegisterPaymentControllerTest.php
-         */
         $this->ledgerPath = dirname(__DIR__, 2)
             .'/var/log/command_ledger.sh';
 
@@ -53,22 +49,22 @@ final class RegisterPaymentControllerTest extends WebTestCase
         self::assertRouteSame('admin_register_payment');
 
         self::assertSelectorTextContains(
-            'select[name="form[season]"]',
+            'select[name="register_payment[season]"]',
             'Paid Season'
         );
 
         self::assertSelectorTextContains(
-            'select[name="form[season]"]',
+            'select[name="register_payment[season]"]',
             'Free Season'
         );
 
         self::assertSelectorExists(
-            'select[name="form[season]"] '
+            'select[name="register_payment[season]"] '
             .'option[value="paid-season"]'
         );
 
         self::assertSelectorExists(
-            'select[name="form[season]"] '
+            'select[name="register_payment[season]"] '
             .'option[value="free-season"]'
         );
     }
@@ -152,12 +148,19 @@ final class RegisterPaymentControllerTest extends WebTestCase
         );
     }
 
-    #[WithStory(UnpaidRegistrationStory::class)]
     public function testExistingPlayerIsFoundCaseInsensitively(): void
     {
-        self::assertFalse(
-            UnpaidRegistrationStory::registration()->isPaid()
-        );
+        UnpaidRegistrationStory::load();
+
+        $alice = PlayerFactory::find([
+            'name' => 'Alice',
+        ]);
+
+        SeasonRegistrationFactory::assert()->exists([
+            'player' => $alice,
+            'season' => SeasonStory::paymentSeason(),
+            'paid' => false,
+        ]);
 
         $client = $this->createBrowser();
 
@@ -171,7 +174,8 @@ final class RegisterPaymentControllerTest extends WebTestCase
         self::assertResponseRedirects('/admin/payments');
 
         /*
-         * No duplicate player should have been generated.
+         * The existing player should be reused rather than creating a
+         * duplicate with different capitalization.
          */
         PlayerFactory::assert()->count(1);
 
@@ -182,7 +186,7 @@ final class RegisterPaymentControllerTest extends WebTestCase
         SeasonRegistrationFactory::assert()->count(1);
 
         SeasonRegistrationFactory::assert()->exists([
-            'player' => UnpaidRegistrationStory::alice(),
+            'player' => $alice,
             'season' => SeasonStory::paymentSeason(),
             'paid' => true,
         ]);
@@ -197,12 +201,19 @@ final class RegisterPaymentControllerTest extends WebTestCase
         );
     }
 
-    #[WithStory(PaidRegistrationStory::class)]
     public function testAlreadyPaidRegistrationIsNotProcessedAgain(): void
     {
-        self::assertTrue(
-            PaidRegistrationStory::registration()->isPaid()
-        );
+        PaidRegistrationStory::load();
+
+        $bob = PlayerFactory::find([
+            'name' => 'Bob',
+        ]);
+
+        SeasonRegistrationFactory::assert()->exists([
+            'player' => $bob,
+            'season' => SeasonStory::paymentSeason(),
+            'paid' => true,
+        ]);
 
         $client = $this->createBrowser();
 
@@ -219,7 +230,7 @@ final class RegisterPaymentControllerTest extends WebTestCase
         SeasonRegistrationFactory::assert()->count(1);
 
         SeasonRegistrationFactory::assert()->exists([
-            'player' => PaidRegistrationStory::bob(),
+            'player' => $bob,
             'season' => SeasonStory::paymentSeason(),
             'paid' => true,
         ]);
@@ -272,8 +283,8 @@ final class RegisterPaymentControllerTest extends WebTestCase
     private function createBrowser(): KernelBrowser
     {
         /*
-         * Foundry stories/factories boot the kernel before this point.
-         * WebTestCase needs to boot its browser kernel itself.
+         * Foundry stories and factories may boot the kernel before this
+         * point. WebTestCase needs to boot its browser kernel itself.
          */
         static::ensureKernelShutdown();
 
@@ -287,8 +298,8 @@ final class RegisterPaymentControllerTest extends WebTestCase
         string $passphrase,
     ): void {
         /*
-         * Requesting the page first gives us the real form, including
-         * its CSRF token.
+         * Requesting the page first provides the real form and its CSRF
+         * token.
          */
         $crawler = $client->request(
             'GET',
@@ -301,9 +312,9 @@ final class RegisterPaymentControllerTest extends WebTestCase
             ->filter('form')
             ->first()
             ->form([
-                'form[season]' => $seasonSlug,
-                'form[playerName]' => $playerName,
-                'form[passphrase]' => $passphrase,
+                'register_payment[season]' => $seasonSlug,
+                'register_payment[playerName]' => $playerName,
+                'register_payment[passphrase]' => $passphrase,
             ]);
 
         $client->submit($form);
