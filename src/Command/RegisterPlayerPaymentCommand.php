@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Player;
-use App\Entity\Season;
-use App\Entity\SeasonRegistration;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Exception\LedgerWriteException;
+use App\Repository\PlayerRepository;
+use App\Repository\SeasonRepository;
+use App\Service\PlayerRegistrationService;
+use App\Service\RegisterSeasonPaymentResult;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -16,17 +18,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ChoiceQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:register-payment',
-    description: 'Marks a player as paid for a specific competitive season context.',
+    description: 'Marks a player as paid for a specific competitive season.',
 )]
-class RegisterPlayerPaymentCommand extends Command
+final class RegisterPlayerPaymentCommand extends Command
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly KernelInterface $kernel,
+        private readonly PlayerRegistrationService $registrationService,
+        private readonly SeasonRepository $seasonRepository,
+        private readonly PlayerRepository $playerRepository,
     ) {
         parent::__construct();
     }
@@ -34,197 +36,299 @@ class RegisterPlayerPaymentCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('season', InputArgument::OPTIONAL, 'The slug of the target season (e.g., season-1)')
-            ->addArgument('name', InputArgument::OPTIONAL, 'The name of the blader settling dues');
+            ->addArgument(
+                'season',
+                InputArgument::OPTIONAL,
+                'The slug of the target season, for example "season-1".',
+            )
+            ->addArgument(
+                'name',
+                InputArgument::OPTIONAL,
+                'The name of the player settling registration dues.',
+            );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    protected function execute(
+        InputInterface $input,
+        OutputInterface $output,
+    ): int {
         $io = new SymfonyStyle($input, $output);
 
-        $seasonSlug = $input->getArgument('season');
-        $playerName = $input->getArgument('name');
+        $seasonArgument = $input->getArgument('season');
+        $nameArgument = $input->getArgument('name');
 
-        // --- CORE PHILOSOPHY BINDING ---
-        // If the arguments are specified, treat the context as strictly headless/non-interactive.
-        if (null !== $seasonSlug && null !== $playerName) {
-            return $this->processPaymentSinglePass((string) $seasonSlug, (string) $playerName, $io);
+        /*
+         * When both arguments are provided, run once without prompting.
+         */
+        if (null !== $seasonArgument && null !== $nameArgument) {
+            return $this->registerPayment(
+                seasonSlug: (string) $seasonArgument,
+                playerName: (string) $nameArgument,
+                io: $io,
+            );
         }
-        // --------------------------------
 
-        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
+        return $this->runInteractively($io);
+    }
 
-        // Full multi-pass interactive prompt loop for live terminal execution
-        while (true) {
+    private function runInteractively(SymfonyStyle $io): int
+    {
+        do {
+            $seasonSlug = $this->askForSeason($io);
+
             if (null === $seasonSlug) {
-                $seasons = $this->entityManager->getRepository(Season::class)->findAll();
-
-                if (empty($seasons)) {
-                    $io->error('No seasons found in the database. Please create a season first.');
-
-                    return Command::FAILURE;
-                }
-
-                $seasonChoices = [];
-                foreach ($seasons as $s) {
-                    $seasonChoices[$s->getSlug()] = $s->getName();
-                }
-
-                $question = new ChoiceQuestion(
-                    'Please select the active competitive season context',
-                    array_values($seasonChoices)
-                );
-                $question->setErrorMessage('Season %s is invalid.');
-
-                $selectedName = $io->askQuestion($question);
-                $seasonSlug = array_search($selectedName, $seasonChoices, true);
-            }
-
-            $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
-            if (!$season) {
-                $io->error(sprintf('Season context "%s" does not exist in the system database maps.', $seasonSlug));
-
                 return Command::FAILURE;
             }
 
-            if (null === $playerName) {
-                $players = $this->entityManager->getRepository(Player::class)->findAll();
-                $playerNames = array_map(static fn (Player $p) => $p->getName(), $players);
+            $playerName = $this->askForPlayerName($io);
 
-                $question = new Question('Enter the name of the Blader settling registration dues');
-                $question->setAutocompleterValues($playerNames);
+            if (!$this->confirmPlayerCreation($playerName, $io)) {
+                $io->warning('Payment processing was aborted for this player.');
 
-                $question->setValidator(function ($answer) {
-                    if (empty(trim($answer))) {
-                        throw new \RuntimeException('The player name identity value cannot be left blank.');
-                    }
-
-                    return trim($answer);
-                });
-
-                $playerName = $io->askQuestion($question);
+                continue;
             }
 
-            $playerName = trim($playerName);
+            $exitCode = $this->registerPayment(
+                seasonSlug: $seasonSlug,
+                playerName: $playerName,
+                io: $io,
+            );
 
-            $player = $this->entityManager->getRepository(Player::class)->createQueryBuilder('p')
-                ->where('LOWER(p.name) = LOWER(:name)')
-                ->setParameter('name', $playerName)
-                ->getQuery()
-                ->getOneOrNullResult();
-
-            if (!$player) {
-                $io->section(sprintf('Identity Not Discovered: "%s"', $playerName));
-                $confirm = $io->confirm(
-                    sprintf('The blader identity "%s" does not exist in the database. Would you like to register them fresh right now?', $playerName),
-                    true
-                );
-
-                if (!$confirm) {
-                    $io->warning('Payment processing aborted for this player.');
-                    goto check_loop_continue;
-                }
-
-                $player = new Player();
-                $player->setName($playerName);
-                $this->entityManager->persist($player);
-                $this->entityManager->flush();
-
-                $io->info(sprintf('Created new player profile token: %s', $playerName));
+            /*
+             * A missing season or an unexpected operational failure should
+             * terminate the command rather than immediately asking for
+             * another payment.
+             */
+            if (Command::SUCCESS !== $exitCode) {
+                return $exitCode;
             }
 
-            $registration = $this->entityManager->getRepository(SeasonRegistration::class)->findOneBy([
-                'player' => $player,
-                'season' => $season,
-            ]);
-
-            if (!$registration) {
-                $registration = new SeasonRegistration();
-                $registration->setPlayer($player);
-                $registration->setSeason($season);
-            }
-
-            if ($registration->isPaid()) {
-                $io->warning(sprintf('Blader "%s" has already cleared their entry balance sheets for %s.', $player->getName(), $season->getName()));
-            } else {
-                $registration->setPaid(true);
-                $this->entityManager->persist($registration);
-                $this->entityManager->flush();
-
-                $commandString = sprintf("php bin/console app:register-payment %s %s\n", escapeshellarg($seasonSlug), escapeshellarg($playerName));
-                file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
-
-                $io->success(sprintf('Successfully processed cleared entry transaction! "%s" is marked PAID for %s.', $player->getName(), $season->getName()));
-            }
-
-            check_loop_continue:
-
-            $continue = $io->confirm('Would you like to register another player payment?', true);
-            if (!$continue) {
-                break;
-            }
-
-            $playerName = null;
             $io->newLine();
-        }
+        } while (
+            $io->confirm(
+                'Would you like to register another player payment?',
+                true,
+            )
+        );
 
-        $io->success('All seasonal entry updates finalized. Exiting ledger module.');
+        $io->success('All seasonal payment updates have been completed.');
 
         return Command::SUCCESS;
     }
 
-    private function processPaymentSinglePass(string $seasonSlug, string $playerName, SymfonyStyle $io): int
+    private function askForSeason(SymfonyStyle $io): ?string
     {
-        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
+        $seasons = $this->seasonRepository->findAll();
 
-        $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
-        if (!$season) {
-            $io->error(sprintf('Season context "%s" does not exist in the system database maps.', $seasonSlug));
+        if ([] === $seasons) {
+            $io->error(
+                'No seasons were found. Create a season before registering payments.',
+            );
+
+            return null;
+        }
+
+        /*
+         * ChoiceQuestion returns the selected displayed value, so map each
+         * displayed season name back to its slug.
+         *
+         * @var array<string, string> $choices
+         */
+        $choices = [];
+
+        foreach ($seasons as $season) {
+            $choices[$season->getName()] = $season->getSlug();
+        }
+
+        $question = new ChoiceQuestion(
+            'Select the competitive season',
+            array_keys($choices),
+        );
+
+        $question->setErrorMessage('Season "%s" is invalid.');
+
+        $selectedName = $io->askQuestion($question);
+
+        if (!is_string($selectedName)) {
+            throw new \LogicException('The selected season name must be a string.');
+        }
+
+        return $choices[$selectedName];
+    }
+
+    private function askForPlayerName(SymfonyStyle $io): string
+    {
+        $playerNames = array_map(
+            static fn (Player $player): string => $player->getName(),
+            $this->playerRepository->findAll(),
+        );
+
+        $question = new Question(
+            'Enter the name of the player settling registration dues',
+        );
+
+        $question->setAutocompleterValues($playerNames);
+
+        $question->setValidator(
+            static function (mixed $answer): string {
+                if (!is_string($answer)) {
+                    throw new \RuntimeException('The player name must be text.');
+                }
+
+                $playerName = trim($answer);
+
+                if ('' === $playerName) {
+                    throw new \RuntimeException('The player name cannot be empty.');
+                }
+
+                return $playerName;
+            },
+        );
+
+        $answer = $io->askQuestion($question);
+
+        if (!is_string($answer)) {
+            throw new \LogicException('The validated player name must be a string.');
+        }
+
+        return $answer;
+    }
+
+    private function confirmPlayerCreation(
+        string $playerName,
+        SymfonyStyle $io,
+    ): bool {
+        $player = $this->playerRepository->findByName($playerName);
+
+        if (null !== $player) {
+            return true;
+        }
+
+        $io->section(
+            sprintf(
+                'Player not found: "%s"',
+                $playerName,
+            ),
+        );
+
+        return $io->confirm(
+            sprintf(
+                'Player "%s" does not exist. Would you like to create them?',
+                $playerName,
+            ),
+            true,
+        );
+    }
+
+    private function registerPayment(
+        string $seasonSlug,
+        string $playerName,
+        SymfonyStyle $io,
+    ): int {
+        $seasonSlug = trim($seasonSlug);
+        $playerName = trim($playerName);
+
+        if ('' === $seasonSlug) {
+            $io->error('The season slug cannot be empty.');
+
+            return Command::INVALID;
+        }
+
+        if ('' === $playerName) {
+            $io->error('The player name cannot be empty.');
+
+            return Command::INVALID;
+        }
+
+        try {
+            $result = $this->registrationService->register(
+                playerName: $playerName,
+                seasonSlug: $seasonSlug,
+            );
+        } catch (LedgerWriteException $exception) {
+            $io->error(
+                'The payment was registered, but the recovery ledger could not be updated.',
+            );
+
+            if ($io->isVerbose()) {
+                $io->writeln($exception->getMessage());
+            }
+
+            return Command::FAILURE;
+        } catch (\Throwable $exception) {
+            $io->error(
+                sprintf(
+                    'Payment registration failed: %s',
+                    $exception->getMessage(),
+                ),
+            );
 
             return Command::FAILURE;
         }
 
-        $playerName = trim($playerName);
+        return match ($result) {
+            RegisterSeasonPaymentResult::Registered => $this->showRegistered(
+                io: $io,
+                playerName: $playerName,
+                seasonSlug: $seasonSlug,
+            ),
 
-        $player = $this->entityManager->getRepository(Player::class)->createQueryBuilder('p')
-            ->where('LOWER(p.name) = LOWER(:name)')
-            ->setParameter('name', $playerName)
-            ->getQuery()
-            ->getOneOrNullResult();
+            RegisterSeasonPaymentResult::AlreadyPaid => $this->showAlreadyPaid(
+                io: $io,
+                playerName: $playerName,
+                seasonSlug: $seasonSlug,
+            ),
 
-        // If the player isn't registered, create them automatically without prompting
-        if (!$player) {
-            $io->note(sprintf('Programmatic context: Auto-generating missing player profile: "%s"', $playerName));
-            $player = new Player();
-            $player->setName($playerName);
-            $this->entityManager->persist($player);
-            $this->entityManager->flush();
-        }
+            RegisterSeasonPaymentResult::SeasonNotFound => $this->showSeasonNotFound(
+                io: $io,
+                seasonSlug: $seasonSlug,
+            ),
+        };
+    }
 
-        $registration = $this->entityManager->getRepository(SeasonRegistration::class)->findOneBy([
-            'player' => $player,
-            'season' => $season,
-        ]);
-
-        if (!$registration) {
-            $registration = new SeasonRegistration();
-            $registration->setPlayer($player);
-            $registration->setSeason($season);
-        }
-
-        if ($registration->isPaid()) {
-            $io->warning(sprintf('Blader "%s" has already cleared their entry balance sheets for %s.', $player->getName(), $season->getName()));
-        } else {
-            $registration->setPaid(true);
-            $this->entityManager->persist($registration);
-            $this->entityManager->flush();
-
-            $commandString = sprintf("php bin/console app:register-payment %s %s\n", escapeshellarg($seasonSlug), escapeshellarg($playerName));
-            file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
-
-            $io->success(sprintf('Successfully processed transaction! "%s" is PAID for %s.', $player->getName(), $season->getName()));
-        }
+    private function showRegistered(
+        SymfonyStyle $io,
+        string $playerName,
+        string $seasonSlug,
+    ): int {
+        $io->success(
+            sprintf(
+                '"%s" is now marked as paid for season "%s".',
+                $playerName,
+                $seasonSlug,
+            ),
+        );
 
         return Command::SUCCESS;
+    }
+
+    private function showAlreadyPaid(
+        SymfonyStyle $io,
+        string $playerName,
+        string $seasonSlug,
+    ): int {
+        $io->warning(
+            sprintf(
+                '"%s" has already paid for season "%s".',
+                $playerName,
+                $seasonSlug,
+            ),
+        );
+
+        return Command::SUCCESS;
+    }
+
+    private function showSeasonNotFound(
+        SymfonyStyle $io,
+        string $seasonSlug,
+    ): int {
+        $io->error(
+            sprintf(
+                'Season "%s" does not exist.',
+                $seasonSlug,
+            ),
+        );
+
+        return Command::FAILURE;
     }
 }
