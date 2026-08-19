@@ -33,6 +33,9 @@ automatically when it is missing.
 
 Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 
+The `gh` CLI is **not installed** either, so `gh issue view` / `gh pr` will not work.
+Read issues and pull requests by fetching their URL instead.
+
 ## Container gotchas
 
 - `docker run <image> php ...` is **not** a shortcut. The image's `ENTRYPOINT`
@@ -42,9 +45,20 @@ Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
   Makefile does) — `exec` skips the entrypoint entirely.
 - The stack bind-mounts the repository root at `/app`. A **git worktree is not
   mounted** by a stack started from the main checkout. Working in a worktree means
-  either starting a separate stack from it (set `COMPOSE_PROJECT_NAME` and change
-  the published ports to avoid clashing with the main one) or making the change in
-  the main checkout.
+  either starting a separate stack from it or making the change in the main checkout.
+- Starting that separate stack needs **less ceremony than it looks**. Compose derives
+  the project name from the directory, so a worktree already gets its own namespace
+  (`<worktree-dir>-php-1`, its own network and volumes) — you do not need to set
+  `COMPOSE_PROJECT_NAME`. Only the **published ports** are shared, and only against
+  another *dev* stack: `compose.override.yaml` publishes 80, 443 and 15432. Check
+  with `docker ps` first and override `HTTP_PORT`/`HTTPS_PORT` only if something
+  already holds them.
+- **A production stack may be running on the same host**, started from the main
+  checkout via `compose.yaml` (plus the `production`-profile Cloudflare tunnel). It
+  is a *different* Compose project, so a worktree stack cannot collide with it — but
+  `make down`, `docker compose down` or a prune run from the wrong directory will
+  take the live site down. Check `docker ps` before anything destructive, and keep
+  every command scoped with `-f compose.override.yaml` the way the Makefile does.
 - `vendor/` is written into the bind mount, so it lands on the host and the IDE can
   still index it. Keep it that way.
 - On the **first** `make up` of a fresh checkout the entrypoint is running its own
@@ -102,12 +116,22 @@ Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 - `PlayerRepository::getLeagueLeaderboard()` is raw SQL with a CTE — it caps scoring
   at each player's best 14 results and applies payment gating. Change it with care;
   it is currently untested.
-- `migrations/` is empty; the schema is not versioned yet.
+- `migrations/` is empty; the schema is not versioned yet. A consequence worth
+  knowing: in a **freshly started stack** nothing ever creates the schema, so
+  `doctrine:schema:validate` reports "The database schema is not in sync with the
+  current mapping file" and `doctrine:schema:update --dump-sql` prints `CREATE TABLE`
+  for every table. That is an empty database, not drift you introduced. To tell the
+  two apart, check whether the dump says `CREATE` (empty) or `ALTER` (real drift).
 - PHPStan runs at **level 6** with the Symfony, Doctrine and PHPUnit extensions,
   and there is **no baseline** — the analysis is clean, so keep it that way
   rather than adding one. `phpstan.dist.neon` points the Symfony extension at the
   compiled dev container (`make phpstan` warms it first) and the Doctrine
   extension at `tests/object-manager.php`.
+- That warm-up is an **order-only prerequisite**, so it only runs when the compiled
+  container is missing — exactly like the Tailwind rule above it. Add, rename or
+  rewire a service and the cached XML goes stale, after which phpstan-symfony
+  silently resolves against the old container. Run
+  `make console ARGS="cache:clear --env=dev"` after container changes.
 - Because the Doctrine extension reads the real mapping, **entity property types
   must match the column nullability**. A `NOT NULL` column needs a non-nullable
   property, so new entity fields should not default to `?T ... = null` out of habit.
