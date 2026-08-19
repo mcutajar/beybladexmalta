@@ -5,6 +5,10 @@ COMPOSE_FILE ?= compose.override.yaml
 ENV_FILE     ?= .env.local
 SERVICE      ?= php
 
+# Build artifact, not committed. Targets that render templates depend on it,
+# so a fresh clone builds it once instead of failing with an AssetMapper error.
+TAILWIND_CSS := var/tailwind/app.built.css
+
 DC   := docker compose $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),) -f $(COMPOSE_FILE)
 EXEC := $(DC) exec -T $(SERVICE)
 
@@ -15,7 +19,7 @@ ARGS ?=
 .DEFAULT_GOAL := help
 
 .PHONY: help up down build restart logs ps shell console composer install \
-	phpunit test cs cs-fix phpstan check running
+	tailwind tailwind-watch phpunit test cs cs-fix phpstan check running
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -54,9 +58,22 @@ composer: running ## Run Composer, e.g. make composer ARGS="require --dev phpsta
 install: running ## Install the PHP dependencies
 	$(EXEC) composer install
 
+## --- Assets ----------------------------------------------------------------
+
+tailwind: running ## Rebuild the Tailwind stylesheet
+	$(EXEC) php bin/console tailwind:build $(ARGS)
+
+tailwind-watch: running ## Rebuild the Tailwind stylesheet whenever a template changes
+	$(DC) exec $(SERVICE) php bin/console tailwind:build --watch
+
+# Order-only prerequisite: "running" is phony, and a normal prerequisite would
+# make this file look stale on every run.
+$(TAILWIND_CSS): | running
+	$(EXEC) php bin/console tailwind:build
+
 ## --- Quality ---------------------------------------------------------------
 
-phpunit: running ## Run the test suite, e.g. make phpunit ARGS="--filter FooTest"
+phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="--filter FooTest"
 	$(EXEC) php vendor/bin/phpunit $(ARGS)
 
 test: phpunit ## Alias for phpunit
