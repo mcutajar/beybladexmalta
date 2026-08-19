@@ -47,6 +47,13 @@ Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
   the main checkout.
 - `vendor/` is written into the bind mount, so it lands on the host and the IDE can
   still index it. Keep it that way.
+- On the **first** `make up` of a fresh checkout the entrypoint is running its own
+  `composer install` into that bind mount. Running `make composer` (or anything
+  else) before it finishes corrupts `vendor/` — the two writers fight and the
+  container dies mid-extraction, leaving packages half-installed. Wait for the
+  container to report healthy (`make ps`) before invoking any other target. If it
+  does get into that state, `rm -rf vendor`, restore `composer.json`/`composer.lock`,
+  and let a single `composer install` finish on its own.
 
 ## Tests
 
