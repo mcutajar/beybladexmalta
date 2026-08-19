@@ -72,6 +72,10 @@ Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 - Every admin action appends a replayable command to `var/log/command_ledger.sh`
   through `LedgerService`, which owns the command-string construction.
   `repeat.sh` is the accumulated result and doubles as a recovery script.
+- **Ledger writes go inside the flush transaction**, via
+  `FlusherInterface::flushThen()`. The ledger must never gain a line for a change
+  the database rejected, and a failed ledger write must roll the change back.
+  Preserve this when adding any new ledger-writing flow.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you

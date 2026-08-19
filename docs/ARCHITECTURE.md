@@ -49,7 +49,8 @@ service that owns the domain rules.
   - The single source of truth for the F1 points matrix and the knockout bonus.
   - Resolves or creates players case-insensitively, builds the tournament and its results.
   - Accepts only strict `YYYY-MM-DD` dates, for web and CLI alike.
-  - Writes the recovery artifacts before flushing, so an unwritable ledger cancels the import.
+  - Writes the recovery artifacts inside the flush transaction, so the tournament
+    and its ledger entry either both survive or neither does.
 
 - `App\Service\PlacementListParser`
   - Parses an ordered placement list into `App\Dto\TournamentPlacement` objects.
@@ -64,6 +65,10 @@ service that owns the domain rules.
 
 - `App\Service\LedgerService`
   - Owns the construction of every replay command written to `var/log/command_ledger.sh`.
+
+- `App\Service\FlusherInterface::flushThen()`
+  - Flushes, then runs the ledger write inside the same transaction, rolling back
+    if it fails. This is what keeps the ledger and the database in step.
 
 ### Domain model
 
@@ -147,10 +152,15 @@ Both flows now share a service layer, which resolved the following:
 - Player lookup is case-insensitive in both contexts, via `PlayerRepositoryInterface::findByName()`.
 - The F1 point matrix and knockout bonus live only in `TournamentImportService`.
 
-Remaining trade-off:
-- The recovery artifacts are written before the flush, matching the payment flow.
-  A ledger failure therefore cancels the import, but a database failure can leave
-  an orphan ledger line that would create a duplicate tournament if replayed.
+Ledger consistency:
+- Both flows write their ledger entry through `FlusherInterface::flushThen()`, which
+  flushes first and commits only once the entry is on disk.
+- A failed ledger write rolls the database change back; a failed database write
+  never reaches the ledger. `repeat.sh` therefore cannot gain a line for a payment
+  or a tournament that was not stored.
+- The one remaining window is a failure of the commit itself, after the ledger line
+  is written. Closing that would require a two-phase write or moving the ledger into
+  the database, which is the direction the audit note below points.
 
 ### Player name normalization and uniqueness
 

@@ -280,6 +280,51 @@ final class RegisterPaymentControllerTest extends WebTestCase
         );
     }
 
+    public function testFailedFlushLeavesNoLedgerEntry(): void
+    {
+        /*
+         * players.name is a VARCHAR(255), so this name is rejected when the
+         * flush runs rather than when the entity is built.
+         */
+        $client = $this->createBrowser();
+
+        $this->submitPayment(
+            client: $client,
+            seasonSlug: SeasonStory::paymentSeason()->getSlug(),
+            playerName: str_repeat('a', 300),
+            passphrase: self::ADMIN_PASSPHRASE,
+        );
+
+        self::assertResponseRedirects('/admin/payments');
+
+        $this->resetEntityManager();
+
+        PlayerFactory::assert()->empty();
+        SeasonRegistrationFactory::assert()->empty();
+
+        /*
+         * Replaying an orphan ledger line would mark a payment that was
+         * never recorded, so a failed write must not leave one behind.
+         */
+        self::assertFileDoesNotExist($this->ledgerPath);
+
+        $client->followRedirect();
+
+        self::assertSelectorTextContains(
+            'body',
+            'A critical failure occurred while processing the transaction.'
+        );
+    }
+
+    private function resetEntityManager(): void
+    {
+        /*
+         * Doctrine closes the entity manager when a flush fails, so reset it
+         * before asserting through the factories.
+         */
+        self::getContainer()->get('doctrine')->resetManager();
+    }
+
     private function createBrowser(): KernelBrowser
     {
         /*

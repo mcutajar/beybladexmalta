@@ -104,28 +104,52 @@ class TournamentImportService
         }
 
         /*
-         * The ledger and the placement file are written before the flush so
-         * that a recovery artifact failure cancels the import outright,
-         * rather than leaving a tournament that cannot be replayed.
+         * The recovery artifacts are written inside the same transaction as
+         * the flush. A failed artifact write cancels the import, and a failed
+         * import can never leave a replay command behind for a tournament
+         * that was not stored.
          */
+        $this->flusher->flushThen(
+            fn () => $this->writeRecoveryArtifacts(
+                title: $title,
+                heldOn: $date,
+                seasonSlug: $seasonSlug,
+                placements: $placements,
+                challongeUrl: $challongeUrl,
+                knockoutWinner: $knockoutWinner,
+                sourceFilePath: $sourceFilePath,
+            ),
+        );
+
+        return TournamentImportResult::Imported;
+    }
+
+    /**
+     * @param list<TournamentPlacement> $placements
+     */
+    private function writeRecoveryArtifacts(
+        string $title,
+        \DateTimeImmutable $heldOn,
+        string $seasonSlug,
+        array $placements,
+        ?string $challongeUrl,
+        ?string $knockoutWinner,
+        ?string $sourceFilePath,
+    ): void {
         $sourceFilePath ??= $this->importFileWriter->write(
             $title,
-            $date,
+            $heldOn,
             $placements,
         );
 
         $this->ledgerService->logTournamentImport(
             title: $title,
-            heldOn: $date->format('Y-m-d'),
+            heldOn: $heldOn->format('Y-m-d'),
             sourceFilePath: $sourceFilePath,
             seasonSlug: $seasonSlug,
             challongeUrl: $challongeUrl,
             knockoutWinner: $knockoutWinner,
         );
-
-        $this->flusher->flush();
-
-        return TournamentImportResult::Imported;
     }
 
     private function buildResult(
