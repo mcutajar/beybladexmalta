@@ -19,11 +19,12 @@ class Tournament
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $title = null;
+    private string $title;
 
     #[ORM\Column(type: 'date_immutable')]
-    private ?\DateTimeImmutable $heldOn = null;
+    private \DateTimeImmutable $heldOn;
 
+    /** @var Collection<int, TournamentResult> */
     #[ORM\OneToMany(targetEntity: TournamentResult::class, mappedBy: 'tournament', orphanRemoval: true)]
     private Collection $results;
 
@@ -32,7 +33,7 @@ class Tournament
 
     #[ORM\ManyToOne(inversedBy: 'tournaments')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Season $season = null;
+    private Season $season;
 
     public function __construct()
     {
@@ -49,31 +50,33 @@ class Tournament
         $this->id = $id;
     }
 
-    public function getTitle(): ?string
+    public function getTitle(): string
     {
         return $this->title;
     }
 
-    public function setTitle(?string $title): void
+    public function setTitle(string $title): void
     {
         $this->title = $title;
     }
 
-    public function getHeldOn(): ?\DateTimeImmutable
+    public function getHeldOn(): \DateTimeImmutable
     {
         return $this->heldOn;
     }
 
-    public function setHeldOn(?\DateTimeImmutable $heldOn): void
+    public function setHeldOn(\DateTimeImmutable $heldOn): void
     {
         $this->heldOn = $heldOn;
     }
 
+    /** @return Collection<int, TournamentResult> */
     public function getResults(): Collection
     {
         return $this->results;
     }
 
+    /** @param Collection<int, TournamentResult> $results */
     public function setResults(Collection $results): void
     {
         $this->results = $results;
@@ -91,12 +94,12 @@ class Tournament
         return $this;
     }
 
-    public function getSeason(): ?Season
+    public function getSeason(): Season
     {
         return $this->season;
     }
 
-    public function setSeason(?Season $season): self
+    public function setSeason(Season $season): self
     {
         $this->season = $season;
 

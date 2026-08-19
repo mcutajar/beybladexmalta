@@ -15,6 +15,9 @@ use Symfony\Component\Form\Extension\Core\Type\UrlType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
+/**
+ * @extends AbstractType<ImportTournamentData>
+ */
 final class ImportTournamentType extends AbstractType
 {
     private const string FIELD_CLASS = 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none';

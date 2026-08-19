@@ -149,7 +149,7 @@ final class ImportTournamentCommand extends Command
             $result = $this->importService->import(
                 title: $title,
                 heldOn: $date,
-                seasonSlug: (string) $season->getSlug(),
+                seasonSlug: $season->getSlug(),
                 placements: $placements,
                 challongeUrl: $challongeUrl,
                 knockoutWinner: $knockoutWinner,
@@ -253,7 +253,7 @@ final class ImportTournamentCommand extends Command
         $choices = [];
 
         foreach ($seasons as $season) {
-            $choices[(string) $season->getName()] = (string) $season->getSlug();
+            $choices[$season->getName()] = $season->getSlug();
         }
 
         $io->section('Season Selection Context');
@@ -309,7 +309,7 @@ final class ImportTournamentCommand extends Command
             sprintf(
                 'Successfully imported "%s" into %s. Logged %d player placements.',
                 $title,
-                (string) $season->getName(),
+                $season->getName(),
                 $placementCount,
             ),
         );

@@ -22,6 +22,8 @@ class SeasonRegistrationRepository extends ServiceEntityRepository
 
     /**
      * Fetches all registered seasonal payments ordered by season and player name.
+     *
+     * @return list<array<string, mixed>>
      */
     public function getAllSeasonalPayments(): array
     {

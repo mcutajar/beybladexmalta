@@ -18,6 +18,7 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 | `make phpunit ARGS="--filter FooTest"` | Run one test class |
 | `make cs` | Check code style (no writes) |
 | `make cs-fix` | Apply code style fixes |
+| `make phpstan` | Run static analysis (level 6) |
 | `make check` | Every quality gate — run before declaring work done |
 | `make console ARGS="debug:router"` | Any `bin/console` command |
 | `make composer ARGS="require --dev foo/bar"` | Any Composer command |
@@ -95,11 +96,19 @@ Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
   at each player's best 14 results and applies payment gating. Change it with care;
   it is currently untested.
 - `migrations/` is empty; the schema is not versioned yet.
+- PHPStan runs at **level 6** with the Symfony, Doctrine and PHPUnit extensions,
+  and there is **no baseline** — the analysis is clean, so keep it that way
+  rather than adding one. `phpstan.dist.neon` points the Symfony extension at the
+  compiled dev container (`make phpstan` warms it first) and the Doctrine
+  extension at `tests/object-manager.php`.
+- Because the Doctrine extension reads the real mapping, **entity property types
+  must match the column nullability**. A `NOT NULL` column needs a non-nullable
+  property, so new entity fields should not default to `?T ... = null` out of habit.
 
 `docs/ARCHITECTURE.md` has the fuller picture, including known weak spots.
 
 ## Before you call the work done
 
 1. `make cs-fix`
-2. `make check`
+2. `make check` (code style, PHPStan, then the test suite)
 3. Report the actual result. If tests fail, say so and show the output.

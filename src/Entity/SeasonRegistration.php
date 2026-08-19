@@ -19,11 +19,11 @@ class SeasonRegistration
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private ?Player $player = null;
+    private Player $player;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private ?Season $season = null;
+    private Season $season;
 
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $paid = false;
@@ -33,24 +33,24 @@ class SeasonRegistration
         return $this->id;
     }
 
-    public function getPlayer(): ?Player
+    public function getPlayer(): Player
     {
         return $this->player;
     }
 
-    public function setPlayer(?Player $player): self
+    public function setPlayer(Player $player): self
     {
         $this->player = $player;
 
         return $this;
     }
 
-    public function getSeason(): ?Season
+    public function getSeason(): Season
     {
         return $this->season;
     }
 
-    public function setSeason(?Season $season): self
+    public function setSeason(Season $season): self
     {
         $this->season = $season;
 

@@ -19,11 +19,12 @@ class Season
     private ?int $id = null;
 
     #[ORM\Column(length: 255, unique: true)]
-    private ?string $slug = null;
+    private string $slug;
 
     #[ORM\Column(length: 255)]
-    private ?string $name = null;
+    private string $name;
 
+    /** @var Collection<int, Tournament> */
     #[ORM\OneToMany(targetEntity: Tournament::class, mappedBy: 'season')]
     private Collection $tournaments;
 
@@ -40,7 +41,7 @@ class Season
         return $this->id;
     }
 
-    public function getSlug(): ?string
+    public function getSlug(): string
     {
         return $this->slug;
     }
@@ -52,7 +53,7 @@ class Season
         return $this;
     }
 
-    public function getName(): ?string
+    public function getName(): string
     {
         return $this->name;
     }

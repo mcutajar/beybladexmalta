@@ -25,6 +25,8 @@ class TournamentRepository extends ServiceEntityRepository
 
     /**
      * Fetches all player results for a single tournament.
+     *
+     * @return list<array<string, mixed>>
      */
     public function getTournamentStandings(int $tournamentId): array
     {

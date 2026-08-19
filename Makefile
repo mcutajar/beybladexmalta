@@ -9,6 +9,13 @@ SERVICE      ?= php
 # so a fresh clone builds it once instead of failing with an AssetMapper error.
 TAILWIND_CSS := var/tailwind/app.built.css
 
+# The compiled dev container, which phpstan-symfony reads to resolve services
+# and routes. Also a build artifact, also not committed.
+CONTAINER_XML := var/cache/dev/App_KernelDevDebugContainer.xml
+
+# PHPStan needs more than the 128M the container's php.ini gives CLI scripts.
+PHPSTAN_MEMORY ?= 1G
+
 DC   := docker compose $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),) -f $(COMPOSE_FILE)
 EXEC := $(DC) exec -T $(SERVICE)
 
@@ -71,6 +78,9 @@ tailwind-watch: running ## Rebuild the Tailwind stylesheet whenever a template c
 $(TAILWIND_CSS): | running
 	$(EXEC) php bin/console tailwind:build
 
+$(CONTAINER_XML): | running
+	$(EXEC) php bin/console cache:warmup --env=dev
+
 ## --- Quality ---------------------------------------------------------------
 
 phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="--filter FooTest"
@@ -84,16 +94,12 @@ cs: running ## Check the code style without writing anything
 cs-fix: running ## Apply the code style fixes
 	$(EXEC) php vendor/bin/php-cs-fixer fix $(ARGS)
 
-phpstan: running ## Run the static analyser
-	@$(EXEC) test -x vendor/bin/phpstan || { \
-		echo 'PHPStan is not installed yet. Add it with:'; \
-		echo '  make composer ARGS="require --dev phpstan/phpstan phpstan/phpstan-symfony"'; \
-		exit 1; \
-	}
-	$(EXEC) php vendor/bin/phpstan analyse $(ARGS)
+# The Symfony extension reads the compiled dev container to resolve services
+# and routes, so the cache has to exist before the analysis starts.
+phpstan: running $(CONTAINER_XML) ## Run the static analyser
+	$(EXEC) php vendor/bin/phpstan analyse --memory-limit=$(PHPSTAN_MEMORY) $(ARGS)
 
-# Add phpstan to this list once it is installed.
-check: cs phpunit ## Run every quality gate
+check: cs phpstan phpunit ## Run every quality gate
 
 ## --- Internal --------------------------------------------------------------
 

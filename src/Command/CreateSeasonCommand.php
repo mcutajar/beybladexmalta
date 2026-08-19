@@ -117,10 +117,7 @@ class CreateSeasonCommand extends Command
         $season->setSlug($slug);
         $season->setName($name);
 
-        // Assumes your Season Entity contains a setRequiresPayment() or setIsPaidRequired() mapping setter method
-        if (method_exists($season, 'setRequiresPayment')) {
-            $season->setRequiresPayment($requiresPayment);
-        }
+        $season->setRequiresPayment($requiresPayment);
 
         $this->entityManager->persist($season);
         $this->entityManager->flush();
