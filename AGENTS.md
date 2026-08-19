@@ -13,6 +13,7 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 | Command | What it does |
 | --- | --- |
 | `make up` | Start the dev stack (do this first) |
+| `make tailwind` | Rebuild the stylesheet (needed once on a fresh clone) |
 | `make phpunit` | Run the test suite |
 | `make phpunit ARGS="--filter FooTest"` | Run one test class |
 | `make cs` | Check code style (no writes) |
@@ -24,6 +25,10 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 
 Every target fails fast with `make up` instructions if the stack is down, and
 every target propagates the tool's real exit code and output.
+
+First run on a fresh clone is `make up` then `make tailwind`. Without the built
+stylesheet every page fails with an AssetMapper error, so `make phpunit` builds it
+automatically when it is missing.
 
 Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 
@@ -51,6 +56,8 @@ Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 - `.env.test` holds the admin passphrases the functional tests submit.
 - `var/data/imports/` is **tracked by git** and holds real league data. Tests that
   write there must clean up after themselves in `tearDown()`.
+- Nothing else under `var/` belongs in git. `var/tailwind/` holds the built
+  stylesheet and a ~112 MB downloaded Tailwind binary; both are generated.
 - `SymfonyStyle` hard-wraps console output, so normalise whitespace before
   asserting on a message rather than matching a long raw string.
 
