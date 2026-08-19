@@ -22,4 +22,9 @@ class SeasonRepository extends ServiceEntityRepository
     {
         return $this->findOneBy(['slug' => $slug]);
     }
+
+    public function save(Season $season): void
+    {
+        $this->getEntityManager()->persist($season);
+    }
 }

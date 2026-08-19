@@ -17,10 +17,8 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
 
 - `src/Controller/AdminTournamentImportController.php`
   - Admin form for importing a 10-player ranked tournament list.
-  - Validates strict `YYYY-MM-DD` date format.
   - Uses `TOURNAMENTS_ADMIN_PASSPHRASE` for form-based admin gating.
-  - Creates tournaments, players, and tournament results inside a transaction.
-  - Writes an import replay command to `var/log/command_ledger.sh`.
+  - Enforces the exactly-ten-placements rule, then delegates to `TournamentImportService`.
 
 - `src/Controller/LeagueRegistrationController.php`
   - Admin payment registration form.
@@ -34,13 +32,38 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Imports tournament results from a text or CSV file.
   - Accepts optional `--challonge`, `--season`, and `--knockout` options.
   - Prompts to select or create a season when missing.
-  - Creates tournaments, players, and tournament results and logs the action.
+  - Parses the file, then delegates to `TournamentImportService`.
 
 - `src/Command/RegisterPlayerPaymentCommand.php`
   - Marks a player as paid for a season.
   - Supports both interactive and single-pass headless execution.
   - Auto-creates missing players when needed.
   - Writes a replay command to `var/log/command_ledger.sh`.
+
+### Application services
+
+Both the web and CLI entry points are thin: they gather input, then hand it to a
+service that owns the domain rules.
+
+- `App\Service\TournamentImportService`
+  - The single source of truth for the F1 points matrix and the knockout bonus.
+  - Resolves or creates players case-insensitively, builds the tournament and its results.
+  - Accepts only strict `YYYY-MM-DD` dates, for web and CLI alike.
+  - Writes the recovery artifacts before flushing, so an unwritable ledger cancels the import.
+
+- `App\Service\PlacementListParser`
+  - Parses an ordered placement list into `App\Dto\TournamentPlacement` objects.
+  - Shared by the CLI file reader and the web textarea, so both accept `Name` and `Name,bonus` rows.
+
+- `App\Service\ImportFileWriter`
+  - Materialises a web-submitted placement list into `var/data/imports/`, so the
+    ledger replay command always has a source file to point at.
+
+- `App\Service\PlayerRegistrationService`
+  - Marks a player as paid for a season, auto-creating the player when needed.
+
+- `App\Service\LedgerService`
+  - Owns the construction of every replay command written to `var/log/command_ledger.sh`.
 
 ### Domain model
 
@@ -116,16 +139,18 @@ Suggested hardening:
 - Record structured metadata: action type, time, actor, entities, and result.
 - Treat `command_ledger.sh` as an audit convenience artifact rather than the authoritative event store.
 
-### Duplication in import/payment logic
+### Duplication in import/payment logic (addressed)
 
-- Web and CLI imports duplicate parsing and player lookup semantics.
-- Lookup behavior differs between contexts: CLI does exact-match name lookup, while web uses case-insensitive lookup.
-- The same F1 point matrix is duplicated.
+Both flows now share a service layer, which resolved the following:
 
-Suggested refactor:
-- Extract shared import and payment services.
-- Centralize player resolution and validation logic in repository helpers.
-- Keep the F1 point matrix in one source of truth.
+- Parsing, player lookup, and ledger command construction are no longer duplicated.
+- Player lookup is case-insensitive in both contexts, via `PlayerRepositoryInterface::findByName()`.
+- The F1 point matrix and knockout bonus live only in `TournamentImportService`.
+
+Remaining trade-off:
+- The recovery artifacts are written before the flush, matching the payment flow.
+  A ledger failure therefore cancels the import, but a database failure can leave
+  an orphan ledger line that would create a duplicate tournament if replayed.
 
 ### Player name normalization and uniqueness
 
@@ -150,30 +175,31 @@ Suggested refactor:
 
 ### Validation consistency
 
-- The web import flow validates exactly 10 players; the CLI import accepts any number of non-empty rows.
-- The F1 matrix is hard-coded in each import implementation.
-- There is no shared domain-level validation for tournament size or rank structure.
+- Date parsing is now strict `YYYY-MM-DD` in both flows.
+- The web import still requires exactly 10 placements while the CLI accepts any
+  non-empty list, since replaying `repeat.sh` depends on that leniency.
+- `symfony/validator` is not installed, so form validation is hand-rolled in the controller.
 
 Suggested refactor:
-- Centralize import validation rules in a shared service.
-- Enforce consistent tournament input expectations across web and CLI.
+- Install the Validator component and express the rules as constraints on the form DTOs.
+- Decide whether the exactly-ten rule belongs to the domain rather than the web form.
 - Add validation for player names and bonus point limits.
 
-### Lack of automated tests
+### Test coverage
 
-- There is no `tests/` directory or test coverage in the repository.
-- The critical leaderboard, import, and payment workflows are currently untested.
+- PHPUnit and Zenstruck Foundry cover the payment and tournament import workflows,
+  from both the web form and the console command.
+- The leaderboard SQL in `PlayerRepository` remains untested.
 
 Suggested improvement:
-- Add PHPUnit or Symfony test coverage for key workflows.
-- Start with unit tests for repository SQL and service behaviors.
-- Add functional tests for admin page access and form handling.
+- Add coverage for `getLeagueLeaderboard()`, especially the best-14 cap and payment gating.
+- Add functional tests for the public season, player, and tournament pages.
 
 ## Recommended next steps
 
 1. Document the architecture and security concerns in `README.md` and `docs/ARCHITECTURE.md`.
 2. Introduce Symfony Security and protect all admin routes.
-3. Refactor import and payment handling into reusable service classes.
+3. Extend the service-layer refactor to `CreateSeasonCommand`, the last flow writing the ledger directly.
 4. Normalize player names and enforce uniqueness at the database layer.
 5. Replace shell ledger writes with a robust audit log.
 6. Add a minimal test suite for exportable domain behaviors.

@@ -17,4 +17,9 @@ class TournamentResultRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, TournamentResult::class);
     }
+
+    public function save(TournamentResult $result): void
+    {
+        $this->getEntityManager()->persist($result);
+    }
 }

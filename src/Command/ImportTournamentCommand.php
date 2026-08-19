@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\Player;
+use App\Dto\TournamentPlacement;
 use App\Entity\Season;
-use App\Entity\Tournament;
-use App\Entity\TournamentResult;
-use Doctrine\ORM\EntityManagerInterface;
-use Psr\Log\LoggerInterface;
+use App\Exception\ImportFileWriteException;
+use App\Exception\LedgerWriteException;
+use App\Repository\SeasonRepository;
+use App\Service\FlusherInterface;
+use App\Service\PlacementListParser;
+use App\Service\TournamentImportResult;
+use App\Service\TournamentImportService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -17,26 +20,18 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:import-tournament',
     description: 'Imports a tournament by calculating F1 points from an ordered top 10 list of names.',
 )]
-class ImportTournamentCommand extends Command
+final class ImportTournamentCommand extends Command
 {
-    private const array F1_MATRIX = [
-        1 => 25, 2 => 20, 3 => 15, 4 => 12, 5 => 10,
-        6 => 8,  7 => 6,  8 => 4,  9 => 2,  10 => 1,
-    ];
-
-    private const int KNOCKOUT_WINNER_BONUS = 10;
-
-    // Inject KernelInterface to securely get our app root log folders
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger,
-        private readonly KernelInterface $kernel,
+        private readonly TournamentImportService $importService,
+        private readonly PlacementListParser $placementListParser,
+        private readonly SeasonRepository $seasonRepository,
+        private readonly FlusherInterface $flusher,
     ) {
         parent::__construct();
     }
@@ -44,213 +39,288 @@ class ImportTournamentCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('title', InputArgument::REQUIRED, 'The title of the tournament')
-            ->addArgument('date', InputArgument::REQUIRED, 'The date of the tournament (YYYY-MM-DD)')
-            ->addArgument('file', InputArgument::REQUIRED, 'Path to the text/csv file with player names')
-            ->addOption('challonge', null, InputOption::VALUE_OPTIONAL, 'Optional Challonge bracket URL')
-            ->addOption('season', 's', InputOption::VALUE_REQUIRED, 'The target season slug this tournament belongs to')
-            ->addOption('knockout', 'k', InputOption::VALUE_OPTIONAL, 'The name of the player who won the overall knockout bracket');
+            ->addArgument(
+                'title',
+                InputArgument::REQUIRED,
+                'The title of the tournament',
+            )
+            ->addArgument(
+                'date',
+                InputArgument::REQUIRED,
+                'The date of the tournament (YYYY-MM-DD)',
+            )
+            ->addArgument(
+                'file',
+                InputArgument::REQUIRED,
+                'Path to the text/csv file with player names',
+            )
+            ->addOption(
+                'challonge',
+                null,
+                InputOption::VALUE_OPTIONAL,
+                'Optional Challonge bracket URL',
+            )
+            ->addOption(
+                'season',
+                's',
+                InputOption::VALUE_REQUIRED,
+                'The target season slug this tournament belongs to',
+            )
+            ->addOption(
+                'knockout',
+                'k',
+                InputOption::VALUE_OPTIONAL,
+                'The name of the player who won the overall knockout bracket',
+            );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
+    protected function execute(
+        InputInterface $input,
+        OutputInterface $output,
+    ): int {
         $io = new SymfonyStyle($input, $output);
-        $title = $input->getArgument('title');
-        $dateStr = $input->getArgument('date');
-        $filePath = $input->getArgument('file');
+
+        $title = (string) $input->getArgument('title');
+        $date = (string) $input->getArgument('date');
+        $filePath = (string) $input->getArgument('file');
         $challongeUrl = $input->getOption('challonge');
-        $seasonSlug = $input->getOption('season');
-        $knockoutWinnerName = $input->getOption('knockout');
+        $knockoutWinner = $input->getOption('knockout');
 
-        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
+        $placements = $this->readPlacements($filePath, $io);
 
-        if (!file_exists($filePath) || !is_readable($filePath)) {
-            $io->error(sprintf('File path "%s" is unreadable or does not exist.', $filePath));
-
+        if (null === $placements) {
             return Command::FAILURE;
         }
 
-        $handle = fopen($filePath, 'r');
-        if (!$handle) {
-            $io->error('Failed to open file stream sequence handles.');
+        if ([] === $placements) {
+            $io->error(
+                sprintf('The file "%s" holds no placements to import.', $filePath),
+            );
 
-            return Command::FAILURE;
+            return Command::INVALID;
         }
 
-        try {
-            $date = new \DateTimeImmutable($dateStr);
-        } catch (\Exception $e) {
-            $io->error('Invalid date format provided. Please use YYYY-MM-DD.');
-            fclose($handle);
-
-            return Command::FAILURE;
-        }
-
-        $seasons = $this->entityManager->getRepository(Season::class)->findAll();
+        $seasonSlug = $this->resolveSeasonSlug(
+            $input->getOption('season'),
+            $io,
+        );
 
         if (null === $seasonSlug) {
-            if (empty($seasons)) {
-                $io->error('No seasons found in the database. Please specify a new season via the --season flag to auto-create it.');
-                fclose($handle);
-
-                return Command::FAILURE;
-            }
-
-            $seasonChoices = [];
-            foreach ($seasons as $s) {
-                $seasonChoices[$s->getSlug()] = $s->getName();
-            }
-
-            $io->section('Season Selection Context');
-            $selectedName = $io->choice(
-                'This tournament must belong to a season. Please select from the available options:',
-                array_values($seasonChoices)
-            );
-
-            $seasonSlug = array_search($selectedName, $seasonChoices, true);
+            return Command::FAILURE;
         }
 
-        $this->entityManager->beginTransaction();
-        try {
-            $season = $this->entityManager->getRepository(Season::class)->findOneBy(['slug' => $seasonSlug]);
+        $season = $this->seasonRepository->findBySlug($seasonSlug)
+            ?? $this->createSeason($seasonSlug, $io);
 
-            if (!$season) {
-                $inferredName = ucwords(str_replace(['-', '_'], ' ', $seasonSlug));
-
-                $io->section(sprintf('New Season Generation: "%s"', $seasonSlug));
-                $confirm = $io->confirm(
-                    sprintf('The season context "%s" does not exist. Would you like to create it automatically now?', $inferredName),
-                    true
-                );
-
-                if (!$confirm) {
-                    $io->warning('Tournament import cancelled by user due to missing season context.');
-                    $this->entityManager->rollback();
-                    fclose($handle);
-
-                    return Command::INVALID;
-                }
-
-                $season = new Season();
-                $season->setSlug($seasonSlug);
-                $season->setName($inferredName);
-
-                $this->entityManager->persist($season);
-                $this->entityManager->flush();
-
-                $io->info(sprintf('Created new seasonal registry: %s', $inferredName));
-            }
-
-            $this->logger->info('Initializing database generation execution layout block maps.');
-
-            $tournament = new Tournament();
-            $tournament->setTitle($title);
-            $tournament->setHeldOn($date);
-            $tournament->setChallongeUrl($challongeUrl);
-            $tournament->setSeason($season);
-
-            $this->entityManager->persist($tournament);
-
-            $rank = 1;
-            while (($line = fgets($handle)) !== false) {
-                $line = trim($line);
-                if (empty($line)) {
-                    continue;
-                }
-
-                $parts = explode(',', $line);
-                $playerName = trim($parts[0]);
-
-                $bonusPoints = isset($parts[1]) ? (int) trim($parts[1]) : 0;
-
-                if (null !== $knockoutWinnerName && 0 === strcasecmp($playerName, trim($knockoutWinnerName))) {
-                    $bonusPoints += self::KNOCKOUT_WINNER_BONUS;
-                }
-
-                $player = $this->entityManager->getRepository(Player::class)->findOneBy(['name' => $playerName]);
-                if (!$player) {
-                    $player = new Player();
-                    $player->setName($playerName);
-                    $this->entityManager->persist($player);
-                    $this->logger->notice(sprintf('Implicit auto-generation of new player record proxy: "%s".', $playerName));
-                }
-
-                $f1Points = self::F1_MATRIX[$rank] ?? 0;
-
-                $result = new TournamentResult();
-                $result->setTournament($tournament);
-                $result->setPlayer($player);
-                $result->setRank($rank);
-                $result->setF1Points($f1Points);
-                $result->setBonusPoints($bonusPoints);
-
-                $this->entityManager->persist($result);
-
-                $this->logger->info(sprintf('Persisted result for row element: #%d.', $rank), [
-                    'player' => $player->getName(),
-                    'f1' => $f1Points,
-                    'bonus' => $bonusPoints,
-                    'total_calculated' => $result->getTotalPoints(),
-                ]);
-
-                ++$rank;
-            }
-            fclose($handle);
-
-            $this->logger->debug('Flushing transactions tracking maps into processing container pipeline.');
-            $this->entityManager->flush();
-            $this->entityManager->commit();
-
-            // --- EVENT SOURCING LOGGER ADDITION ---
-            // Build non-interactive console command executable line
-            $escapedTitle = escapeshellarg($title);
-            $escapedDate = escapeshellarg($dateStr);
-            $escapedFile = escapeshellarg($filePath); // Preserves original path file structure reference
-            $escapedSeason = escapeshellarg($seasonSlug);
-
-            $commandString = sprintf(
-                'php bin/console app:import-tournament %s %s %s --season=%s',
-                $escapedTitle,
-                $escapedDate,
-                $escapedFile,
-                $escapedSeason
+        if (null === $season) {
+            $io->warning(
+                'Tournament import cancelled by user due to missing season context.',
             );
 
-            // Dynamically evaluate variable option states
-            if (null !== $challongeUrl) {
-                $commandString .= sprintf(' --challonge=%s', escapeshellarg($challongeUrl));
+            return Command::INVALID;
+        }
+
+        return $this->import(
+            title: $title,
+            date: $date,
+            season: $season,
+            placements: $placements,
+            filePath: $filePath,
+            challongeUrl: null !== $challongeUrl ? (string) $challongeUrl : null,
+            knockoutWinner: null !== $knockoutWinner ? (string) $knockoutWinner : null,
+            io: $io,
+        );
+    }
+
+    /**
+     * @param list<TournamentPlacement> $placements
+     */
+    private function import(
+        string $title,
+        string $date,
+        Season $season,
+        array $placements,
+        string $filePath,
+        ?string $challongeUrl,
+        ?string $knockoutWinner,
+        SymfonyStyle $io,
+    ): int {
+        try {
+            $result = $this->importService->import(
+                title: $title,
+                heldOn: $date,
+                seasonSlug: (string) $season->getSlug(),
+                placements: $placements,
+                challongeUrl: $challongeUrl,
+                knockoutWinner: $knockoutWinner,
+                sourceFilePath: $filePath,
+            );
+        } catch (LedgerWriteException|ImportFileWriteException $exception) {
+            $io->error(
+                'The import was cancelled because the recovery ledger could not be updated.',
+            );
+
+            if ($io->isVerbose()) {
+                $io->writeln($exception->getMessage());
             }
-            if (null !== $knockoutWinnerName) {
-                $commandString .= sprintf(' --knockout=%s', escapeshellarg($knockoutWinnerName));
-            }
 
-            $commandString .= "\n";
-
-            // Safely write line to unified ledger
-            file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
-            // --------------------------------------
-
-            $io->success(sprintf('Successfully imported "%s" into %s. Logged %d player placements.', $title, $season->getName(), $rank - 1));
-
-            return Command::SUCCESS;
-        } catch (\Exception $e) {
-            $this->logger->critical('Fatal validation breakdown halted deployment loop execution wrapper.', [
-                'exception_class' => get_class($e),
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            if ($this->entityManager->getConnection()->isTransactionActive()) {
-                $this->entityManager->rollback();
-            }
-
-            if (is_resource($handle)) {
-                fclose($handle);
-            }
-
-            $io->error('Transaction aborted: '.$e->getMessage());
+            return Command::FAILURE;
+        } catch (\Throwable $exception) {
+            $io->error('Transaction aborted: '.$exception->getMessage());
 
             return Command::FAILURE;
         }
+
+        return match ($result) {
+            TournamentImportResult::Imported => $this->showImported(
+                io: $io,
+                title: $title,
+                season: $season,
+                placementCount: count($placements),
+            ),
+
+            TournamentImportResult::InvalidDate => $this->showError(
+                $io,
+                'Invalid date format provided. Please use YYYY-MM-DD.',
+            ),
+
+            TournamentImportResult::SeasonNotFound => $this->showError(
+                $io,
+                sprintf('Season "%s" does not exist.', $season->getSlug()),
+            ),
+
+            TournamentImportResult::NoPlacements => $this->showError(
+                $io,
+                'The placement list is empty.',
+            ),
+        };
+    }
+
+    /**
+     * @return ?list<TournamentPlacement> null when the file cannot be read
+     */
+    private function readPlacements(string $filePath, SymfonyStyle $io): ?array
+    {
+        if (!is_file($filePath) || !is_readable($filePath)) {
+            $io->error(
+                sprintf(
+                    'File path "%s" is unreadable or does not exist.',
+                    $filePath,
+                ),
+            );
+
+            return null;
+        }
+
+        $contents = @file_get_contents($filePath);
+
+        if (false === $contents) {
+            $io->error('Failed to open file stream sequence handles.');
+
+            return null;
+        }
+
+        return $this->placementListParser->parse($contents);
+    }
+
+    /**
+     * Falls back to an interactive pick when no slug was supplied.
+     */
+    private function resolveSeasonSlug(
+        mixed $seasonSlug,
+        SymfonyStyle $io,
+    ): ?string {
+        if (null !== $seasonSlug && '' !== trim((string) $seasonSlug)) {
+            return trim((string) $seasonSlug);
+        }
+
+        $seasons = $this->seasonRepository->findAll();
+
+        if ([] === $seasons) {
+            $io->error(
+                'No seasons found in the database. Please specify a new season via the --season flag to auto-create it.',
+            );
+
+            return null;
+        }
+
+        /*
+         * The choice question returns the displayed name, so map each
+         * displayed season name back to its slug.
+         *
+         * @var array<string, string> $choices
+         */
+        $choices = [];
+
+        foreach ($seasons as $season) {
+            $choices[(string) $season->getName()] = (string) $season->getSlug();
+        }
+
+        $io->section('Season Selection Context');
+
+        $selectedName = $io->choice(
+            'This tournament must belong to a season. Please select from the available options:',
+            array_keys($choices),
+        );
+
+        return $choices[$selectedName];
+    }
+
+    /**
+     * @return ?Season null when the operator declines the creation
+     */
+    private function createSeason(string $seasonSlug, SymfonyStyle $io): ?Season
+    {
+        $inferredName = ucwords(str_replace(['-', '_'], ' ', $seasonSlug));
+
+        $io->section(sprintf('New Season Generation: "%s"', $seasonSlug));
+
+        $confirmed = $io->confirm(
+            sprintf(
+                'The season context "%s" does not exist. Would you like to create it automatically now?',
+                $inferredName,
+            ),
+            true,
+        );
+
+        if (!$confirmed) {
+            return null;
+        }
+
+        $season = new Season();
+        $season->setSlug($seasonSlug);
+        $season->setName($inferredName);
+
+        $this->seasonRepository->save($season);
+        $this->flusher->flush();
+
+        $io->info(sprintf('Created new seasonal registry: %s', $inferredName));
+
+        return $season;
+    }
+
+    private function showImported(
+        SymfonyStyle $io,
+        string $title,
+        Season $season,
+        int $placementCount,
+    ): int {
+        $io->success(
+            sprintf(
+                'Successfully imported "%s" into %s. Logged %d player placements.',
+                $title,
+                (string) $season->getName(),
+                $placementCount,
+            ),
+        );
+
+        return Command::SUCCESS;
+    }
+
+    private function showError(SymfonyStyle $io, string $message): int
+    {
+        $io->error($message);
+
+        return Command::FAILURE;
     }
 }

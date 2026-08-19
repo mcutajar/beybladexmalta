@@ -18,18 +18,56 @@ class LedgerService
         string $seasonSlug,
         string $playerName,
     ): void {
+        $this->append(
+            sprintf(
+                'php bin/console app:register-payment %s %s',
+                escapeshellarg($seasonSlug),
+                escapeshellarg($playerName),
+            ),
+        );
+    }
+
+    public function logTournamentImport(
+        string $title,
+        string $heldOn,
+        string $sourceFilePath,
+        string $seasonSlug,
+        ?string $challongeUrl = null,
+        ?string $knockoutWinner = null,
+    ): void {
+        $commandLine = sprintf(
+            'php bin/console app:import-tournament %s %s %s --season=%s',
+            escapeshellarg($title),
+            escapeshellarg($heldOn),
+            escapeshellarg($sourceFilePath),
+            escapeshellarg($seasonSlug),
+        );
+
+        if (null !== $challongeUrl && '' !== $challongeUrl) {
+            $commandLine .= sprintf(
+                ' --challonge=%s',
+                escapeshellarg($challongeUrl),
+            );
+        }
+
+        if (null !== $knockoutWinner && '' !== $knockoutWinner) {
+            $commandLine .= sprintf(
+                ' --knockout=%s',
+                escapeshellarg($knockoutWinner),
+            );
+        }
+
+        $this->append($commandLine);
+    }
+
+    private function append(string $commandLine): void
+    {
         $logFilePath = $this->kernel->getProjectDir()
             .'/var/log/command_ledger.sh';
 
-        $commandLine = sprintf(
-            "php bin/console app:register-payment %s %s\n",
-            escapeshellarg($seasonSlug),
-            escapeshellarg($playerName),
-        );
-
         $written = @file_put_contents(
             $logFilePath,
-            $commandLine,
+            $commandLine."\n",
             FILE_APPEND | LOCK_EX,
         );
 
