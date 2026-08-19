@@ -33,7 +33,7 @@ every target.
 ```
 make up        # start the dev stack
 make tailwind  # build the stylesheet (once, on a fresh clone)
-make check     # code style and tests
+make check     # code style, static analysis and tests
 ```
 
 The Tailwind stylesheet is a build artifact and is not committed. Without it the

@@ -20,6 +20,8 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
 
     /**
      * Gets live standings filtering by season slug, dynamically checking matching payment conditions per season.
+     *
+     * @return list<array<string, mixed>>
      */
     public function getLeagueLeaderboard(string $seasonSlug): array
     {
@@ -66,6 +68,8 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
 
     /**
      * Fetches only the top 14 contributing tournaments for a player WITHIN a specific season.
+     *
+     * @return list<array<string, mixed>>
      */
     public function getPlayerContributingTournaments(int $playerId, string $seasonSlug): array
     {

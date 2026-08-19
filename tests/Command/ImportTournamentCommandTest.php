@@ -81,7 +81,7 @@ final class ImportTournamentCommandTest extends KernelTestCase
 
         self::assertSame(
             self::DATE,
-            $tournament->getHeldOn()?->format('Y-m-d'),
+            $tournament->getHeldOn()->format('Y-m-d'),
         );
 
         $winner = TournamentResultFactory::find([
@@ -89,7 +89,7 @@ final class ImportTournamentCommandTest extends KernelTestCase
             'rank' => 1,
         ]);
 
-        self::assertSame('Giglio', $winner->getPlayer()?->getName());
+        self::assertSame('Giglio', $winner->getPlayer()->getName());
         self::assertSame(25, $winner->getF1Points());
         self::assertSame(0, $winner->getBonusPoints());
 

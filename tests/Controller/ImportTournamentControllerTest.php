@@ -120,12 +120,12 @@ final class ImportTournamentControllerTest extends WebTestCase
 
         self::assertSame(
             SeasonStory::paymentSeason()->getId(),
-            $tournament->getSeason()?->getId(),
+            $tournament->getSeason()->getId(),
         );
 
         self::assertSame(
             self::DATE,
-            $tournament->getHeldOn()?->format('Y-m-d'),
+            $tournament->getHeldOn()->format('Y-m-d'),
         );
 
         $expectedF1Points = [25, 20, 15, 12, 10, 8, 6, 4, 2, 1];
@@ -140,7 +140,7 @@ final class ImportTournamentControllerTest extends WebTestCase
 
             self::assertSame(
                 $playerName,
-                $result->getPlayer()?->getName(),
+                $result->getPlayer()->getName(),
                 sprintf('Rank %d should belong to %s.', $rank, $playerName),
             );
 

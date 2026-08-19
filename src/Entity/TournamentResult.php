@@ -18,23 +18,23 @@ class TournamentResult
 
     #[ORM\ManyToOne(inversedBy: 'results')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Tournament $tournament = null;
+    private Tournament $tournament;
 
     #[ORM\ManyToOne(inversedBy: 'results')]
     #[ORM\JoinColumn(nullable: false)]
-    private ?Player $player = null;
+    private Player $player;
 
     #[ORM\Column]
-    private ?int $rank = null;
+    private int $rank;
 
     #[ORM\Column]
-    private ?int $f1Points = null;
+    private int $f1Points = 0;
 
     #[ORM\Column]
-    private ?int $bonusPoints = null;
+    private int $bonusPoints = 0;
 
     #[ORM\Column]
-    private ?int $totalPoints = null;
+    private int $totalPoints = 0;
 
     public function getId(): ?int
     {
@@ -46,41 +46,41 @@ class TournamentResult
         $this->id = $id;
     }
 
-    public function getRank(): ?int
+    public function getRank(): int
     {
         return $this->rank;
     }
 
-    public function setRank(?int $rank): void
+    public function setRank(int $rank): void
     {
         $this->rank = $rank;
     }
 
-    public function getTournament(): ?Tournament
+    public function getTournament(): Tournament
     {
         return $this->tournament;
     }
 
-    public function setTournament(?Tournament $tournament): self
+    public function setTournament(Tournament $tournament): self
     {
         $this->tournament = $tournament;
 
         return $this;
     }
 
-    public function getPlayer(): ?Player
+    public function getPlayer(): Player
     {
         return $this->player;
     }
 
-    public function setPlayer(?Player $player): self
+    public function setPlayer(Player $player): self
     {
         $this->player = $player;
 
         return $this;
     }
 
-    public function getF1Points(): ?int
+    public function getF1Points(): int
     {
         return $this->f1Points;
     }
@@ -93,7 +93,7 @@ class TournamentResult
         return $this;
     }
 
-    public function getBonusPoints(): ?int
+    public function getBonusPoints(): int
     {
         return $this->bonusPoints;
     }
@@ -106,13 +106,13 @@ class TournamentResult
         return $this;
     }
 
-    public function getTotalPoints(): ?int
+    public function getTotalPoints(): int
     {
         return $this->totalPoints;
     }
 
     private function updateTotal(): void
     {
-        $this->totalPoints = ($this->f1Points ?? 0) + ($this->bonusPoints ?? 0);
+        $this->totalPoints = $this->f1Points + $this->bonusPoints;
     }
 }

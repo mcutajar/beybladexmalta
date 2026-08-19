@@ -1,0 +1,33 @@
+includes:
+    - vendor/phpstan/phpstan-doctrine/extension.neon
+    - vendor/phpstan/phpstan-doctrine/rules.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+    - vendor/phpstan/phpstan-symfony/extension.neon
+    - vendor/phpstan/phpstan-symfony/rules.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - src
+        - tests
+
+    # Written by "make console ARGS=cache:warmup"; lets the Symfony extension
+    # resolve the real class behind every container service and route.
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+
+    # Lets the Doctrine extension read the real mapping, so repository methods
+    # and query results are typed from the entities rather than guessed.
+    doctrine:
+        objectManagerLoader: tests/object-manager.php
+
+    ignoreErrors:
+        # A framework hook, not dead code: MicroKernelTrait's own getAllowedEnvs()
+        # is private, so this override is the one Symfony's KernelTrait calls when
+        # it validates APP_ENV. PHPStan cannot see across that trait boundary.
+        -
+            identifier: method.unused
+            message: '#^Method App\\Kernel\:\:getAllowedEnvs\(\) is unused\.$#'
+            path: src/Kernel.php

@@ -19,8 +19,9 @@ class Player
     private ?int $id = null;
 
     #[ORM\Column(length: 255, unique: true)]
-    private ?string $name = null;
+    private string $name;
 
+    /** @var Collection<int, TournamentResult> */
     #[ORM\OneToMany(targetEntity: TournamentResult::class, mappedBy: 'player', orphanRemoval: true)]
     private Collection $results;
 
@@ -39,21 +40,23 @@ class Player
         $this->id = $id;
     }
 
-    public function getName(): ?string
+    public function getName(): string
     {
         return $this->name;
     }
 
-    public function setName(?string $name): void
+    public function setName(string $name): void
     {
         $this->name = $name;
     }
 
+    /** @return Collection<int, TournamentResult> */
     public function getResults(): Collection
     {
         return $this->results;
     }
 
+    /** @param Collection<int, TournamentResult> $results */
     public function setResults(Collection $results): void
     {
         $this->results = $results;

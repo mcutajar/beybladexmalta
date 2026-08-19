@@ -100,13 +100,14 @@ class LeagueController extends AbstractController
         ]);
     }
 
-    #[Route(['/', '/v2'], name: 'app_league_proposal_v2')]
+    #[Route('/', name: 'app_league_proposal_v2')]
+    #[Route('/v2', name: 'app_league_proposal_v2_alias')]
     public function v2(): Response
     {
         return $this->render('league/proposal-v2.html.twig');
     }
 
-    #[Route(['/v1'], name: 'app_league_proposal_v1')]
+    #[Route('/v1', name: 'app_league_proposal_v1')]
     public function v1(): Response
     {
         return $this->render('league/proposal-v1.html.twig');
