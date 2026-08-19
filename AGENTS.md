@@ -33,8 +33,9 @@ automatically when it is missing.
 
 Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 
-The `gh` CLI is **not installed** either, so `gh issue view` / `gh pr` will not work.
-Read issues and pull requests by fetching their URL instead.
+The `gh` CLI **is** installed and authenticated, but Homebrew's `/opt/homebrew/bin`
+is not on the PATH of a non-interactive shell, so a bare `gh` looks missing. Call it
+as `/opt/homebrew/bin/gh`, or `export PATH="/opt/homebrew/bin:$PATH"` first.
 
 ## Container gotchas
 
