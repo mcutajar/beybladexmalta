@@ -64,9 +64,17 @@ class PlayerRegistrationService
             return RegisterSeasonPaymentResult::AlreadyPaid;
         }
 
-        $this->ledgerService->logRegistrationAttempt($season->getSlug(), $player->getName());
-
-        $this->flusher->flush();
+        /*
+         * The ledger entry is written inside the same transaction as the
+         * flush, so a failed write can never leave a replay command behind
+         * for a payment that was not recorded.
+         */
+        $this->flusher->flushThen(
+            fn () => $this->ledgerService->logRegistrationAttempt(
+                $season->getSlug(),
+                $player->getName(),
+            ),
+        );
 
         return RegisterSeasonPaymentResult::Registered;
     }

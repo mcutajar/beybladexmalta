@@ -18,4 +18,27 @@ final class DoctrineFlusher implements FlusherInterface
     {
         $this->entityManager->flush();
     }
+
+    public function flushThen(callable $afterFlush): void
+    {
+        $this->entityManager->beginTransaction();
+
+        try {
+            $this->entityManager->flush();
+
+            $afterFlush();
+
+            $this->entityManager->commit();
+        } catch (\Throwable $exception) {
+            /*
+             * A failed flush may already have unwound the transaction on its
+             * own, so only roll back what is still open.
+             */
+            if ($this->entityManager->getConnection()->isTransactionActive()) {
+                $this->entityManager->rollback();
+            }
+
+            throw $exception;
+        }
+    }
 }

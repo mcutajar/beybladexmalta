@@ -324,6 +324,51 @@ final class ImportTournamentControllerTest extends WebTestCase
         );
     }
 
+    public function testFailedFlushLeavesNoLedgerEntry(): void
+    {
+        /*
+         * The same blader cannot place twice, so the unique constraint on
+         * players.name rejects this list when the flush runs.
+         */
+        $placements = self::PLACEMENTS;
+        $placements[1] = $placements[0];
+
+        $client = $this->createBrowser();
+
+        $this->submitImport(
+            client: $client,
+            placements: $placements,
+        );
+
+        self::assertResponseRedirects('/admin/import');
+
+        $this->resetEntityManager();
+
+        TournamentFactory::assert()->empty();
+        TournamentResultFactory::assert()->empty();
+        PlayerFactory::assert()->empty();
+
+        /*
+         * Replaying an orphan ledger line would recreate a tournament that
+         * was never stored, so a failed import must not leave one behind.
+         */
+        self::assertFileDoesNotExist($this->ledgerPath);
+        self::assertFileDoesNotExist($this->importPath);
+
+        $client->followRedirect();
+
+        self::assertSelectorTextContains('body', 'Import aborted:');
+    }
+
+    private function resetEntityManager(): void
+    {
+        /*
+         * Doctrine closes the entity manager when a flush fails, so reset it
+         * before asserting through the factories.
+         */
+        self::getContainer()->get('doctrine')->resetManager();
+    }
+
     private function createBrowser(): KernelBrowser
     {
         /*
