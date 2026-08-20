@@ -77,8 +77,18 @@ class LedgerService
 
     private function append(string $commandLine): void
     {
-        $logFilePath = $this->kernel->getProjectDir()
-            .'/var/log/command_ledger.sh';
+        /*
+         * var/log/ is not tracked by git, so on a fresh checkout the directory
+         * does not exist yet and the first admin action would fail here rather
+         * than at anything to do with the ledger itself.
+         */
+        $directory = $this->kernel->getProjectDir().'/var/log';
+
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new LedgerWriteException(sprintf('Failed to create the ledger directory "%s".', $directory));
+        }
+
+        $logFilePath = $directory.'/command_ledger.sh';
 
         $written = @file_put_contents(
             $logFilePath,
