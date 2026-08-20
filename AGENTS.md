@@ -96,7 +96,12 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
 
 ## Tests
 
-- PHPUnit 13 with Zenstruck Foundry factories and stories (`src/Factory`, `src/Story`).
+- PHPUnit 13 with Zenstruck Foundry factories and stories (`tests/Factory`,
+  `tests/Story`, namespaced `App\Tests\`). They live under `tests/` rather than
+  `src/` on purpose: `zenstruck/foundry` is a dev dependency, so anything
+  extending it belongs in `autoload-dev`. In `src/` they were shipped to the
+  production image without the package they extend, and counted against coverage
+  as if they were application code.
 - Tests run against `bbx_malta_test` — a separate database from your real
   `bbx_malta` data, via `dbname_suffix` in `config/packages/doctrine.yaml`.
   `#[ResetDatabase]` drops and recreates it on each run.

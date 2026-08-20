@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Command;
 
-use App\Factory\SeasonRegistrationFactory;
-use App\Story\PaidRegistrationStory;
-use App\Story\SeasonStory;
+use App\Tests\Factory\SeasonRegistrationFactory;
+use App\Tests\Story\PaidRegistrationStory;
+use App\Tests\Story\SeasonStory;
 use App\Tests\Support\ConsoleTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Console\Command\Command;

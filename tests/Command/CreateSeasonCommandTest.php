@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Command;
 
-use App\Factory\SeasonFactory;
+use App\Tests\Factory\SeasonFactory;
 use App\Tests\Support\ConsoleTestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;

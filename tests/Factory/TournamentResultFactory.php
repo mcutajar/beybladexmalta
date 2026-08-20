@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Factory;
+namespace App\Tests\Factory;
 
-use App\Entity\Tournament;
+use App\Entity\TournamentResult;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
- * @extends PersistentObjectFactory<Tournament>
+ * @extends PersistentObjectFactory<TournamentResult>
  */
-final class TournamentFactory extends PersistentObjectFactory
+final class TournamentResultFactory extends PersistentObjectFactory
 {
     /**
      * @see https://symfony.com/bundles/ZenstruckFoundryBundle/current/index.html#factories-as-services
@@ -24,7 +24,7 @@ final class TournamentFactory extends PersistentObjectFactory
     #[\Override]
     public static function class(): string
     {
-        return Tournament::class;
+        return TournamentResult::class;
     }
 
     /**
@@ -36,9 +36,11 @@ final class TournamentFactory extends PersistentObjectFactory
     protected function defaults(): array|callable
     {
         return [
-            'heldOn' => \DateTimeImmutable::createFromMutable(self::faker()->dateTime()),
-            'season' => SeasonFactory::new(),
-            'title' => self::faker()->text(255),
+            'bonusPoints' => self::faker()->randomNumber(),
+            'f1Points' => self::faker()->randomNumber(),
+            'player' => PlayerFactory::new(),
+            'rank' => self::faker()->randomNumber(),
+            'tournament' => TournamentFactory::new(),
         ];
     }
 
@@ -49,7 +51,7 @@ final class TournamentFactory extends PersistentObjectFactory
     protected function initialize(): static
     {
         return $this
-            // ->afterInstantiate(function(Tournament $tournament): void {})
+            // ->afterInstantiate(function(TournamentResult $tournamentResult): void {})
         ;
     }
 }

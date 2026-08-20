@@ -5,7 +5,11 @@ when@dev: &dev
             # Flush only once per call of `PersistentObjectFactory::create()`
             flush_once: true
 
-    # If you use the `make:factory --test` command, you may need to uncomment the following.
+    # The factories and stories live in tests/ (the `make:factory --test` layout),
+    # because they extend a dev dependency and have no business in the production
+    # autoloader. Registering them as services is not needed for that: none of
+    # them takes a constructor argument, so Foundry instantiates them itself.
+    # A factory that ever needs a service injected is what this block is for.
     # See https://symfony.com/bundles/ZenstruckFoundryBundle/current/index.html#generate
     #services:
     #    App\Tests\Factory\:

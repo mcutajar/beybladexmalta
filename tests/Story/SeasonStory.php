@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Story;
+namespace App\Tests\Story;
 
 use App\Entity\Season;
-use App\Factory\SeasonFactory;
+use App\Tests\Factory\SeasonFactory;
 use Zenstruck\Foundry\Attribute\AsFixture;
 use Zenstruck\Foundry\Story;
 

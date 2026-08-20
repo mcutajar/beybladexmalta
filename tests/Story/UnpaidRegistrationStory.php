@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Story;
+namespace App\Tests\Story;
 
 use App\Entity\Player;
 use App\Entity\SeasonRegistration;
-use App\Factory\PlayerFactory;
-use App\Factory\SeasonRegistrationFactory;
+use App\Tests\Factory\PlayerFactory;
+use App\Tests\Factory\SeasonRegistrationFactory;
 use Zenstruck\Foundry\Story;
 
 /**
