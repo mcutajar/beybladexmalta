@@ -33,4 +33,4 @@ services:
     volumes:
       - ./docker/db_data:/var/lib/postgresql/data
     ports: !override
-      - "15432:5432"
+      - "${DB_PORT:-15432}:5432"
