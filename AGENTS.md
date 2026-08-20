@@ -146,6 +146,9 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
     artifact still appear.
   - Files with no executable lines — interfaces, enums, empty exception classes
     — show as 0%. They are counted as 0/0, so they do not move the total.
+  - The README badge reads a shields.io endpoint JSON on the `badges` orphan
+    branch, which a push to `main` rewrites. That branch holds that one file and
+    nothing else; never merge it into anything.
 - Artifact cleanup is centralised: the base cases delete everything `artifactPaths()`
   lists, before and after each test. A test that writes somewhere new overrides that
   method instead of writing its own `tearDown()`.

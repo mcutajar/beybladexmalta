@@ -1,5 +1,7 @@
 # Malta Beyblade League
 
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mcutajar/beybladexmalta/badges/coverage.json)](https://github.com/mcutajar/beybladexmalta/actions/workflows/ci.yaml)
+
 A Symfony 8.1 application for managing Malta Beyblade league rankings, tournament imports, and seasonal registration payments.
 
 ## Architecture summary
