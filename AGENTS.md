@@ -52,9 +52,11 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   the project name from the directory, so a worktree already gets its own namespace
   (`<worktree-dir>-php-1`, its own network and volumes) — you do not need to set
   `COMPOSE_PROJECT_NAME`. Only the **published ports** are shared, and only against
-  another *dev* stack: `compose.override.yaml` publishes 80, 443 and 15432. Check
-  with `docker ps` first and override `HTTP_PORT`/`HTTPS_PORT` only if something
-  already holds them.
+  another *dev* stack: `compose.override.yaml` publishes 80, 443 and 15432 by
+  default. Check with `docker ps` first; if something already holds them, put
+  `HTTP_PORT`, `HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local` — the Makefile
+  hands it to Compose with `--env-file` — and every `make` target then works
+  unchanged.
 - **A production stack may be running on the same host**, started from the main
   checkout via `compose.yaml` (plus the `production`-profile Cloudflare tunnel). It
   is a *different* Compose project, so a worktree stack cannot collide with it — but
@@ -84,6 +86,25 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   stylesheet and a ~112 MB downloaded Tailwind binary; both are generated.
 - `SymfonyStyle` hard-wraps console output, so normalise whitespace before
   asserting on a message rather than matching a long raw string.
+  `ConsoleTestCase::assertCommandSaid()` already does this.
+- Shared test plumbing lives in `tests/Support`, and a new test should extend one of
+  the base cases rather than `WebTestCase` or `KernelTestCase` directly:
+  - `AdminPageTestCase` — booting the browser, submitting a page's real form (so the
+    CSRF token is genuine), and `assertFlashSays()`.
+  - `ConsoleTestCase` — `executeCommand()` plus the output and exit-code assertions.
+    Subclasses name their command in `commandName()`.
+  - `InteractsWithTheLedger` — asserts what `var/log/command_ledger.sh` holds by
+    rebuilding the exact replayable command; `blockLedgerWrites()` puts a directory
+    in its place to force a write failure.
+  - `LeagueAssertions` — domain assertions such as `assertPlayerHasPaid()`,
+    `assertResultAtRank()` and `assertPlacementsScoredInOrder()`.
+- **Only what varies belongs in a test body.** The correct passphrase, the payment
+  season and the happy-path form values are helper defaults, so a test that names a
+  passphrase is visibly a test *about* authentication. Reach for a named assertion
+  before inlining factory criteria.
+- Artifact cleanup is centralised: the base cases delete everything `artifactPaths()`
+  lists, before and after each test. A test that writes somewhere new overrides that
+  method instead of writing its own `tearDown()`.
 
 ## Conventions
 
@@ -115,6 +136,10 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   true after submission, so validation is hand-rolled in the controller.
 - Admin routes are gated by an environment passphrase submitted in the form, not by
   a Symfony security firewall. There is no user entity and no login.
+- `KernelTestCase` ships a **static** `runCommand()` in Symfony 8.1. Declaring an
+  instance helper of that name is a fatal error at class-load time ("Cannot make
+  static method ... non static"), which reads as a broken autoloader rather than a
+  name clash. The project's wrapper is `ConsoleTestCase::executeCommand()`.
 - `PlayerRepository::getLeagueLeaderboard()` is raw SQL with a CTE — it caps scoring
   at each player's best 14 results and applies payment gating. Change it with care;
   it is currently untested.
