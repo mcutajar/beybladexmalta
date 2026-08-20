@@ -17,6 +17,10 @@ CONTAINER_XML := var/cache/dev/App_KernelDevDebugContainer.xml
 # PHPStan needs more than the 128M the container's php.ini gives CLI scripts.
 PHPSTAN_MEMORY ?= 1G
 
+# How long "setup" waits for the container's healthcheck. The first boot of a
+# fresh clone runs composer install into the bind mount, which is the slow part.
+HEALTH_TIMEOUT ?= 300
+
 # A --env-file *replaces* the .env Compose would otherwise read, it does not
 # layer on top of it. Passing only .env.local would therefore blank out every
 # variable the committed .env defines -- DATABASE_URL among them, which starts
@@ -34,13 +38,16 @@ ARGS ?=
 .DEFAULT_GOAL := help
 
 .PHONY: help up down build restart logs ps shell console composer install \
-	tailwind tailwind-watch phpunit test cs cs-fix phpstan check running
+	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
+	cs cs-fix phpstan check running wait-healthy seed-if-empty dev-stack-only
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
 ## --- Stack -----------------------------------------------------------------
+
+setup: up wait-healthy tailwind seed-if-empty ## Bootstrap a fresh clone: stack, stylesheet, database
 
 up: ## Start the dev stack in the background
 	$(DC) up -d --build
@@ -89,6 +96,33 @@ $(TAILWIND_CSS): | running
 $(CONTAINER_XML): | running
 	$(EXEC) php bin/console cache:warmup --env=dev
 
+## --- Database --------------------------------------------------------------
+
+# The schema is not versioned: migrations/ is empty on purpose. A schema change
+# is applied by rebuilding the database from the current mapping and replaying
+# repeat.sh, which is what db-reset does here and what a deployment does by hand.
+
+db-create: running ## Create the schema from the current entity mapping
+	$(EXEC) php bin/console doctrine:schema:create
+
+db-drop: dev-stack-only running ## Drop every table in the database
+	$(EXEC) php bin/console doctrine:schema:drop --force --full-database
+
+# -e so a failed replay stops at the offending command rather than carrying on
+# and leaving a half-populated database behind. A replay wants an empty schema:
+# app:create-season and app:register-payment turn into no-ops against data that
+# is already there, but app:import-tournament has no such guard and inserts a
+# duplicate tournament every time.
+seed: running ## Replay repeat.sh to rebuild the league data
+	$(EXEC) sh -e repeat.sh
+
+# Recursive rather than three prerequisites, because prerequisite order is only
+# guaranteed for a serial make. Under -j the drop could race the seed.
+db-reset: dev-stack-only ## Rebuild the database from repeat.sh
+	@$(MAKE) --no-print-directory db-drop
+	@$(MAKE) --no-print-directory db-create
+	@$(MAKE) --no-print-directory seed
+
 ## --- Quality ---------------------------------------------------------------
 
 phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="--filter FooTest"
@@ -116,3 +150,56 @@ running:
 		echo 'The "$(SERVICE)" service is not running. Start it with: make up'; \
 		exit 1; \
 	}
+
+# "running" is not enough for the first boot of a fresh clone: the entrypoint is
+# still running composer install into the bind mount, and a second writer there
+# corrupts vendor/. The container id comes from Compose, so the raw docker call
+# cannot reach a stack this Makefile does not own.
+wait-healthy:
+	@printf 'Waiting for the "%s" service to become healthy' '$(SERVICE)'; \
+	waited=0; \
+	while [ $$waited -lt $(HEALTH_TIMEOUT) ]; do \
+		cid=$$($(DC) ps -q $(SERVICE) 2>/dev/null); \
+		if [ -n "$$cid" ]; then \
+			status=$$(docker inspect \
+				-f '{{if .State.Health}}{{.State.Health.Status}}{{else}}healthy{{end}}' \
+				"$$cid" 2>/dev/null); \
+			if [ "$$status" = 'healthy' ]; then echo ' ready.'; exit 0; fi; \
+			if [ "$$status" = 'unhealthy' ]; then \
+				echo; \
+				echo 'The "$(SERVICE)" service is unhealthy. Check: make logs'; \
+				exit 1; \
+			fi; \
+		fi; \
+		printf '.'; \
+		sleep 2; \
+		waited=$$((waited + 2)); \
+	done; \
+	echo; \
+	echo 'Gave up after $(HEALTH_TIMEOUT)s. Check: make logs'; \
+	exit 1
+
+# Populates a fresh clone without ever discarding a database that already has a
+# schema, so "make setup" stays safe to re-run.
+seed-if-empty:
+	@if $(EXEC) php bin/console dbal:run-sql -q 'SELECT 1 FROM seasons LIMIT 1' >/dev/null 2>&1; then \
+		echo 'The schema already exists, so the database was left alone.'; \
+		echo 'Rebuild it from repeat.sh with: make db-reset'; \
+	else \
+		$(MAKE) db-create && $(MAKE) seed || { \
+			echo 'Seeding failed, so the schema exists but holds no data.'; \
+			echo 'Fix the cause, then rebuild with: make db-reset'; \
+			exit 1; \
+		}; \
+	fi
+
+# Every target is scoped to the dev Compose file, and a production stack is a
+# different Compose project started from compose.yaml. Refuse outright rather
+# than drop the tables of whatever COMPOSE_FILE has been pointed at.
+dev-stack-only:
+	@case '$(COMPOSE_FILE)' in \
+		*compose.override.yaml) ;; \
+		*) echo 'Refusing to run a destructive target against "$(COMPOSE_FILE)".'; \
+		   echo 'The database targets are for the dev stack only.'; \
+		   exit 1;; \
+	esac

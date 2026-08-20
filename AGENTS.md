@@ -12,8 +12,11 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 
 | Command | What it does |
 | --- | --- |
-| `make up` | Start the dev stack (do this first) |
+| `make setup` | Bootstrap a fresh clone end to end (do this first) |
+| `make up` | Start the dev stack |
 | `make tailwind` | Rebuild the stylesheet (needed once on a fresh clone) |
+| `make db-reset` | Drop the database, recreate the schema, replay `repeat.sh` |
+| `make seed` | Replay `repeat.sh` on its own |
 | `make phpunit` | Run the test suite |
 | `make phpunit ARGS="--filter FooTest"` | Run one test class |
 | `make cs` | Check code style (no writes) |
@@ -27,9 +30,15 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 Every target fails fast with `make up` instructions if the stack is down, and
 every target propagates the tool's real exit code and output.
 
-First run on a fresh clone is `make up` then `make tailwind`. Without the built
-stylesheet every page fails with an AssetMapper error, so `make phpunit` builds it
-automatically when it is missing.
+First run on a fresh clone is a single `make setup`. It starts the stack, waits for
+the container's healthcheck, builds the stylesheet and populates the database. All
+three matter: without the built stylesheet every page fails with an AssetMapper
+error, and without the database every leaderboard route 500s on a table that does
+not exist. `make phpunit` builds the stylesheet on its own when it is missing.
+
+`make setup` is safe to re-run. It only creates and seeds when the schema is absent,
+so it will never discard a database you have been working with — rebuilding one on
+purpose is `make db-reset`.
 
 Do not run `php`, `composer`, `vendor/bin/phpunit` or `docker run` directly.
 
@@ -154,12 +163,32 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
 - `PlayerRepository::getLeagueLeaderboard()` is raw SQL with a CTE — it caps scoring
   at each player's best 14 results and applies payment gating. Change it with care;
   it is currently untested.
-- `migrations/` is empty; the schema is not versioned yet. A consequence worth
-  knowing: in a **freshly started stack** nothing ever creates the schema, so
-  `doctrine:schema:validate` reports "The database schema is not in sync with the
-  current mapping file" and `doctrine:schema:update --dump-sql` prints `CREATE TABLE`
-  for every table. That is an empty database, not drift you introduced. To tell the
-  two apart, check whether the dump says `CREATE` (empty) or `ALTER` (real drift).
+- `migrations/` is empty **on purpose**, and should stay that way. The schema is not
+  versioned incrementally; it is rebuilt from the current entity mapping. A schema
+  change is deployed by taking the site down, dropping the database, running
+  `doctrine:schema:create` and replaying `repeat.sh` to restore the data. `make
+  db-reset` is that same procedure for the dev stack. Do not add an initial migration
+  to "fix" the empty directory: the entrypoint runs `doctrine:migrations:migrate` on
+  every boot under `set -e`, so a migration that tries to `CREATE TABLE` over the
+  live schema would kill the production container on startup.
+- A consequence of the above: in a **freshly started stack** nothing creates the
+  schema, so `doctrine:schema:validate` reports "The database schema is not in sync
+  with the current mapping file" and `doctrine:schema:update --dump-sql` prints
+  `CREATE TABLE` for every table. That is an empty database, not drift you
+  introduced. To tell the two apart, check whether the dump says `CREATE` (empty) or
+  `ALTER` (real drift). `make setup` or `make db-reset` fills it in.
+- Replaying `repeat.sh` is only safe against an **empty** schema. `app:create-season`
+  reports an existing slug and stops, and `app:register-payment` returns `AlreadyPaid`,
+  but `app:import-tournament` has no such guard — it inserts a fresh tournament and a
+  full set of results every time. A second replay silently doubles all of them, which
+  is why `make seed` is paired with a drop rather than run on its own.
+- A replay also appends its own copy of every command to `var/log/command_ledger.sh`,
+  so a ledger that already held lines ends up holding them twice. In dev that is
+  cosmetic — `repeat.sh` is the record, and the ledger is gitignored.
+- The test suite **deletes** `var/log/command_ledger.sh`. `artifactPaths()` lists it,
+  and the base cases clear every artifact before and after each test, against the real
+  project directory rather than a sandbox. Running `make phpunit` therefore discards
+  whatever the last seed or admin action wrote there.
 - PHPStan runs at **level 6** with the Symfony, Doctrine and PHPUnit extensions,
   and there is **no baseline** — the analysis is clean, so keep it that way
   rather than adding one. `phpstan.dist.neon` points the Symfony extension at the

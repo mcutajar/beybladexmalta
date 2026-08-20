@@ -36,14 +36,30 @@ The `Makefile` wraps `docker compose exec` for each tool, and `make help` lists
 every target.
 
 ```
-make up        # start the dev stack
-make tailwind  # build the stylesheet (once, on a fresh clone)
+make setup     # start the stack, build the stylesheet, populate the database
 make check     # code style, static analysis and tests
 ```
+
+`make setup` is the whole fresh-clone sequence, and is safe to re-run: it seeds
+only when the database has no schema yet. `make up`, `make tailwind`, `make
+db-create` and `make seed` are available individually.
 
 The Tailwind stylesheet is a build artifact and is not committed. Without it the
 app fails with an AssetMapper error, so build it after cloning; the production
 image builds its own during `docker build`.
+
+## The database schema
+
+The schema is not versioned through migrations — `migrations/` is empty
+deliberately. Tables are created from the current entity mapping with
+`doctrine:schema:create`, and the data is rebuilt by replaying `repeat.sh`, the
+accumulated ledger of every admin action ever taken. Applying a schema change
+therefore means taking the site down, dropping the database, recreating it and
+replaying the ledger.
+
+`make db-reset` runs exactly that sequence against the dev stack. It refuses to
+run unless it is pointed at `compose.override.yaml`, so it cannot drop a
+production database.
 
 ## Admin workflows
 
