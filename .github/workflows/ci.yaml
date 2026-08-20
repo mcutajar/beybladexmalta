@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# The suite needs nothing from the API, and a dependabot pull request should not
+# be able to ask for more than the code it is proposing.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpunit:
+    name: PHPUnit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # ~112 MB that tailwind:build would otherwise download on every run. Only
+      # the binary is cached: the built stylesheet is a product of the templates,
+      # and `make phpunit` rebuilds it only when it is missing, so a restored one
+      # would go stale without ever being noticed.
+      - name: Cache the Tailwind binary
+        uses: actions/cache@v4
+        with:
+          path: var/tailwind/*/tailwindcss-*
+          key: tailwind-${{ hashFiles('config/packages/symfonycasts_tailwind.yaml') }}
+
+      # The same stack a developer runs, so a Dockerfile or base image bump is
+      # tested as well as composer.lock. The entrypoint installs the proposed
+      # dependencies and waits for Postgres before the container reports healthy.
+      - name: Start the dev stack
+        run: docker compose -f compose.override.yaml up -d --build --wait
+
+      - name: Run the test suite
+        run: make phpunit
+
+      - name: Dump the container logs
+        if: ${{ failure() }}
+        run: docker compose -f compose.override.yaml logs --no-color
