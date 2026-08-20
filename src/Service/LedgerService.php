@@ -27,6 +27,21 @@ class LedgerService
         );
     }
 
+    public function logSeasonCreation(
+        string $slug,
+        string $name,
+        bool $requiresPayment,
+    ): void {
+        $this->append(
+            sprintf(
+                'php bin/console app:create-season %s %s %s',
+                escapeshellarg($slug),
+                escapeshellarg($name),
+                $requiresPayment ? '1' : '0',
+            ),
+        );
+    }
+
     public function logTournamentImport(
         string $title,
         string $heldOn,

@@ -46,6 +46,19 @@ trait InteractsWithTheLedger
         ));
     }
 
+    protected static function assertLedgerRecordsSeasonCreation(
+        string $slug,
+        string $name,
+        bool $requiresPayment,
+    ): void {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:create-season %s %s %s',
+            escapeshellarg($slug),
+            escapeshellarg($name),
+            $requiresPayment ? '1' : '0',
+        ));
+    }
+
     protected static function assertLedgerRecordsImport(
         string $title,
         string $heldOn,

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Season;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Exception\LedgerWriteException;
+use App\Repository\SeasonRepository;
+use App\Service\FlusherInterface;
+use App\Service\LedgerService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -14,7 +17,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\HttpKernel\KernelInterface;
 
 #[AsCommand(
     name: 'app:create-season',
@@ -23,8 +25,9 @@ use Symfony\Component\HttpKernel\KernelInterface;
 class CreateSeasonCommand extends Command
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly KernelInterface $kernel,
+        private readonly SeasonRepository $seasonRepository,
+        private readonly LedgerService $ledgerService,
+        private readonly FlusherInterface $flusher,
     ) {
         parent::__construct();
     }
@@ -93,8 +96,6 @@ class CreateSeasonCommand extends Command
         $rawRequiresPayment = $input->getArgument('requiresPayment');
         $requiresPayment = filter_var($rawRequiresPayment, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
 
-        $logFilePath = $this->kernel->getProjectDir().'/var/log/command_ledger.sh';
-
         if (!$slug || !$name) {
             $io->error('Both a unique identifier slug and a display name are required.');
 
@@ -104,8 +105,7 @@ class CreateSeasonCommand extends Command
         $slug = trim($slug);
         $name = trim($name);
 
-        $seasonRepository = $this->entityManager->getRepository(Season::class);
-        $existingSeason = $seasonRepository->findOneBy(['slug' => $slug]);
+        $existingSeason = $this->seasonRepository->findBySlug($slug);
 
         if ($existingSeason) {
             $io->warning(sprintf('The season context with slug "%s" already exists ("%s").', $slug, $existingSeason->getName()));
@@ -116,21 +116,36 @@ class CreateSeasonCommand extends Command
         $season = new Season();
         $season->setSlug($slug);
         $season->setName($name);
-
         $season->setRequiresPayment($requiresPayment);
 
-        $this->entityManager->persist($season);
-        $this->entityManager->flush();
+        $this->seasonRepository->save($season);
 
-        // --- EVENT SOURCING LEDGER REPLICATION ---
-        $escapedSlug = escapeshellarg($slug);
-        $escapedName = escapeshellarg($name);
-        $paymentFlagValue = $requiresPayment ? '1' : '0';
+        try {
+            /*
+             * The replay command is written inside the same transaction as
+             * the flush, so the ledger can never gain a line for a season the
+             * database rejected, and a failed write undoes the season.
+             */
+            $this->flusher->flushThen(
+                fn () => $this->ledgerService->logSeasonCreation(
+                    slug: $slug,
+                    name: $name,
+                    requiresPayment: $requiresPayment,
+                ),
+            );
+        } catch (LedgerWriteException $exception) {
+            $io->error('The season was not created because the recovery ledger could not be updated.');
 
-        // Persist the explicit headless variant string directly down to the ledger
-        $commandString = sprintf("php bin/console app:create-season %s %s %s\n", $escapedSlug, $escapedName, $paymentFlagValue);
-        file_put_contents($logFilePath, $commandString, FILE_APPEND | LOCK_EX);
-        // ------------------------------------------
+            if ($io->isVerbose()) {
+                $io->writeln($exception->getMessage());
+            }
+
+            return Command::FAILURE;
+        } catch (\Throwable $exception) {
+            $io->error('Transaction aborted: '.$exception->getMessage());
+
+            return Command::FAILURE;
+        }
 
         $io->success(sprintf('Successfully initialized season "%s" [%s] (Requires Payment: %s) and updated the ledger!', $name, $slug, $requiresPayment ? 'YES' : 'NO'));
 
