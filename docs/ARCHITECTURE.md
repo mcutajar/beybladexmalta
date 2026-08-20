@@ -40,6 +40,11 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Auto-creates missing players when needed.
   - Writes a replay command to `var/log/command_ledger.sh`.
 
+- `src/Command/CreateSeasonCommand.php`
+  - Creates a competitive season, prompting for anything not passed as an argument.
+  - Reports an existing slug rather than creating a duplicate.
+  - Writes its replay command inside the flush transaction, like the other two flows.
+
 ### Application services
 
 Both the web and CLI entry points are thin: they gather input, then hand it to a
@@ -153,11 +158,12 @@ Both flows now share a service layer, which resolved the following:
 - The F1 point matrix and knockout bonus live only in `TournamentImportService`.
 
 Ledger consistency:
-- Both flows write their ledger entry through `FlusherInterface::flushThen()`, which
-  flushes first and commits only once the entry is on disk.
+- Every flow that writes the ledger -- payment, tournament import and season
+  creation -- goes through `FlusherInterface::flushThen()`, which flushes first
+  and commits only once the entry is on disk.
 - A failed ledger write rolls the database change back; a failed database write
-  never reaches the ledger. `repeat.sh` therefore cannot gain a line for a payment
-  or a tournament that was not stored.
+  never reaches the ledger. `repeat.sh` therefore cannot gain a line for a payment,
+  a tournament or a season that was not stored.
 - The one remaining window is a failure of the commit itself, after the ledger line
   is written. Closing that would require a two-phase write or moving the ledger into
   the database, which is the direction the audit note below points.
@@ -209,7 +215,6 @@ Suggested improvement:
 
 1. Document the architecture and security concerns in `README.md` and `docs/ARCHITECTURE.md`.
 2. Introduce Symfony Security and protect all admin routes.
-3. Extend the service-layer refactor to `CreateSeasonCommand`, the last flow writing the ledger directly.
-4. Normalize player names and enforce uniqueness at the database layer.
-5. Replace shell ledger writes with a robust audit log.
-6. Add a minimal test suite for exportable domain behaviors.
+3. Normalize player names and enforce uniqueness at the database layer.
+4. Replace shell ledger writes with a robust audit log.
+5. Add a minimal test suite for exportable domain behaviors.
