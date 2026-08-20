@@ -1,9 +1,10 @@
 # Every target runs inside the dev container.
 # Nothing here requires PHP, Composer or Postgres on the host machine.
 
-COMPOSE_FILE ?= compose.override.yaml
-ENV_FILE     ?= .env.local
-SERVICE      ?= php
+COMPOSE_FILE   ?= compose.override.yaml
+ENV_FILE       ?= .env
+LOCAL_ENV_FILE ?= .env.local
+SERVICE        ?= php
 
 # Build artifact, not committed. Targets that render templates depend on it,
 # so a fresh clone builds it once instead of failing with an AssetMapper error.
@@ -16,7 +17,14 @@ CONTAINER_XML := var/cache/dev/App_KernelDevDebugContainer.xml
 # PHPStan needs more than the 128M the container's php.ini gives CLI scripts.
 PHPSTAN_MEMORY ?= 1G
 
-DC   := docker compose $(if $(wildcard $(ENV_FILE)),--env-file $(ENV_FILE),) -f $(COMPOSE_FILE)
+# A --env-file *replaces* the .env Compose would otherwise read, it does not
+# layer on top of it. Passing only .env.local would therefore blank out every
+# variable the committed .env defines -- DATABASE_URL among them, which starts
+# the container with an empty DSN. Repeated --env-file flags do layer, later
+# files winning, so both are passed with the local overrides last.
+ENV_FILES := $(foreach f,$(ENV_FILE) $(LOCAL_ENV_FILE),$(if $(wildcard $(f)),--env-file $(f)))
+
+DC   := docker compose $(ENV_FILES) -f $(COMPOSE_FILE)
 EXEC := $(DC) exec -T $(SERVICE)
 
 # Extra flags for the tool being wrapped, e.g.

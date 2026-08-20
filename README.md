@@ -21,8 +21,13 @@ The application runs inside Docker using the following services:
 
 Startup commands:
 
-- Production: `docker compose --env-file .env.local -f compose.yaml up -d --build`
-- Development: `docker compose --env-file .env.local -f compose.override.yaml up -d --build`
+- Production: `docker compose --env-file .env --env-file .env.local -f compose.yaml up -d --build`
+- Development: `docker compose --env-file .env --env-file .env.local -f compose.override.yaml up -d --build`
+
+Both env files are named on purpose: a `--env-file` replaces the `.env` Compose
+would otherwise read, so passing only `.env.local` blanks out every variable the
+committed `.env` defines. Repeated flags layer, with the later file winning. The
+`Makefile` does the same thing for every `make` target.
 
 ## Local development
 
