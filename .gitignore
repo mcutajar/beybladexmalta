@@ -37,3 +37,7 @@ docker/*
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+# Written by "make coverage". The Cobertura, text and HTML reports are all
+# products of a test run, and CI rebuilds them on every push.
+/var/coverage

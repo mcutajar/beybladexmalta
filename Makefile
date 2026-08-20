@@ -14,6 +14,10 @@ TAILWIND_CSS := var/tailwind/app.built.css
 # and routes. Also a build artifact, also not committed.
 CONTAINER_XML := var/cache/dev/App_KernelDevDebugContainer.xml
 
+# Where "make coverage" writes its reports. Gitignored: every one of them is a
+# product of the test run, and CI rebuilds them on each push.
+COVERAGE_DIR ?= var/coverage
+
 # PHPStan needs more than the 128M the container's php.ini gives CLI scripts.
 PHPSTAN_MEMORY ?= 1G
 
@@ -39,7 +43,8 @@ ARGS ?=
 
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
-	cs cs-fix phpstan check running wait-healthy seed-if-empty dev-stack-only
+	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
+	dev-stack-only
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -129,6 +134,21 @@ phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="
 	$(EXEC) php vendor/bin/phpunit $(ARGS)
 
 test: phpunit ## Alias for phpunit
+
+# The driver is Xdebug, which the dev image already ships and which
+# compose.override.yaml already puts in coverage mode, so there is nothing to
+# install and nothing to pass. Setting XDEBUG_MODE to anything without
+# "coverage" in it turns the reports into empty ones, with a PHPUnit warning
+# rather than a failure.
+#
+# CI reads the Cobertura report to build the pull request comment, the HTML one
+# is what says which lines are missed, and the text one lands in the log.
+coverage: running $(TAILWIND_CSS) ## Run the test suite and write the coverage reports to var/coverage
+	$(EXEC) php vendor/bin/phpunit \
+		--coverage-text \
+		--coverage-cobertura $(COVERAGE_DIR)/cobertura.xml \
+		--coverage-html $(COVERAGE_DIR)/html \
+		$(ARGS)
 
 cs: running ## Check the code style without writing anything
 	$(EXEC) php vendor/bin/php-cs-fixer fix --dry-run --diff $(ARGS)
