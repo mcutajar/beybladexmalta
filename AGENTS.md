@@ -19,6 +19,7 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 | `make seed` | Replay `repeat.sh` on its own |
 | `make phpunit` | Run the test suite |
 | `make phpunit ARGS="--filter FooTest"` | Run one test class |
+| `make coverage` | Run the suite and write the coverage reports to `var/coverage` |
 | `make cs` | Check code style (no writes) |
 | `make cs-fix` | Apply code style fixes |
 | `make phpstan` | Run static analysis (level 6) |
@@ -122,6 +123,24 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   season and the happy-path form values are helper defaults, so a test that names a
   passphrase is visibly a test *about* authentication. Reach for a named assertion
   before inlining factory criteria.
+- `make coverage` measures how much of `src/` the suite exercises. The driver is
+  Xdebug, which the dev image already ships and `compose.override.yaml` already
+  puts in coverage mode, so nothing needs installing — but an `XDEBUG_MODE` in
+  `.env.local` without `coverage` in it produces empty reports and a PHPUnit
+  warning rather than a failure. It writes three views of the same run to the
+  gitignored `var/coverage/`: `cobertura.xml` (what CI turns into the pull
+  request table), `html/` (which lines are missed) and the text summary in the
+  terminal.
+- CI runs the same target on every pull request, posts the per-file table as a
+  single comment that is edited in place on each push, repeats it in the job
+  summary and uploads the HTML report as the `coverage-html` artifact. Nothing
+  is sent to a third-party service and no secret is involved. Coverage is
+  reported only — it never fails the build.
+  - The comment needs a writable token, which a run from a fork or from
+    Dependabot is never given, so it is skipped there. The summary and the
+    artifact still appear.
+  - Files with no executable lines — interfaces, enums, empty exception classes
+    — show as 0%. They are counted as 0/0, so they do not move the total.
 - Artifact cleanup is centralised: the base cases delete everything `artifactPaths()`
   lists, before and after each test. A test that writes somewhere new overrides that
   method instead of writing its own `tearDown()`.
