@@ -9,227 +9,155 @@ use App\Factory\SeasonFactory;
 use App\Factory\TournamentFactory;
 use App\Factory\TournamentResultFactory;
 use App\Story\SeasonStory;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use App\Tests\Support\ConsoleTestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 use Zenstruck\Foundry\Attribute\ResetDatabase;
 use Zenstruck\Foundry\Attribute\WithStory;
-use Zenstruck\Foundry\Test\Factories;
 
 #[ResetDatabase]
 #[WithStory(SeasonStory::class)]
-final class ImportTournamentCommandTest extends KernelTestCase
+final class ImportTournamentCommandTest extends ConsoleTestCase
 {
-    use Factories;
-
     private const TITLE = 'Command Test Cup';
 
     private const DATE = '2026-08-02';
 
-    private string $ledgerPath;
+    private const SEASON = 'paid-season';
+
+    /**
+     * Ten distinct bladers, best finish first.
+     */
+    private const PLACEMENTS = [
+        'Giglio', 'Obelix', 'Lanzjan', 'Il-Karm', 'Evilbeys',
+        'Derius', 'Rizzler', 'Steve', 'Southboy15', 'Tristan',
+    ];
 
     private string $placementFilePath;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->ledgerPath = dirname(__DIR__, 2)
-            .'/var/log/command_ledger.sh';
-
-        $this->placementFilePath = sprintf(
-            '%s/placements-%s.txt',
-            sys_get_temp_dir(),
-            bin2hex(random_bytes(6)),
-        );
-
-        $this->removeArtifacts();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->removeArtifacts();
-
-        parent::tearDown();
-    }
-
     public function testItImportsAPlacementFile(): void
     {
-        $this->writePlacementFile([
-            'Giglio', 'Obelix', 'Lanzjan', 'Il-Karm', 'Evilbeys',
-            'Derius', 'Rizzler', 'Steve', 'Southboy15', 'Tristan',
-        ]);
+        $this->writePlacementFile(self::PLACEMENTS);
 
-        $tester = $this->execute();
+        $tester = $this->importTournament();
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::SUCCESS);
 
-        self::assertStringContainsString(
+        self::assertCommandSaid(
+            $tester,
             'Successfully imported "Command Test Cup" into Paid Season.'
             .' Logged 10 player placements.',
-            $this->displayOf($tester),
         );
 
         TournamentFactory::assert()->count(1);
         TournamentResultFactory::assert()->count(10);
         PlayerFactory::assert()->count(10);
 
-        $tournament = TournamentFactory::find([
-            'title' => self::TITLE,
-        ]);
+        $tournament = self::findTournament(self::TITLE);
 
-        self::assertSame(
-            self::DATE,
-            $tournament->getHeldOn()->format('Y-m-d'),
-        );
+        self::assertSame(self::DATE, $tournament->getHeldOn()->format('Y-m-d'));
+        self::assertPlacementsScoredInOrder($tournament, self::PLACEMENTS);
 
-        $winner = TournamentResultFactory::find([
-            'tournament' => $tournament,
-            'rank' => 1,
-        ]);
-
-        self::assertSame('Giglio', $winner->getPlayer()->getName());
-        self::assertSame(25, $winner->getF1Points());
-        self::assertSame(0, $winner->getBonusPoints());
-
-        $lastPlace = TournamentResultFactory::find([
-            'tournament' => $tournament,
-            'rank' => 10,
-        ]);
-
-        self::assertSame(1, $lastPlace->getF1Points());
+        // Nothing in a plain placement file should award a bonus.
+        self::assertResultAtRank($tournament, rank: 1, bonusPoints: 0);
     }
 
     public function testItAppliesManualAndKnockoutBonuses(): void
     {
-        $this->writePlacementFile([
-            'Giglio',
-            'Obelix, 5',
-            'Lanzjan',
-        ]);
+        $this->writePlacementFile(['Giglio', 'Obelix, 5', 'Lanzjan']);
 
-        $tester = $this->execute([
-            '--knockout' => 'obelix',
-        ]);
+        $tester = $this->importTournament(['--knockout' => 'obelix']);
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
-
-        $second = TournamentResultFactory::find([
-            'tournament' => TournamentFactory::find(['title' => self::TITLE]),
-            'rank' => 2,
-        ]);
+        self::assertCommandExited($tester, Command::SUCCESS);
 
         /*
-         * Five bonus points from the file, ten more for taking the
-         * knockout bracket, on top of the second place F1 tier.
+         * Five bonus points from the file, ten more for taking the knockout
+         * bracket, on top of the second place F1 tier.
          */
-        self::assertSame(20, $second->getF1Points());
-        self::assertSame(15, $second->getBonusPoints());
-        self::assertSame(35, $second->getTotalPoints());
+        self::assertResultAtRank(
+            self::findTournament(self::TITLE),
+            rank: 2,
+            f1Points: 20,
+            bonusPoints: 15,
+            totalPoints: 35,
+        );
     }
 
     public function testItReusesAnExistingPlayerCaseInsensitively(): void
     {
-        PlayerFactory::createOne([
-            'name' => 'Giglio',
-        ]);
+        PlayerFactory::createOne(['name' => 'Giglio']);
 
-        $this->writePlacementFile([
-            '  gIGLIO  ',
-            'Obelix',
-        ]);
+        $this->writePlacementFile(['  gIGLIO  ', 'Obelix']);
 
-        $tester = $this->execute();
+        $tester = $this->importTournament();
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::SUCCESS);
 
         PlayerFactory::assert()->count(2);
-
-        PlayerFactory::assert()->exists([
-            'name' => 'Giglio',
-        ]);
+        PlayerFactory::assert()->exists(['name' => 'Giglio']);
     }
 
     public function testItLogsAReplayableLedgerEntry(): void
     {
-        $this->writePlacementFile([
-            'Giglio',
-            'Obelix',
-        ]);
+        $this->writePlacementFile(['Giglio', 'Obelix']);
 
-        $tester = $this->execute([
+        $tester = $this->importTournament([
             '--challonge' => 'https://challonge.com/abcd1234',
         ]);
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::SUCCESS);
 
-        $expectedCommand = sprintf(
-            "php bin/console app:import-tournament %s %s %s --season=%s --challonge=%s\n",
-            escapeshellarg(self::TITLE),
-            escapeshellarg(self::DATE),
-            escapeshellarg($this->placementFilePath),
-            escapeshellarg('paid-season'),
-            escapeshellarg('https://challonge.com/abcd1234'),
-        );
-
-        self::assertFileExists($this->ledgerPath);
-
-        self::assertSame(
-            $expectedCommand,
-            file_get_contents($this->ledgerPath),
+        self::assertLedgerRecordsImport(
+            title: self::TITLE,
+            heldOn: self::DATE,
+            sourcePath: $this->placementFilePath,
+            seasonSlug: self::SEASON,
+            challongeUrl: 'https://challonge.com/abcd1234',
         );
     }
 
     public function testItRejectsAnUnreadableFile(): void
     {
-        $tester = $this->execute();
+        $tester = $this->importTournament();
 
-        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::FAILURE);
 
-        self::assertStringContainsString(
-            sprintf(
-                'File path "%s" is unreadable or does not exist.',
-                $this->placementFilePath,
-            ),
-            $this->displayOf($tester),
-        );
+        self::assertCommandSaid($tester, sprintf(
+            'File path "%s" is unreadable or does not exist.',
+            $this->placementFilePath,
+        ));
 
-        TournamentFactory::assert()->empty();
+        self::assertNothingWasImported();
+        self::assertLedgerIsEmpty();
     }
 
     public function testItRejectsALooselyFormattedDate(): void
     {
-        $this->writePlacementFile([
-            'Giglio',
-        ]);
+        $this->writePlacementFile(['Giglio']);
 
-        $tester = $this->execute([
-            'date' => '02/08/2026',
-        ]);
+        $tester = $this->importTournament(['date' => '02/08/2026']);
 
-        self::assertSame(Command::FAILURE, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::FAILURE);
 
-        self::assertStringContainsString(
+        self::assertCommandSaid(
+            $tester,
             'Invalid date format provided. Please use YYYY-MM-DD.',
-            $this->displayOf($tester),
         );
 
-        TournamentFactory::assert()->empty();
-        self::assertFileDoesNotExist($this->ledgerPath);
+        self::assertNothingWasImported();
+        self::assertLedgerIsEmpty();
     }
 
     public function testItCreatesAMissingSeasonOnConfirmation(): void
     {
-        $this->writePlacementFile([
-            'Giglio',
-        ]);
+        $this->writePlacementFile(['Giglio']);
 
-        $tester = $this->execute([
-            '--season' => 'brand-new-season',
-        ], ['yes']);
+        $tester = $this->importTournament(
+            ['--season' => 'brand-new-season'],
+            answers: ['yes'],
+        );
 
-        self::assertSame(Command::SUCCESS, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::SUCCESS);
 
         SeasonFactory::assert()->exists([
             'slug' => 'brand-new-season',
@@ -241,64 +169,63 @@ final class ImportTournamentCommandTest extends KernelTestCase
 
     public function testItAbortsWhenSeasonCreationIsDeclined(): void
     {
-        $this->writePlacementFile([
-            'Giglio',
-        ]);
+        $this->writePlacementFile(['Giglio']);
 
-        $tester = $this->execute([
-            '--season' => 'brand-new-season',
-        ], ['no']);
+        $tester = $this->importTournament(
+            ['--season' => 'brand-new-season'],
+            answers: ['no'],
+        );
 
-        self::assertSame(Command::INVALID, $tester->getStatusCode());
+        self::assertCommandExited($tester, Command::INVALID);
 
-        SeasonFactory::assert()->notExists([
-            'slug' => 'brand-new-season',
-        ]);
+        SeasonFactory::assert()->notExists(['slug' => 'brand-new-season']);
 
-        TournamentFactory::assert()->empty();
-        self::assertFileDoesNotExist($this->ledgerPath);
+        self::assertNothingWasImported();
+        self::assertLedgerIsEmpty();
     }
 
-    /**
-     * SymfonyStyle hard-wraps its blocks, so collapse the whitespace before
-     * matching against a message.
-     */
-    private function displayOf(CommandTester $tester): string
+    #[\Override]
+    protected function setUp(): void
     {
-        return (string) preg_replace('/\s+/', ' ', $tester->getDisplay());
+        /*
+         * Assigned before the parent's setUp() so that its artifact cleanup
+         * can already see the path.
+         */
+        $this->placementFilePath = sprintf(
+            '%s/placements-%s.txt',
+            sys_get_temp_dir(),
+            bin2hex(random_bytes(6)),
+        );
+
+        parent::setUp();
+    }
+
+    #[\Override]
+    protected static function commandName(): string
+    {
+        return 'app:import-tournament';
+    }
+
+    #[\Override]
+    protected function artifactPaths(): array
+    {
+        return [...parent::artifactPaths(), $this->placementFilePath];
     }
 
     /**
-     * @param array<string, string> $overrides
-     * @param list<string>          $inputs
+     * @param array<string, string> $overrides arguments and options to replace
+     * @param list<string>          $answers   replies to interactive questions
      */
-    private function execute(
+    private function importTournament(
         array $overrides = [],
-        array $inputs = [],
+        array $answers = [],
     ): CommandTester {
-        $tester = $this->createCommandTester();
-
-        if ([] !== $inputs) {
-            $tester->setInputs($inputs);
-        }
-
-        $tester->execute(array_merge([
+        return $this->executeCommand(array_merge([
             'title' => self::TITLE,
             'date' => self::DATE,
             'file' => $this->placementFilePath,
-            '--season' => SeasonStory::paymentSeason()->getSlug(),
-        ], $overrides));
-
-        return $tester;
-    }
-
-    private function createCommandTester(): CommandTester
-    {
-        $application = new Application(self::bootKernel());
-
-        return new CommandTester(
-            $application->find('app:import-tournament'),
-        );
+            '--season' => self::SEASON,
+        ], $overrides), $answers);
     }
 
     /**
@@ -310,20 +237,5 @@ final class ImportTournamentCommandTest extends KernelTestCase
             $this->placementFilePath,
             implode("\n", $lines)."\n",
         );
-    }
-
-    private function removeArtifacts(): void
-    {
-        foreach ([$this->ledgerPath, $this->placementFilePath] as $path) {
-            if (is_file($path)) {
-                unlink($path);
-
-                continue;
-            }
-
-            if (is_dir($path)) {
-                rmdir($path);
-            }
-        }
     }
 }
