@@ -21,6 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Read by the badge job below, which has no test run of its own.
+    outputs:
+      coverage: ${{ steps.coverage.outputs.percent }}
+      color: ${{ steps.coverage.outputs.color }}
+
     permissions:
       contents: read
       # Only so the coverage table can be posted as a pull request comment. A
@@ -99,6 +104,18 @@ jobs:
           header: coverage
           path: coverage-comment.md
 
+      # Cobertura states the line rate as a fraction on the root element. The
+      # same number the table shows, rounded once, here so the badge and the
+      # comment can never disagree.
+      - name: Read the coverage percentage
+        id: coverage
+        run: |
+          rate=$(sed -n 's/.*<coverage line-rate="\([0-9.]*\)".*/\1/p' var/coverage/cobertura.xml | head -1)
+          pct=$(awk -v r="$rate" 'BEGIN{printf "%d", r*100+0.5}')
+          color=$(awk -v p="$pct" 'BEGIN{print (p<60)?"red":(p<80)?"yellow":"brightgreen"}')
+          echo "percent=$pct" >> "$GITHUB_OUTPUT"
+          echo "color=$color" >> "$GITHUB_OUTPUT"
+
       # The percentages say how much is covered; this says which lines are not.
       - name: Upload the line-by-line report
         uses: actions/upload-artifact@v4
@@ -110,3 +127,48 @@ jobs:
       - name: Dump the container logs
         if: ${{ failure() }}
         run: docker compose -f compose.override.yaml logs --no-color
+
+  # The README badge needs a value that outlives a single run, so main publishes
+  # one to the "badges" orphan branch and shields.io reads it from there. The
+  # branch holds nothing but coverage.json, which keeps main's history free of
+  # badge commits, and no third-party service holds the number.
+  badge:
+    name: Coverage badge
+    needs: phpunit
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+
+    steps:
+      # Unlike the job above this one keeps its credentials: it has a commit to
+      # push, and only to a branch that holds a single generated file.
+      - name: Check out the badge branch
+        uses: actions/checkout@v5
+        with:
+          ref: badges
+
+      # Through the environment rather than interpolated into the script, so the
+      # job body stays free of expansions from another job's output.
+      - name: Write the endpoint JSON
+        env:
+          PERCENT: ${{ needs.phpunit.outputs.coverage }}
+          COLOR: ${{ needs.phpunit.outputs.color }}
+        run: |
+          printf '{\n  "schemaVersion": 1,\n  "label": "coverage",\n  "message": "%s%%",\n  "color": "%s"\n}\n' \
+            "$PERCENT" "$COLOR" > coverage.json
+
+      - name: Push it when the number moved
+        env:
+          PERCENT: ${{ needs.phpunit.outputs.coverage }}
+        run: |
+          if git diff --quiet -- coverage.json; then
+            echo "The badge already reads ${PERCENT}%, so there is nothing to push."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -q -m "chore: coverage is ${PERCENT}%" -- coverage.json
+          git push
