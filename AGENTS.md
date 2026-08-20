@@ -55,8 +55,19 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   another *dev* stack: `compose.override.yaml` publishes 80, 443 and 15432 by
   default. Check with `docker ps` first; if something already holds them, put
   `HTTP_PORT`, `HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local` — the Makefile
-  hands it to Compose with `--env-file` — and every `make` target then works
-  unchanged.
+  hands Compose `--env-file .env --env-file .env.local` — and every `make` target
+  then works unchanged.
+- That pair of flags is deliberate, and **a single `--env-file .env.local` is a
+  trap**. Compose *replaces* the `.env` it would otherwise read with the file you
+  name rather than layering on top of it, so a ports-only `.env.local` blanks out
+  everything the committed `.env` defines. `compose.override.yaml` interpolates
+  `DATABASE_URL: ${DATABASE_URL}`, which is only set in `.env`, so the container
+  starts with an empty-but-present `DATABASE_URL`; Symfony's Dotenv then sees it as
+  already set and never falls back to the `.env` value. The entrypoint's
+  `dbal:run-sql` dies with "could not find driver", the healthcheck never passes,
+  and `make up` leaves an unhealthy stack. Repeated `--env-file` flags *do* layer,
+  later files winning, which is why the Makefile passes both. Driving Compose by
+  hand needs the same pair.
 - **A production stack may be running on the same host**, started from the main
   checkout via `compose.yaml` (plus the `production`-profile Cloudflare tunnel). It
   is a *different* Compose project, so a worktree stack cannot collide with it — but
