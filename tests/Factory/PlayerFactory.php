@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Factory;
+namespace App\Tests\Factory;
 
-use App\Entity\SeasonRegistration;
+use App\Entity\Player;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
- * @extends PersistentObjectFactory<SeasonRegistration>
+ * @extends PersistentObjectFactory<Player>
  */
-final class SeasonRegistrationFactory extends PersistentObjectFactory
+final class PlayerFactory extends PersistentObjectFactory
 {
     /**
      * @see https://symfony.com/bundles/ZenstruckFoundryBundle/current/index.html#factories-as-services
@@ -24,7 +24,7 @@ final class SeasonRegistrationFactory extends PersistentObjectFactory
     #[\Override]
     public static function class(): string
     {
-        return SeasonRegistration::class;
+        return Player::class;
     }
 
     /**
@@ -36,9 +36,7 @@ final class SeasonRegistrationFactory extends PersistentObjectFactory
     protected function defaults(): array|callable
     {
         return [
-            'paid' => self::faker()->boolean(),
-            'player' => PlayerFactory::new(),
-            'season' => SeasonFactory::new(),
+            'name' => self::faker()->text(255),
         ];
     }
 
@@ -49,7 +47,7 @@ final class SeasonRegistrationFactory extends PersistentObjectFactory
     protected function initialize(): static
     {
         return $this
-            // ->afterInstantiate(function(SeasonRegistration $seasonRegistration): void {})
+            // ->afterInstantiate(function(Player $player): void {})
         ;
     }
 }

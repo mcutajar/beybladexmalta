@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Factory;
+namespace App\Tests\Factory;
 
-use App\Entity\TournamentResult;
+use App\Entity\SeasonRegistration;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
- * @extends PersistentObjectFactory<TournamentResult>
+ * @extends PersistentObjectFactory<SeasonRegistration>
  */
-final class TournamentResultFactory extends PersistentObjectFactory
+final class SeasonRegistrationFactory extends PersistentObjectFactory
 {
     /**
      * @see https://symfony.com/bundles/ZenstruckFoundryBundle/current/index.html#factories-as-services
@@ -24,7 +24,7 @@ final class TournamentResultFactory extends PersistentObjectFactory
     #[\Override]
     public static function class(): string
     {
-        return TournamentResult::class;
+        return SeasonRegistration::class;
     }
 
     /**
@@ -36,11 +36,9 @@ final class TournamentResultFactory extends PersistentObjectFactory
     protected function defaults(): array|callable
     {
         return [
-            'bonusPoints' => self::faker()->randomNumber(),
-            'f1Points' => self::faker()->randomNumber(),
+            'paid' => self::faker()->boolean(),
             'player' => PlayerFactory::new(),
-            'rank' => self::faker()->randomNumber(),
-            'tournament' => TournamentFactory::new(),
+            'season' => SeasonFactory::new(),
         ];
     }
 
@@ -51,7 +49,7 @@ final class TournamentResultFactory extends PersistentObjectFactory
     protected function initialize(): static
     {
         return $this
-            // ->afterInstantiate(function(TournamentResult $tournamentResult): void {})
+            // ->afterInstantiate(function(SeasonRegistration $seasonRegistration): void {})
         ;
     }
 }

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
-use App\Factory\PlayerFactory;
-use App\Factory\SeasonRegistrationFactory;
-use App\Story\PaidRegistrationStory;
-use App\Story\SeasonStory;
-use App\Story\UnpaidRegistrationStory;
+use App\Tests\Factory\PlayerFactory;
+use App\Tests\Factory\SeasonRegistrationFactory;
+use App\Tests\Story\PaidRegistrationStory;
+use App\Tests\Story\SeasonStory;
+use App\Tests\Story\UnpaidRegistrationStory;
 use App\Tests\Support\AdminPageTestCase;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Zenstruck\Foundry\Attribute\ResetDatabase;

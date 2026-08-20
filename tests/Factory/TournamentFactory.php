@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace App\Factory;
+namespace App\Tests\Factory;
 
-use App\Entity\Season;
+use App\Entity\Tournament;
 use Zenstruck\Foundry\Persistence\PersistentObjectFactory;
 
 /**
- * @extends PersistentObjectFactory<Season>
+ * @extends PersistentObjectFactory<Tournament>
  */
-final class SeasonFactory extends PersistentObjectFactory
+final class TournamentFactory extends PersistentObjectFactory
 {
     /**
      * @see https://symfony.com/bundles/ZenstruckFoundryBundle/current/index.html#factories-as-services
@@ -24,7 +24,7 @@ final class SeasonFactory extends PersistentObjectFactory
     #[\Override]
     public static function class(): string
     {
-        return Season::class;
+        return Tournament::class;
     }
 
     /**
@@ -36,9 +36,9 @@ final class SeasonFactory extends PersistentObjectFactory
     protected function defaults(): array|callable
     {
         return [
-            'name' => self::faker()->words(3, true),
-            'requiresPayment' => self::faker()->boolean(),
-            'slug' => self::faker()->unique()->slug(),
+            'heldOn' => \DateTimeImmutable::createFromMutable(self::faker()->dateTime()),
+            'season' => SeasonFactory::new(),
+            'title' => self::faker()->text(255),
         ];
     }
 
@@ -49,7 +49,7 @@ final class SeasonFactory extends PersistentObjectFactory
     protected function initialize(): static
     {
         return $this
-            // ->afterInstantiate(function(Season $season): void {})
+            // ->afterInstantiate(function(Tournament $tournament): void {})
         ;
     }
 }

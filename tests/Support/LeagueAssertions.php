@@ -6,11 +6,11 @@ namespace App\Tests\Support;
 
 use App\Entity\Season;
 use App\Entity\Tournament;
-use App\Factory\PlayerFactory;
-use App\Factory\SeasonRegistrationFactory;
-use App\Factory\TournamentFactory;
-use App\Factory\TournamentResultFactory;
-use App\Story\SeasonStory;
+use App\Tests\Factory\PlayerFactory;
+use App\Tests\Factory\SeasonRegistrationFactory;
+use App\Tests\Factory\TournamentFactory;
+use App\Tests\Factory\TournamentResultFactory;
+use App\Tests\Story\SeasonStory;
 
 /**
  * Assertions phrased in league terms rather than in factory criteria, so a

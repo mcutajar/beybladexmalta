@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
-use App\Factory\PlayerFactory;
-use App\Factory\TournamentFactory;
-use App\Factory\TournamentResultFactory;
-use App\Story\SeasonStory;
+use App\Tests\Factory\PlayerFactory;
+use App\Tests\Factory\TournamentFactory;
+use App\Tests\Factory\TournamentResultFactory;
+use App\Tests\Story\SeasonStory;
 use App\Tests\Support\AdminPageTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
