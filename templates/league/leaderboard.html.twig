@@ -7,7 +7,7 @@
     <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-6">Return to league framework</twig:BackLink>
 
     <twig:PageHeader
-        eyebrow="Live preview dashboard"
+        eyebrow="League standings"
         title="Malta Beyblade Community"
         highlight="{{ current_season.name }} standings"
     >
@@ -19,10 +19,15 @@
     <twig:Card>
 
         <div class="mb-6 flex flex-col items-center gap-5 border-b border-line/60 pb-6 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+            {#
+                The heading above already names the season, so this row carries
+                what it does not: how a total is arrived at.
+            #}
             <div>
-                <twig:Badge class="mb-3">🔥 {{ current_season.name }} standings simulation</twig:Badge>
-                <h2 class="text-2xl font-black uppercase tracking-tight text-ink md:text-3xl">{{ current_season.name }} leaderboard</h2>
-                <p class="mx-auto mt-1 max-w-md text-sm text-ink-muted sm:mx-0">Simulating points tracking to preview real ranking distributions.</p>
+                <h2 class="text-xl font-black uppercase tracking-tight text-ink md:text-2xl">How the points add up</h2>
+                <p class="mx-auto mt-1 max-w-md text-sm text-ink-muted sm:mx-0">
+                    Every qualifying tournament counts, but only each blader's best 14 results go towards the title.
+                </p>
             </div>
 
             <div class="whitespace-nowrap rounded-field border border-line bg-canvas px-5 py-2.5 uppercase tracking-wide shadow-inner">
