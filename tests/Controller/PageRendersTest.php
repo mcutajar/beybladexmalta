@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Controller;
 
 use App\Tests\Factory\PlayerFactory;
+use App\Tests\Factory\SeasonFactory;
 use App\Tests\Factory\TournamentFactory;
 use App\Tests\Factory\TournamentResultFactory;
 use App\Tests\Story\PaidRegistrationStory;
@@ -93,6 +94,19 @@ final class PageRendersTest extends PageTestCase
         ]);
 
         $this->assertPageRenders(sprintf('/season/paid-season/tournament/%d', $tournament->getId()));
+    }
+
+    /**
+     * `/preseason` and `/seasons/{slug}` are legacy aliases onto the same
+     * controllers. They are public URLs people have bookmarked, so they render
+     * through the same layout and are worth the two extra requests.
+     */
+    public function testTheLegacySeasonAliasesRender(): void
+    {
+        SeasonFactory::createOne(['name' => 'Preseason 1', 'slug' => 'preseason-1']);
+
+        $this->assertPageRenders('/preseason');
+        $this->assertPageRenders('/seasons/preseason-1');
     }
 
     #[WithStory(SeasonStory::class)]
