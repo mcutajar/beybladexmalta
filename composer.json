@@ -1,7 +1,7 @@
 {
     "name": "matthewc/bbxmalta",
     "type": "project",
-    "license": "MIT",
+    "license": "AGPL-3.0-or-later",
     "description": "A league ranking website mainly for the Beyblade x community in Malta",
     "minimum-stability": "stable",
     "prefer-stable": true,
