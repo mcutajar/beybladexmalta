@@ -9,7 +9,13 @@ services:
       - ./frankenphp/conf.d/20-app.dev.ini:/usr/local/etc/php/app.conf.d/20-app.dev.ini:ro
       - ./var:/app/var
     environment:
-      SERVER_NAME: ${SERVER_NAME:-localhost}
+      # Plain HTTP in dev. With a hostname here Caddy serves HTTPS from its own
+      # internal CA and 308s port 80 to a port-less `https://localhost` — which
+      # lands on whatever holds 443, with a certificate nothing trusts, because
+      # frankenphp/Caddyfile sets `skip_install_trust`. Browsers cache that 308
+      # permanently, so it outlives the fix. Production uses compose.yaml and is
+      # unaffected. Set SERVER_NAME in .env.local to opt back into HTTPS.
+      SERVER_NAME: ${SERVER_NAME:-:80}
       XDEBUG_MODE: "${XDEBUG_MODE:-coverage}"
       DATABASE_URL: ${DATABASE_URL}
       FRANKENPHP_WORKER_CONFIG: watch

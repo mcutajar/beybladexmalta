@@ -22,6 +22,7 @@
         "symfony/routing": "8.1.*",
         "symfony/runtime": "8.1.*",
         "symfony/twig-bundle": "8.1.*",
+        "symfony/ux-twig-component": "^3.4",
         "symfony/yaml": "8.1.*",
         "symfonycasts/tailwind-bundle": "^1.0.0"
     },

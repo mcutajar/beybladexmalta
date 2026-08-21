@@ -1,0 +1,34 @@
+{#
+    A card that is entirely a link out. The governance grid is three of these.
+
+    <twig:LinkCard href="…" eyebrow="Structure" title="Tournament organisation" tone="brand">
+        Bracket pairing configurations …
+    </twig:LinkCard>
+#}
+{% props href, title, eyebrow = null, tone = 'brand' %}
+
+{% set accents = {
+    brand:    {eyebrow: 'text-brand-strong', border: 'hover:border-brand-strong', icon: 'group-hover:text-brand', title: 'group-hover:text-brand-bright'},
+    flame:    {eyebrow: 'text-flame-strong', border: 'hover:border-flame-strong', icon: 'group-hover:text-flame', title: 'group-hover:text-flame-bright'},
+    heat:     {eyebrow: 'text-heat-strong',  border: 'hover:border-heat-strong',  icon: 'group-hover:text-heat',  title: 'group-hover:text-heat'},
+    positive: {eyebrow: 'text-positive-strong', border: 'hover:border-positive-strong', icon: 'group-hover:text-positive', title: 'group-hover:text-positive'},
+    info:     {eyebrow: 'text-info', border: 'hover:border-info', icon: 'group-hover:text-info', title: 'group-hover:text-info'},
+    neutral:  {eyebrow: 'text-ink-muted', border: 'hover:border-ink-ghost', icon: 'group-hover:text-ink', title: 'group-hover:text-ink'},
+} %}
+{% set accent = accents[tone] %}
+
+<a href="{{ href }}" target="_blank" rel="noopener noreferrer" {{ attributes.defaults({
+    class: 'group flex flex-col rounded-card border border-line bg-canvas p-5 transition-all duration-300 hover:-translate-y-1 hover:bg-surface ' ~ accent.border,
+}) }}>
+    <div class="mb-3 flex items-center justify-between">
+        {% if eyebrow %}
+            <span class="text-xs font-black uppercase tracking-widest {{ accent.eyebrow }}">{{ eyebrow }}</span>
+        {% endif %}
+        <svg class="h-4 w-4 text-ink-ghost transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1 {{ accent.icon }}"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+    </div>
+    <h3 class="mb-2 text-base font-bold text-ink transition-colors {{ accent.title }}">{{ title }}</h3>
+    <p class="mt-auto text-xs leading-relaxed text-ink-faint">{% block content %}{% endblock %}</p>
+</a>

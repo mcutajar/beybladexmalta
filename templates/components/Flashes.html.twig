@@ -1,0 +1,11 @@
+{#
+    Every flash the request left behind.
+
+    This markup used to exist only on the two admin templates, so a flash set
+    anywhere else was silently dropped. Any page can render it now.
+#}
+{% for label, messages in app.flashes %}
+    {% for message in messages %}
+        <twig:Alert tone="{{ this.toneFor(label) }}" class="mb-4">{{ message }}</twig:Alert>
+    {% endfor %}
+{% endfor %}

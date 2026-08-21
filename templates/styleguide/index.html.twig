@@ -1,0 +1,245 @@
+{#
+    The component gallery.
+
+    Every component in every variant, on one page, so a change to the design
+    system can be looked at rather than guessed at. Reachable at /_styleguide
+    in dev and test only — see config/routes/styleguide.yaml.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Design system | Malta Beyblade Community League{% endblock %}
+
+{% block body %}
+
+    <twig:PageHeader eyebrow="Internal" title="Design system" highlight="Components & tokens" size="md">
+        Every component in every variant. Not routed in production.
+    </twig:PageHeader>
+
+    {# Each section is anchored, so /_styleguide#data-table opens on it. #}
+    <nav class="mb-8 flex flex-wrap justify-center gap-2">
+        {% for anchor, label in {
+            'tokens': 'Tokens', 'radii': 'Radii', 'badge': 'Badge', 'button': 'Button',
+            'alert': 'Alert', 'card': 'Card', 'section-heading': 'Section heading',
+            'form-controls': 'Form controls', 'data-table': 'Data table',
+            'feature-tiles': 'Feature tiles', 'link-cards': 'Link cards',
+            'disclosure': 'Disclosure', 'empty-state': 'Empty state',
+        } %}
+            <a href="#{{ anchor }}" class="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink">{{ label }}</a>
+        {% endfor %}
+    </nav>
+
+    {% set swatches = [
+        {name: 'canvas', class: 'bg-canvas'},
+        {name: 'surface', class: 'bg-surface'},
+        {name: 'surface-raised', class: 'bg-surface-raised'},
+        {name: 'line', class: 'bg-line'},
+        {name: 'ink', class: 'bg-ink'},
+        {name: 'ink-bright', class: 'bg-ink-bright'},
+        {name: 'ink-strong', class: 'bg-ink-strong'},
+        {name: 'ink-body', class: 'bg-ink-body'},
+        {name: 'ink-muted', class: 'bg-ink-muted'},
+        {name: 'ink-faint', class: 'bg-ink-faint'},
+        {name: 'ink-ghost', class: 'bg-ink-ghost'},
+        {name: 'brand-bright', class: 'bg-brand-bright'},
+        {name: 'brand', class: 'bg-brand'},
+        {name: 'brand-strong', class: 'bg-brand-strong'},
+        {name: 'flame-bright', class: 'bg-flame-bright'},
+        {name: 'flame', class: 'bg-flame'},
+        {name: 'flame-strong', class: 'bg-flame-strong'},
+        {name: 'heat', class: 'bg-heat'},
+        {name: 'heat-strong', class: 'bg-heat-strong'},
+        {name: 'positive', class: 'bg-positive'},
+        {name: 'positive-strong', class: 'bg-positive-strong'},
+        {name: 'info', class: 'bg-info'},
+        {name: 'silver', class: 'bg-silver'},
+        {name: 'bronze', class: 'bg-bronze'},
+    ] %}
+    {# Loop variables are named away from the components' own props: a content
+       block renders in the child component's context, so `tone` inside a
+       <twig:Badge> would resolve to the badge's own tone, not the loop's. #}
+    {% set tones = ['brand', 'flame', 'positive', 'heat', 'info', 'neutral'] %}
+
+    <div class="space-y-8">
+
+        <twig:Card id="tokens">
+            <twig:SectionHeading title="Colour tokens" rule />
+            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
+                {% for swatch in swatches %}
+                    <div class="space-y-1.5">
+                        <div class="h-12 rounded-control border border-line {{ swatch.class }}"></div>
+                        <p class="font-mono text-[11px] text-ink-muted">{{ swatch.name }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </twig:Card>
+
+        <twig:Card id="radii">
+            <twig:SectionHeading title="Radii" rule />
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {% for radius in ['rounded-control', 'rounded-field', 'rounded-card', 'rounded-panel'] %}
+                    <div class="space-y-1.5">
+                        <div class="h-16 border border-line bg-surface-raised {{ radius }}"></div>
+                        <p class="font-mono text-[11px] text-ink-muted">{{ radius }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </twig:Card>
+
+        <twig:Card id="badge">
+            <twig:SectionHeading title="Badge" rule />
+            <div class="space-y-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    {% for toneName in tones %}
+                        <twig:Badge tone="{{ toneName }}">{{ toneName }}</twig:Badge>
+                    {% endfor %}
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    {% for toneName in tones %}
+                        <twig:Badge tone="{{ toneName }}" size="sm">{{ toneName }}</twig:Badge>
+                    {% endfor %}
+                </div>
+            </div>
+        </twig:Card>
+
+        <twig:Card id="button">
+            <twig:SectionHeading title="Button" rule />
+            <div class="space-y-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    {% for toneName in tones %}
+                        <twig:Button tone="{{ toneName }}" type="button">{{ toneName }}</twig:Button>
+                    {% endfor %}
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    {% for toneName in tones %}
+                        <twig:Button tone="{{ toneName }}" variant="gradient" type="button">{{ toneName }}</twig:Button>
+                    {% endfor %}
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <twig:Button href="#buttons">As a link</twig:Button>
+                    <twig:BackLink href="#buttons">BackLink</twig:BackLink>
+                </div>
+            </div>
+        </twig:Card>
+
+        <twig:Card id="alert">
+            <twig:SectionHeading title="Alert" rule />
+            <div class="space-y-3">
+                {% for toneName in tones %}
+                    <twig:Alert tone="{{ toneName }}">A {{ toneName }} notice. Flash messages render through this.</twig:Alert>
+                {% endfor %}
+            </div>
+        </twig:Card>
+
+        <twig:Card id="card">
+            <twig:SectionHeading title="Card" rule />
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {% for variantName in ['solid', 'gradient', 'glass'] %}
+                    {% for sizeName in ['sm', 'md', 'lg'] %}
+                        <twig:Card variant="{{ variantName }}" size="{{ sizeName }}">
+                            <p class="font-mono text-xs text-ink-muted">{{ variantName }} / {{ sizeName }}</p>
+                        </twig:Card>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </twig:Card>
+
+        <twig:Card id="section-heading">
+            <twig:SectionHeading title="Section heading" rule />
+            <div class="space-y-2">
+                <twig:SectionHeading title="Small, heat" tone="heat" size="sm" />
+                <twig:SectionHeading title="Medium, brand" size="md" />
+                <twig:SectionHeading title="Large, info, diamond" tone="info" size="lg" shape="diamond" />
+                <twig:SectionHeading title="Medium with a rule" size="md" rule />
+            </div>
+        </twig:Card>
+
+        <twig:Card id="form-controls">
+            <twig:SectionHeading title="Form controls" rule />
+            <form class="space-y-4" onsubmit="return false">
+                <twig:Field label="Text field" hint="A hint sits under the control.">
+                    <input type="text" class="field" placeholder="Enter blader name">
+                </twig:Field>
+                <twig:Field label="Select">
+                    <select class="field"><option>Season 1</option><option>Preseason 1</option></select>
+                </twig:Field>
+                <twig:Field label="Textarea">
+                    <textarea class="field font-mono" rows="3" placeholder="One name per line"></textarea>
+                </twig:Field>
+                <twig:Button type="button" class="w-full">Submit</twig:Button>
+            </form>
+        </twig:Card>
+
+        <twig:Card id="data-table">
+            <twig:SectionHeading title="Data table" rule />
+            <twig:DataTable>
+                <thead>
+                <tr>
+                    <th class="w-16 text-center">Rank</th>
+                    <th>Blader name</th>
+                    <th class="text-center">KO win</th>
+                    <th class="pr-4 text-right font-bold text-brand">Total</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in [
+                    {rank: 1, name: 'Derius', bonus: 10, total: 231},
+                    {rank: 2, name: 'Giglio', bonus: 10, total: 198},
+                    {rank: 3, name: 'Kemical', bonus: 0, total: 176},
+                    {rank: 4, name: 'Obelix', bonus: 0, total: 154},
+                ] %}
+                    <tr>
+                        <td class="text-center"><twig:RankMedal :rank="row.rank" /></td>
+                        <td class="font-bold text-ink">{{ row.name }}</td>
+                        <td class="text-center"><twig:BonusPoints :value="row.bonus" chip /></td>
+                        <td class="pr-4 text-right font-black text-ink">{{ row.total }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </twig:DataTable>
+        </twig:Card>
+
+        <twig:Card id="feature-tiles">
+            <twig:SectionHeading title="Feature tiles" rule />
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <twig:FeatureTile icon="🏎️" title="With an icon">The emoji is optional.</twig:FeatureTile>
+                <twig:FeatureTile title="Without one">Copy sits in the content block.</twig:FeatureTile>
+                <twig:FeatureTile icon="🏆" title="Third tile">Used in threes on the landing pages.</twig:FeatureTile>
+            </div>
+        </twig:Card>
+
+        <twig:Card id="link-cards">
+            <twig:SectionHeading title="Link cards" rule />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {% for toneName in ['brand', 'flame', 'heat'] %}
+                    <twig:LinkCard href="#link-cards" eyebrow="{{ toneName }}" title="A document" tone="{{ toneName }}">
+                        The whole card is the link.
+                    </twig:LinkCard>
+                {% endfor %}
+            </div>
+        </twig:Card>
+
+        <twig:Card id="disclosure">
+            <twig:SectionHeading title="Disclosure & points matrix" rule />
+            <div class="space-y-4">
+                <twig:Disclosure summary="With medals" icon="📊">
+                    <twig:PointsMatrix medals :awards="['25', '18', '15', '12', '10', '8', '6', '4', '2', '1']" />
+                </twig:Disclosure>
+                <twig:Disclosure summary="Without medals" icon="📊">
+                    <twig:PointsMatrix :awards="[
+                        '25 points', '20 points *', '15 points', '12 points', '10 points',
+                        '8 points', '6 points', '4 points', '2 points', '1 points',
+                    ]" />
+                </twig:Disclosure>
+            </div>
+        </twig:Card>
+
+        <twig:Card id="empty-state">
+            <twig:SectionHeading title="Empty state" rule />
+            <twig:EmptyState title="Ledger unpopulated">
+                Shown where a list would be when there is nothing to list.
+            </twig:EmptyState>
+        </twig:Card>
+
+    </div>
+
+{% endblock %}

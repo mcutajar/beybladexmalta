@@ -1,0 +1,15 @@
+{#
+    An emoji, a title and a sentence. Used in threes across the landing pages.
+
+    <twig:FeatureTile icon="🏎️" title="Points allocation">Calculated from …</twig:FeatureTile>
+#}
+{% props title, icon = null %}
+
+<div {{ attributes.defaults({
+    class: 'flex flex-col gap-3 rounded-field border border-line/40 bg-canvas/50 p-6 transition-colors hover:border-line',
+}) }}>
+    <h3 class="mb-1.5 text-base font-extrabold text-ink">
+        {% if icon %}<span class="text-3xl" aria-hidden="true">{{ icon }}</span> {% endif %}{{ title }}
+    </h3>
+    <p class="text-sm leading-relaxed text-ink-body">{% block content %}{% endblock %}</p>
+</div>

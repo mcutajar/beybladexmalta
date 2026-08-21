@@ -20,8 +20,6 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  */
 final class ImportTournamentType extends AbstractType
 {
-    private const string FIELD_CLASS = 'w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:border-cyan-500 outline-none';
-
     public function buildForm(
         FormBuilderInterface $builder,
         array $options,
@@ -29,13 +27,11 @@ final class ImportTournamentType extends AbstractType
         $builder->add('title', TextType::class, [
             'attr' => [
                 'placeholder' => 'e.g., Stage 1 Ranked',
-                'class' => self::FIELD_CLASS,
             ],
         ])
         ->add('date', TextType::class, [
             'attr' => [
                 'placeholder' => 'YYYY-MM-DD',
-                'class' => self::FIELD_CLASS,
             ],
         ])
         ->add('season', EntityType::class, [
@@ -43,22 +39,17 @@ final class ImportTournamentType extends AbstractType
             'choice_label' => 'name',
             'choice_value' => 'slug',
             'placeholder' => 'Select Season Context',
-            'attr' => [
-                'class' => self::FIELD_CLASS,
-            ],
         ])
         ->add('challongeUrl', UrlType::class, [
             'required' => false,
             'attr' => [
                 'placeholder' => 'Challonge Link (Optional)',
-                'class' => self::FIELD_CLASS,
             ],
         ])
         ->add('knockoutWinner', TextType::class, [
             'required' => false,
             'attr' => [
                 'placeholder' => 'Knockout Winner Name (Optional)',
-                'class' => self::FIELD_CLASS,
                 'autocomplete' => 'off',
             ],
         ])
@@ -66,13 +57,12 @@ final class ImportTournamentType extends AbstractType
             'attr' => [
                 'placeholder' => "Blader1\nBlader2\nBlader3\nBlader4\nBlader5\nBlader6\nBlader7\nBlader8\nBlader9\nBlader10",
                 'rows' => 11,
-                'class' => 'w-full font-mono '.self::FIELD_CLASS,
+                'class' => 'font-mono',
             ],
         ])
         ->add('passphrase', PasswordType::class, [
             'attr' => [
                 'placeholder' => 'Enter Admin Passphrase',
-                'class' => self::FIELD_CLASS,
             ],
         ]);
     }

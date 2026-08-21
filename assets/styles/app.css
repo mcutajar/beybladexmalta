@@ -1,1 +1,127 @@
 @import "tailwindcss";
+
+/*
+    Design tokens.
+
+    Every colour on the site is named for the job it does rather than for the
+    swatch it happens to be, so a repaint is a change here and nowhere else.
+    The values alias Tailwind's own scale, which keeps the current look exact
+    while giving the templates a vocabulary to use instead of `slate-800`.
+*/
+@theme {
+    /* Surfaces, from the page backdrop up to a raised row. */
+    --color-canvas: var(--color-slate-950);
+    --color-surface: var(--color-slate-900);
+    --color-surface-raised: var(--color-slate-800);
+    --color-line: var(--color-slate-800);
+
+    /* Text, brightest to faintest. */
+    --color-ink: var(--color-white);
+    --color-ink-bright: var(--color-slate-100);
+    --color-ink-strong: var(--color-slate-200);
+    --color-ink-body: var(--color-slate-300);
+    --color-ink-muted: var(--color-slate-400);
+    --color-ink-faint: var(--color-slate-500);
+    --color-ink-ghost: var(--color-slate-600);
+
+    /* Brand cyan: navigation, links, the primary call to action. */
+    --color-brand: var(--color-cyan-400);
+    --color-brand-strong: var(--color-cyan-500);
+    --color-brand-bright: var(--color-cyan-300);
+
+    /* Flame amber: the season, the leader, anything "live". */
+    --color-flame: var(--color-amber-400);
+    --color-flame-strong: var(--color-amber-500);
+    --color-flame-bright: var(--color-amber-300);
+
+    /* Heat red: the far end of the accent gradient. */
+    --color-heat: var(--color-red-400);
+    --color-heat-strong: var(--color-red-500);
+
+    /* Positive emerald: paid, bonus points, anything earned. */
+    --color-positive: var(--color-emerald-400);
+    --color-positive-strong: var(--color-emerald-500);
+
+    /* Governance blue, and the podium metals. */
+    --color-info: var(--color-blue-500);
+    --color-silver: var(--color-slate-300);
+    --color-bronze: var(--color-amber-700);
+
+    /* Corner radii, named for what they wrap. */
+    --radius-control: var(--radius-lg);
+    --radius-field: var(--radius-xl);
+    --radius-card: var(--radius-2xl);
+    --radius-panel: var(--radius-3xl);
+
+    /* The two glows the design leans on. */
+    --shadow-brand-glow: 0 0 20px --alpha(var(--color-cyan-500) / 20%);
+    --shadow-brand-dot: 0 0 10px --alpha(var(--color-cyan-500) / 50%);
+}
+
+/*
+    The league results table.
+
+    Three pages show the same table with different columns, so the shell is a
+    component (`<twig:DataTable>`) and the cell rhythm is applied by element
+    here. A row then carries only what makes it that row — alignment and
+    emphasis — instead of repeating the same six padding utilities.
+*/
+@layer components {
+    .data-table {
+        @apply w-full border-collapse text-left text-sm;
+    }
+
+    .data-table thead tr {
+        @apply border-b border-line bg-canvas/40 text-xs font-bold tracking-wider text-ink-muted uppercase;
+    }
+
+    .data-table tbody {
+        @apply divide-y divide-line/40 font-medium text-ink-body;
+    }
+
+    .data-table tbody tr {
+        @apply transition-colors hover:bg-surface-raised/30;
+    }
+
+    .data-table th,
+    .data-table td {
+        @apply px-3 py-4 sm:px-6;
+    }
+
+    /*
+       A link that is a cell's only content fills the cell, so the touch target
+       is the 50-ish pixels the row already occupies rather than the 17 pixels
+       of the text itself. Costs no layout: the padding is cancelled again by
+       the negative margin.
+    */
+    .data-table td > a:only-child {
+        @apply -my-4 block py-4;
+    }
+
+    /* Reference tables that are read rather than scanned sit tighter. */
+    .data-table.is-dense th,
+    .data-table.is-dense td {
+        @apply px-4 py-3 sm:px-6;
+    }
+}
+
+/*
+    Form controls.
+
+    Symfony's form theme in templates/form/theme.html.twig puts `.field` on
+    every widget, so a field looks the same on both admin pages and the form
+    types stay free of presentation.
+*/
+@layer components {
+    .field {
+        @apply w-full rounded-field border border-line bg-canvas px-4 py-3 text-base text-ink-bright transition-colors outline-none;
+    }
+
+    .field::placeholder {
+        @apply text-ink-ghost;
+    }
+
+    .field:focus {
+        @apply border-brand-strong;
+    }
+}

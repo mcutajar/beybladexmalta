@@ -1,82 +1,70 @@
-<!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ tournament.title }} | Standings</title>
-    <link rel="icon" type="image/x-icon" href="/assets/favicon.svg">
-    {% block stylesheets %}
-        {{ encore_entry_link_tags('app') }}
-        <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
-    {% endblock %}
-</head>
-<body class="min-h-full font-sans antialiased selection:bg-cyan-500 selection:text-slate-950">
+{% extends 'base.html.twig' %}
 
-<div class="h-2 bg-gradient-to-r from-amber-500 via-red-500 to-cyan-500"></div>
+{% block title %}{{ tournament.title }} | Standings{% endblock %}
 
-<main class="max-w-5xl mx-auto px-4 py-12 md:py-20">
+{% block accent_bar %}
+    <div class="h-2 bg-linear-to-r from-flame-strong via-heat-strong to-brand-strong"></div>
+{% endblock %}
 
-    <div class="mb-6 text-left">
-        <a href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 hover:text-white hover:border-slate-700 transition-colors">
-            ⬅ Return to {{ current_season.name }} Leaderboard
-        </a>
-    </div>
+{% block body %}
 
-    <header class="text-center mb-12 space-y-2">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20 tracking-wider uppercase">
-            Official Event Record
-        </span>
-        <h1 class="text-4xl font-black tracking-tight text-white uppercase">{{ tournament.title }}</h1>
-        <p class="text-slate-400 text-sm font-mono">Challonge url: <a href="{{ tournament.challongeUrl }}" target="_blank" class="text-cyan-400 hover:text-cyan-300 transition-colors">{{ tournament.challongeUrl }}</a></p>
-        <p class="text-slate-400 text-sm font-mono">Held on {{ tournament.heldOn|date('Y-m-d') }}</p>
-        <p class="text-slate-400 text-sm font-mono">{{ current_season.name }}</p>
-    </header>
+    <twig:BackLink href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}" class="mb-6">
+        Return to {{ current_season.name }} leaderboard
+    </twig:BackLink>
 
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-8 shadow-2xl w-full">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm border-collapse">
-                <thead>
-                <tr class="border-b border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-950/40">
-                    <th class="px-3 sm:px-6 py-4 text-center w-16">Rank</th>
-                    <th class="px-3 sm:px-6 py-4">Blader Name</th>
-                    <th class="px-3 sm:px-6 py-4 text-center">Base F1 Pts</th>
-                    <th class="px-3 sm:px-6 py-4 text-center">KO/Bonus Pts</th>
-                    <th class="px-3 sm:px-6 py-4 text-right text-cyan-400 font-bold pr-4">Total</th>
+    <twig:PageHeader
+        eyebrow="Official event record"
+        eyebrowTone="flame"
+        title="{{ tournament.title }}"
+        size="md"
+    >
+        <p class="font-mono">
+            Challonge url:
+            <a href="{{ tournament.challongeUrl }}" target="_blank" rel="noopener noreferrer"
+               class="text-brand transition-colors hover:text-brand-bright">{{ tournament.challongeUrl }}</a>
+        </p>
+        <p class="font-mono">Held on {{ tournament.heldOn|date('Y-m-d') }}</p>
+        <p class="font-mono">{{ current_season.name }}</p>
+    </twig:PageHeader>
+
+    <twig:Card>
+        <twig:DataTable>
+            <thead>
+            <tr>
+                <th class="w-16 text-center">Rank</th>
+                <th>Blader name</th>
+                <th class="text-center">Base F1 pts</th>
+                <th class="text-center">KO/bonus pts</th>
+                <th class="pr-4 text-right font-bold text-brand">Total</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in standings %}
+                <tr>
+                    <td class="text-center">
+                        <twig:RankMedal :rank="loop.index" />
+                    </td>
+                    <td>
+                        <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': row.player_id}) }}"
+                           class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
+                            {{ row.player_name }}
+                        </a>
+                    </td>
+                    <td class="text-center">{{ row.f1_points }}</td>
+                    <td class="text-center">
+                        <twig:BonusPoints :value="row.bonus_points" />
+                    </td>
+                    <td class="pr-4 text-right font-black text-ink">
+                        {{ row.total_points }} <span class="text-xs font-normal text-ink-faint">pts</span>
+                    </td>
                 </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800/40 text-slate-300 font-medium">
-                {% for row in standings %}
-                    <tr class="hover:bg-slate-800/30 transition-colors">
-                        <td class="px-3 sm:px-6 py-4 text-center font-bold text-slate-500 text-xs">
-                            {{ loop.index }}
-                        </td>
-                        <td class="px-3 sm:px-6 py-4">
-                            <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': row.player_id}) }}" class="text-white font-bold hover:text-cyan-400 transition-colors">
-                                {{ row.player_name }}
-                            </a>
-                        </td>
-                        <td class="px-3 sm:px-6 py-4 text-center text-slate-300">{{ row.f1_points }}</td>
-                        <td class="px-3 sm:px-6 py-4 text-center">
-                            {% if row.bonus_points > 0 %}
-                                <span class="text-emerald-400 font-extrabold text-xs">+{{ row.bonus_points }}</span>
-                            {% else %}
-                                <span class="text-slate-600">—</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-3 sm:px-6 py-4 text-right font-black text-white pr-4">{{ row.total_points }} <span class="text-xs font-normal text-slate-500">pts</span></td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="5" class="px-3 sm:px-6 py-12 text-center text-sm text-slate-500 italic">No match details recorded for this tournament.</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+            {% else %}
+                <tr>
+                    <td colspan="5" class="py-12 text-center text-sm italic text-ink-faint">No match details recorded for this tournament.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </twig:DataTable>
+    </twig:Card>
 
-    {{ include('_footer.html.twig') }}
-
-</main>
-</body>
-</html>
+{% endblock %}

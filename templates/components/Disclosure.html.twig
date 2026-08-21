@@ -1,0 +1,20 @@
+{#
+    A collapsed panel. <twig:Disclosure summary="View the matrix" icon="📊">…</twig:Disclosure>
+#}
+{% props summary, icon = null %}
+
+<details {{ attributes.defaults({
+    class: 'group cursor-pointer rounded-field border border-line/80 bg-canvas transition-all duration-200 open:ring-1 open:ring-brand-strong/30',
+}) }}>
+    <summary class="flex list-none select-none items-center justify-between rounded-field p-4 text-xs font-bold uppercase tracking-wider text-brand transition-colors hover:bg-surface/40 hover:text-brand-bright group-open:rounded-b-none group-open:border-b group-open:border-line sm:p-5">
+        <div class="flex items-center gap-2">
+            {% if icon %}<span aria-hidden="true">{{ icon }}</span>{% endif %}
+            <span>{{ summary }}</span>
+        </div>
+        <span class="text-xs text-ink-faint transition-transform duration-200 group-open:rotate-180" aria-hidden="true">&#9660;</span>
+    </summary>
+
+    <div class="rounded-b-field bg-canvas/40 p-6 sm:p-8">
+        {% block content %}{% endblock %}
+    </div>
+</details>

@@ -1,0 +1,11 @@
+{
+  "_comment": "Attaches the browser preview to the dev stack; it starts nothing itself, so run `make up` first. `port` and `url` must match the port this checkout publishes — 80 by default, or HTTP_PORT when .env.local overrides it, as a worktree sharing the machine has to. A stale value here does not fail loudly, it previews a different stack. Keep it http://: the dev stack serves plain HTTP, see compose.override.yaml.",
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "url": "http://localhost",
+      "port": 80
+    }
+  ]
+}

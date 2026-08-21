@@ -66,7 +66,8 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   default. Check with `docker ps` first; if something already holds them, put
   `HTTP_PORT`, `HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local` — the Makefile
   hands Compose `--env-file .env --env-file .env.local` — and every `make` target
-  then works unchanged.
+  then works unchanged. Point `.claude/launch.json` at the same `HTTP_PORT`; see
+  "Previewing in a browser" below.
 - That pair of flags is deliberate, and **a single `--env-file .env.local` is a
   trap**. Compose *replaces* the `.env` it would otherwise read with the file you
   name rather than layering on top of it, so a ports-only `.env.local` blanks out
@@ -93,6 +94,35 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   container to report healthy (`make ps`) before invoking any other target. If it
   does get into that state, `rm -rf vendor`, restore `composer.json`/`composer.lock`,
   and let a single `composer install` finish on its own.
+
+## Previewing in a browser
+
+The dev stack serves **plain HTTP** — `http://localhost` by default, or
+`http://localhost:$HTTP_PORT` when `.env.local` overrides the port.
+`compose.override.yaml` sets `SERVER_NAME=:80` to make that the default, and
+production is unaffected because it runs from `compose.yaml`.
+
+That default exists because the alternative bites hard. With a hostname in
+`SERVER_NAME`, Caddy serves HTTPS from an internal CA that nothing trusts
+(`frankenphp/Caddyfile` sets `skip_install_trust`) and 308s port 80 to a
+**port-less** `https://localhost` — so a worktree published on 8082 redirects to
+whatever holds 443, which on a machine running several stacks is a different
+app entirely. Browsers cache a 308 permanently, so the bad redirect outlives the
+fix: the symptom is `ERR_CERT_AUTHORITY_INVALID` on a URL you never typed, for
+one path while its siblings work. Shake it off with a throwaway query string
+(`?x=1`) or by clearing the browser's cache.
+
+`.claude/launch.json` registers the stack with the browser preview, which will
+not open a localhost origin it does not know about. Two things to know:
+
+- **Its `port` and `url` must match the port this checkout publishes.** A stale
+  value does not fail loudly — it previews a different worktree's app.
+- A localhost entry must be a bare origin. Paths and queries are rejected, so
+  open the page you want by navigating after the preview attaches.
+
+It attaches to a running stack rather than starting one, so `make up` first. If
+navigation starts failing with "denied or failed" after a container restart, the
+preview session has gone stale — attach again.
 
 ## Tests
 
@@ -152,6 +182,72 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
 - Artifact cleanup is centralised: the base cases delete everything `artifactPaths()`
   lists, before and after each test. A test that writes somewhere new overrides that
   method instead of writing its own `tearDown()`.
+
+## Mobile-first is not a preference
+
+**Most people reach this site on a phone.** The narrow layout is the design; the
+desktop one is the enhancement. This governs every UI change here.
+
+In practice that means the unprefixed Tailwind utility describes the *phone*, and
+`sm:` / `md:` / `lg:` only ever grow it — a breakpoint is never a patch for
+something authored at desktop width. Concretely:
+
+- Horizontal room at 375px is the scarcest resource on the site. Padding added to
+  a card is width taken from a table. The leaderboard is six columns on a phone
+  and is the first thing to break.
+- Type scales up, not down: a heading is sized for the phone and given `md:` to
+  grow. `text-4xl md:text-6xl`, never `text-6xl` with a `sm:` shrink.
+- Columns start at one. `grid-cols-1 sm:grid-cols-2` — never the reverse.
+- A column that is dropped on small screens uses `hidden sm:table-cell`, so the
+  phone gets the shorter table and the desktop the fuller one.
+- Do not set `maximum-scale` or `user-scalable=no` on the viewport meta. Pinch
+  zoom is how people read a dense table on a phone.
+
+**Check it before calling UI work done.** A 375px viewport, the leaderboard and
+whichever page you touched. `docs/MOBILE.md` records the measurements the current
+layout was verified against.
+
+## Design system
+
+There is no JavaScript framework here, and a design system does not need one.
+It is three things:
+
+1. **Tokens**, in `assets/styles/app.css`. A Tailwind v4 `@theme` block names every
+   colour, radius and glow after the job it does — `bg-surface`, `text-ink-muted`,
+   `rounded-card`, `shadow-brand-glow` — aliasing Tailwind's own scale underneath,
+   so the current look is exact and a repaint is a change in one file. Templates
+   use the token names; `slate-800` should not reappear in one.
+2. **`templates/base.html.twig`**, the one page shell. Every route extends it and
+   overrides `title`, `column`, `accent_bar`, `body_classes` or `html_classes` as
+   needed. No template declares `<!DOCTYPE>` any more.
+3. **Components**, in `templates/components/`, used as `<twig:Badge tone="flame">`
+   through `symfony/ux-twig-component`. `make console ARGS="debug:twig-component"`
+   lists them.
+
+A component gets a PHP class in `src/Twig/Components/` when it has a variant
+vocabulary worth typing or something to derive — `Badge`, `Card`, `Button`,
+`Alert`, `RankMedal`, `BonusPoints`, `PointsMatrix`, `Flashes`. It is an
+anonymous template with `{% props %}` when it is only markup — `PageHeader`,
+`DataTable`, `Field`, `LinkCard`, `FeatureTile`, `Disclosure`, `EmptyState`,
+`SectionHeading`, `BackLink`.
+
+**Tailwind class strings belong in the component's template, never in its PHP
+class.** Tailwind scans `templates/` and not `src/`, so a class named in PHP is
+never compiled — it only appears to work while some template happens to use the
+same utility. The PHP class names the variant; the template maps the variant to
+classes. Form field styling used to break this rule and is now `.field`, applied
+by the form theme in `templates/form/theme.html.twig`, so the form types in
+`src/Form/` carry no presentation at all.
+
+**Component props are plain strings, not HTML.** `title="Points &amp; standings"`
+renders a literal `&amp;`, because Twig escapes the value again on output. Write
+the character. Entities are only correct inside a component's *content*, which is
+markup: `<twig:Button>Verify &amp; process</twig:Button>` is right.
+
+`/_styleguide` renders every component in every variant. It is registered in dev
+and test only, through `config/routes/styleguide.yaml`, and has no controller
+because it shows no data. `PageRendersTest` requests it, so a component that
+breaks fails the suite rather than a page.
 
 ## Conventions
 
@@ -216,6 +312,20 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   and the base cases clear every artifact before and after each test, against the real
   project directory rather than a sandbox. Running `make phpunit` therefore discards
   whatever the last seed or admin action wrote there.
+- Inside a component's content, **`this` and the component's own props are
+  rebound to that component**. `{% for tone in tones %}<twig:Badge tone="{{ tone }}">{{ tone }}</twig:Badge>`
+  prints the badge's tone enum, not the loop's string, and `this.rows` inside a
+  nested `<twig:DataTable>` resolves against the table. Resolve what you need
+  before opening the child, and name loop variables away from the child's props.
+- A component's root element **cannot be another component with `attributes`
+  forwarded into it** — `<twig:Card {{ attributes }}>` is a parse error — and
+  nesting one defines `content` twice unless the outer component's own content is
+  captured into a variable first. `templates/components/EmptyState.html.twig`
+  shows both workarounds.
+- Renaming or adding a component sometimes needs a **container restart**, not just
+  `make console ARGS="cache:clear --env=dev"`: FrankenPHP runs in worker mode and
+  holds compiled Twig templates in memory, so a stale error will keep pointing at
+  a line number that no longer exists.
 - PHPStan runs at **level 6** with the Symfony, Doctrine and PHPUnit extensions,
   and there is **no baseline** — the analysis is clean, so keep it that way
   rather than adding one. `phpstan.dist.neon` points the Symfony extension at the

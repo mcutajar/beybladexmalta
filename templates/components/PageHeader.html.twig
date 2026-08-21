@@ -1,0 +1,46 @@
+{#
+    The centred block every page opens with: an eyebrow badge, a title whose
+    second line is tinted, and an optional lede passed as content.
+
+    <twig:PageHeader eyebrow="Live preview" title="Malta Community Beyblade"
+                     highlight="{{ season.name }} standings" highlightTone="flame">
+        For <strong>the players</strong>
+    </twig:PageHeader>
+#}
+{% props
+    title,
+    eyebrow = null,
+    eyebrowTone = 'brand',
+    highlight = null,
+    highlightTone = 'flame',
+    size = 'lg',
+%}
+
+{% set gradients = {
+    brand: 'from-brand to-info',
+    flame: 'from-flame to-heat-strong',
+} %}
+{# Sized for the phone, grown with md:. Never the reverse. #}
+{% set scales = {
+    sm: 'text-2xl md:text-3xl',
+    md: 'text-3xl md:text-4xl',
+    lg: 'text-4xl md:text-6xl',
+} %}
+
+<header {{ attributes.defaults({class: 'mb-12 space-y-3 text-center'}) }}>
+    {% if eyebrow %}
+        <twig:Badge tone="{{ eyebrowTone }}">{{ eyebrow }}</twig:Badge>
+    {% endif %}
+
+    <h1 class="font-black uppercase tracking-tight text-ink {{ scales[size] }}">
+        {{ title }}
+        {% if highlight %}
+            <br class="hidden sm:inline">
+            <span class="bg-linear-to-r bg-clip-text text-transparent {{ gradients[highlightTone] }}">{{ highlight }}</span>
+        {% endif %}
+    </h1>
+
+    {% if block('content') is not empty %}
+        <div class="mx-auto max-w-xl text-sm text-ink-muted">{{ block('content') }}</div>
+    {% endif %}
+</header>

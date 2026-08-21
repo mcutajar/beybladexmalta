@@ -1,0 +1,21 @@
+{#
+    <twig:Card variant="gradient" size="lg" class="md:col-span-2">…</twig:Card>
+
+    Layout is the caller's business, so grid spans and flex rules come in
+    through `class` and merge with the defaults below.
+#}
+{% set surfaces = {
+    solid:    'bg-surface border-line shadow-xl',
+    gradient: 'bg-linear-to-b from-surface to-canvas border-line/80 shadow-2xl',
+    glass:    'bg-surface/80 backdrop-blur-sm border-line shadow-2xl',
+} %}
+{# Padding grows with the viewport. On a phone every 8px here is 8px taken
+   from the table or form inside, so the narrow case is the tight one. #}
+{% set scales = {
+    sm: 'rounded-card p-4 sm:p-6',
+    md: 'rounded-card p-4 sm:p-8',
+    lg: 'rounded-panel p-5 sm:p-8 md:p-12',
+} %}
+<div {{ attributes.defaults({
+    class: 'border ' ~ surfaces[variant.value] ~ ' ' ~ scales[size.value],
+}) }}>{% block content %}{% endblock %}</div>

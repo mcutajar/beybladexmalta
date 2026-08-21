@@ -1,0 +1,12 @@
+{# <twig:Alert tone="positive">Payment recorded.</twig:Alert> #}
+{% set tints = {
+    brand:    'bg-brand-strong/10 text-brand border-brand-strong/20',
+    flame:    'bg-flame-strong/10 text-flame border-flame-strong/20',
+    positive: 'bg-positive-strong/10 text-positive border-positive-strong/20',
+    heat:     'bg-heat-strong/10 text-heat border-heat-strong/20',
+    info:     'bg-info/10 text-info border-info/20',
+    neutral:  'bg-surface-raised/40 text-ink-muted border-line',
+} %}
+<div {{ attributes.defaults({
+    class: 'rounded-field border p-4 text-sm font-bold ' ~ tints[tone.value],
+}) }}>{% block content %}{% endblock %}</div>

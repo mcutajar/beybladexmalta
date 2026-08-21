@@ -1,0 +1,37 @@
+{#
+    <twig:PointsMatrix :awards="['25 points', '20 points *', '15 points', …]" />
+#}
+{# `this` is rebound inside a nested component's content, so the rows are
+   resolved here, before <twig:DataTable> takes over the context. #}
+{% set rows = this.rows %}
+{% set emphases = {
+    gold:   {place: 'font-bold text-ink', award: 'text-base font-black text-flame', row: 'bg-flame-strong/5'},
+    silver: {place: '', award: 'font-bold text-ink-strong', row: 'bg-silver/5'},
+    bronze: {place: '', award: 'font-bold text-bronze', row: 'bg-bronze/5'},
+    last:   {place: '', award: 'font-bold text-brand', row: ''},
+    plain:  {place: '', award: '', row: ''},
+} %}
+
+<div {{ attributes.defaults({class: 'mx-auto max-w-xl overflow-hidden rounded-field border border-line/80 bg-surface/60 shadow-2xl'}) }}>
+    <div class="border-b border-line/60 bg-surface px-6 py-4">
+        <h4 class="text-sm font-bold tracking-wide text-ink">F1 points system overview</h4>
+        <p class="mt-1 text-xs text-ink-muted">Point breakdown structure per tournament finishing placement:</p>
+    </div>
+
+    <twig:DataTable dense>
+        <thead>
+        <tr>
+            <th>Position</th>
+            <th class="text-right">Championship points</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr class="{{ medals ? emphases[row.emphasis].row }}">
+                <td class="{{ emphases[row.emphasis].place }}">{{ row.place }}</td>
+                <td class="text-right {{ emphases[row.emphasis].award }}">{{ row.award }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </twig:DataTable>
+</div>

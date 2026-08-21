@@ -1,0 +1,16 @@
+{#
+    A form row: label, the widget as content, and an optional hint.
+
+    <twig:Field label="Blader name" hint="Unknown names are created.">
+        {{ form_widget(form.playerName) }}
+    </twig:Field>
+#}
+{% props label, hint = null %}
+
+<div {{ attributes.defaults({class: 'space-y-2'}) }}>
+    <label class="block text-xs font-bold uppercase tracking-wider text-ink-muted">{{ label }}</label>
+    {% block content %}{% endblock %}
+    {% if hint %}
+        <p class="text-[11px] italic text-ink-faint">{{ hint }}</p>
+    {% endif %}
+</div>
