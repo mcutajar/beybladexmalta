@@ -78,3 +78,20 @@ For a deeper architecture overview, domain model summary, and refactor/security 
 
 - The test suite covers the payment and tournament import workflows; run it with `make phpunit`.
 - Import and payment history are currently logged to `var/log/command_ledger.sh`.
+
+## License
+
+Copyright (C) 2026 Matthew Cutajar
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version. See [LICENSE](LICENSE) for the full text.
+
+In short: you are welcome to read this code, learn from it, and run your own
+league on it. If you modify it and make it available to anyone over a network,
+the AGPL requires you to offer them your modified source under the same terms.
+
+If you want to use it on terms the AGPL does not grant — a closed-source
+derivative, or a commercial service without publishing your changes — open an
+issue and get in touch. Separate licensing can be arranged.
