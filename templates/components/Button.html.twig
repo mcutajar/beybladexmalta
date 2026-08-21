@@ -1,0 +1,28 @@
+{#
+    <twig:Button class="w-full">Verify &amp; process</twig:Button>
+    <twig:Button tone="flame" variant="gradient" href="{{ path('season_leaderboard') }}">Open</twig:Button>
+#}
+{% set solid = {
+    brand:    'bg-brand-strong text-canvas hover:bg-brand shadow-brand-glow',
+    flame:    'bg-flame-strong text-canvas hover:bg-flame shadow-lg shadow-flame-strong/25',
+    positive: 'bg-positive-strong text-canvas hover:bg-positive',
+    heat:     'bg-heat-strong text-canvas hover:bg-heat',
+    info:     'bg-info text-ink hover:brightness-110',
+    neutral:  'border border-line bg-surface text-ink hover:border-ink-ghost',
+} %}
+{% set gradient = {
+    brand:    'bg-linear-to-r from-brand-strong to-info text-canvas hover:brightness-110 shadow-lg shadow-brand-strong/10',
+    flame:    'bg-linear-to-r from-flame-strong to-heat-strong text-canvas hover:brightness-110 shadow-lg shadow-heat-strong/10',
+    positive: 'bg-linear-to-r from-positive-strong to-brand-strong text-canvas hover:brightness-110',
+    heat:     'bg-linear-to-r from-heat-strong to-flame-strong text-canvas hover:brightness-110',
+    info:     'bg-linear-to-r from-info to-brand-strong text-canvas hover:brightness-110',
+    neutral:  'bg-linear-to-r from-surface to-canvas text-ink hover:brightness-110',
+} %}
+{% set fills = variant.value == 'gradient' ? gradient : solid %}
+{% set shape = 'inline-flex cursor-pointer items-center justify-center gap-2 rounded-field px-5 py-3 text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] ' ~ fills[tone.value] %}
+
+{% if href %}
+    <a href="{{ href }}" {{ attributes.defaults({class: shape}) }}>{% block content %}{% endblock %}</a>
+{% else %}
+    <button type="{{ type }}" {{ attributes.defaults({class: shape}) }}>{{ block('content') }}</button>
+{% endif %}

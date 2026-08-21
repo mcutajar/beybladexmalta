@@ -1,0 +1,21 @@
+{#
+    Eyebrow pill / inline tag.
+
+    <twig:Badge tone="flame">Championship active</twig:Badge>
+#}
+{% set tints = {
+    brand:    'bg-brand-strong/10 text-brand ring-brand-strong/20',
+    flame:    'bg-flame-strong/10 text-flame ring-flame-strong/20',
+    positive: 'bg-positive-strong/10 text-positive ring-positive-strong/20',
+    heat:     'bg-heat-strong/10 text-heat ring-heat-strong/20',
+    info:     'bg-info/10 text-info ring-info/20',
+    neutral:  'bg-surface-raised/40 text-ink-muted ring-line',
+} %}
+{% set scales = {
+    sm: 'gap-1 rounded px-2 py-0.5 text-[10px] font-extrabold',
+    md: 'gap-1.5 rounded-full px-3 py-1 text-xs font-semibold',
+} %}
+<span {{ attributes.defaults({
+    class: 'inline-flex items-center uppercase tracking-wider ring-1 ring-inset '
+        ~ tints[tone.value] ~ ' ' ~ scales[size.value],
+}) }}>{% block content %}{% endblock %}</span>

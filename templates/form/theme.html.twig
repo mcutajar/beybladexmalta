@@ -1,0 +1,31 @@
+{#
+    Form theme.
+
+    Field styling used to be a Tailwind class string held in a PHP constant in
+    src/Form/. Tailwind only scans templates/, so those classes compiled only
+    by coincidence — whichever ones a template happened to use elsewhere — and
+    the focus border, which no template used, never compiled at all.
+    RegisterPaymentType set no classes, so that form's inputs were unstyled.
+
+    (Naming a class in this comment would be enough to compile it: the scanner
+    reads any text it finds, not just attributes.)
+
+    Every control now gets `.field`, which is defined in assets/styles/app.css
+    where Tailwind can see it.
+#}
+{% use 'form_div_layout.html.twig' %}
+
+{% block form_widget_simple %}
+    {% set attr = attr|merge({class: ('field ' ~ attr.class|default(''))|trim}) %}
+    {{ parent() }}
+{% endblock %}
+
+{% block textarea_widget %}
+    {% set attr = attr|merge({class: ('field ' ~ attr.class|default(''))|trim}) %}
+    {{ parent() }}
+{% endblock %}
+
+{% block choice_widget_collapsed %}
+    {% set attr = attr|merge({class: ('field ' ~ attr.class|default(''))|trim}) %}
+    {{ parent() }}
+{% endblock %}

@@ -1,0 +1,11 @@
+{# <twig:RankMedal :rank="player.rank" /> #}
+{% set metals = {
+    gold:   'bg-flame text-canvas shadow-md shadow-flame/20',
+    silver: 'bg-silver text-canvas',
+    bronze: 'bg-bronze text-ink',
+} %}
+{% if this.isPodium %}
+    <span class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-black {{ metals[this.metal] }}">{{ rank }}</span>
+{% else %}
+    <span class="text-xs font-bold text-ink-faint">{{ rank }}</span>
+{% endif %}

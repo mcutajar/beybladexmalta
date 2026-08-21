@@ -1,0 +1,32 @@
+{#
+    A heading inside a card, marked by a coloured shape.
+
+    <twig:SectionHeading title="Points & standings" size="md" rule />
+#}
+{% props title, tone = 'brand', size = 'md', shape = 'dot', rule = false %}
+
+{% set marks = {
+    brand:    'bg-brand-strong shadow-brand-dot',
+    flame:    'bg-flame-strong',
+    positive: 'bg-positive-strong',
+    heat:     'bg-heat-strong',
+    info:     'bg-info',
+    neutral:  'bg-ink-ghost',
+} %}
+{% set scales = {
+    sm: 'text-lg font-bold',
+    md: 'text-2xl font-black',
+    lg: 'text-xl font-black uppercase tracking-wide md:text-2xl',
+} %}
+{% set markScales = {
+    sm: 'h-2 w-2',
+    md: 'h-3 w-3',
+    lg: 'h-3 w-3',
+} %}
+
+<h2 {{ attributes.defaults({
+    class: 'flex items-center gap-2.5 text-ink ' ~ scales[size] ~ (rule ? ' mb-8 border-b border-line/60 pb-2' : ' mb-4'),
+}) }}>
+    <span class="shrink-0 {{ markScales[size] }} {{ marks[tone] }} {{ shape == 'diamond' ? 'rotate-45 rounded-sm' : 'rounded-full' }}" aria-hidden="true"></span>
+    {{ title }}
+</h2>

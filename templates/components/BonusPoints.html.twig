@@ -1,0 +1,10 @@
+{# <twig:BonusPoints :value="player.total_bonus" chip /> #}
+{% if value > 0 %}
+    {% if chip %}
+        <twig:Badge tone="positive" size="sm">+{{ value }}</twig:Badge>
+    {% else %}
+        <span class="text-xs font-extrabold text-positive">+{{ value }}</span>
+    {% endif %}
+{% else %}
+    <span class="text-xs text-ink-ghost">&mdash;</span>
+{% endif %}

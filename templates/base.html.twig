@@ -1,0 +1,36 @@
+{#
+    The one page shell.
+
+    Every route renders through this: the accent bar, the centred column and
+    the footer are here once rather than in each template. A page that needs a
+    different column width or a different accent overrides the block instead
+    of restating the whole document.
+#}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-canvas text-ink-bright {% block html_classes %}{% endblock %}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Malta Beyblade Community League{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+
+    {% block stylesheets %}
+        <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+    {% endblock %}
+</head>
+<body class="min-h-full font-sans antialiased selection:bg-brand-strong selection:text-canvas {% block body_classes %}{% endblock %}">
+
+{% block accent_bar %}
+    <div class="h-2 bg-linear-to-r from-brand-strong via-flame-strong to-heat-strong"></div>
+{% endblock %}
+
+<main class="mx-auto w-full {% block column %}max-w-5xl px-3 py-12 sm:px-4 md:py-20{% endblock %}">
+
+    {% block body %}{% endblock %}
+
+    {{ include('_footer.html.twig') }}
+
+</main>
+
+</body>
+</html>

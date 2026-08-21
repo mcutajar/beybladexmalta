@@ -1,0 +1,47 @@
+{#
+    The rulesets grid, shared by every landing page. The three documents are
+    the league's actual governance, so they are stated once.
+#}
+<twig:Card variant="glass" size="lg" class="mb-12 md:mb-16">
+    <div class="mb-8 text-center sm:text-left">
+        <twig:SectionHeading
+            title="Official rulesets & governance"
+            tone="info"
+            size="lg"
+            shape="diamond"
+            class="justify-center sm:justify-start"
+        />
+        <p class="max-w-2xl text-sm leading-relaxed text-ink-muted">
+            Review the official framework requirements linked below to ensure full competitive compliance before entering.
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <twig:LinkCard
+            href="https://docs.google.com/document/d/1gDJ8HwERcYUK9SaMfJs6GMkSc_OFfl6D1pR_3Amqv3k/edit?tab=t.0#heading=h.kzgypszfov7"
+            eyebrow="Structure"
+            title="Tournament organisation"
+            tone="brand"
+        >
+            Bracket pairing configurations, check-ins, and schedule compliance.
+        </twig:LinkCard>
+
+        <twig:LinkCard
+            href="https://worldbeyblade.org/Thread-Beyblade-X-Rules"
+            eyebrow="Gameplay"
+            title="Match & game rules"
+            tone="flame"
+        >
+            Standard WBO launch rules, battle finish points, and valid gear interactions.
+        </twig:LinkCard>
+
+        <twig:LinkCard
+            href="https://docs.google.com/document/d/1JeA-SBWd5BJSq3NSVcKrTHfy1vogIpWLBlUUDb6gAKs/edit?tab=t.0#heading=h.p2wfoud5z957"
+            eyebrow="Judging"
+            title="Judge regulations"
+            tone="heat"
+        >
+            Protocols for resolving ties, penalties, anomalies, and ruling protests.
+        </twig:LinkCard>
+    </div>
+</twig:Card>

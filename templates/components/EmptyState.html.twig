@@ -1,0 +1,14 @@
+{#
+    Shown where a list would be. <twig:EmptyState icon="📋" title="Ledger empty">…</twig:EmptyState>
+#}
+{% props title, icon = '📋' %}
+
+{# <twig:Card> opens its own `content` block, so this one is captured first
+   rather than nested inside it. #}
+{% set copy %}{% block content %}{% endblock %}{% endset %}
+
+<twig:Card variant="gradient" class="mx-auto max-w-md text-center">
+    <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-field border border-line bg-canvas text-xl" aria-hidden="true">{{ icon }}</div>
+    <h3 class="text-sm font-black uppercase tracking-wider text-ink">{{ title }}</h3>
+    <p class="mt-2 text-xs italic leading-relaxed text-ink-faint">{{ copy }}</p>
+</twig:Card>

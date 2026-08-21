@@ -26,6 +26,27 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Auto-creates players when a payer is not already present.
   - Marks season registrations as paid and writes a ledger entry.
 
+### Presentation layer
+
+- `assets/styles/app.css`
+  - Tailwind v4 `@theme` block naming every colour, radius and glow after the job
+    it does (`surface`, `ink-muted`, `brand`, `radius-card`) rather than the swatch.
+  - `.data-table` and `.field` component rules, so table cells and form controls
+    keep one rhythm across pages.
+
+- `templates/base.html.twig`
+  - The single page shell: head, accent bar, centred column, footer. Every route
+    extends it; no template declares its own document.
+
+- `templates/components/` and `src/Twig/Components/`
+  - Twig components (`symfony/ux-twig-component`) for the recurring pieces:
+    badges, cards, buttons, alerts, the results table shell, form fields, the
+    landing pages' link cards and points matrix.
+  - `/_styleguide` renders all of them in every variant, in dev and test only.
+
+- `templates/form/theme.html.twig`
+  - Puts `.field` on every widget so form types hold no presentation.
+
 ### CLI support
 
 - `src/Command/ImportTournamentCommand.php`
