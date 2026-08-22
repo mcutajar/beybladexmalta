@@ -11,7 +11,8 @@ A Symfony 8.1 application for managing Malta Beyblade league rankings, tournamen
 - Custom SQL-based leaderboard aggregation in repository classes
 - Admin import and registration workflows implemented via web forms and CLI commands
 - FrankenPHP / Caddy-based Docker runtime for production-like deployments
-- Tailwind CSS assets built through `symfonycasts/tailwind-bundle`
+- Tailwind CSS assets built through `symfonycasts/tailwind-bundle`, with design
+  tokens and a Twig component library under `templates/components/`
 
 ## Runtime
 
@@ -23,15 +24,38 @@ The application runs inside Docker using the following services:
 
 Startup commands:
 
-- Production: `docker compose --env-file .env --env-file .env.local -f compose.yaml up -d --build`
-- Development: `docker compose --env-file .env --env-file .env.local -f compose.override.yaml up -d --build`
+- Production: `make deploy`
+- Development: `make setup` (see [Local development](#local-development) for where
+  to run it)
 
-Both env files are named on purpose: a `--env-file` replaces the `.env` Compose
-would otherwise read, so passing only `.env.local` blanks out every variable the
-committed `.env` defines. Repeated flags layer, with the later file winning. The
-`Makefile` does the same thing for every `make` target.
+Both wrap `docker compose` with `--env-file .env --env-file .env.local` and the
+right Compose file. Naming both env files is deliberate: a `--env-file` replaces
+the `.env` Compose would otherwise read, so passing only `.env.local` blanks out
+every variable the committed `.env` defines. Repeated flags layer, with the later
+file winning.
+
+`make deploy` builds the production image, recreates the container and then checks
+that the deploy actually landed — that the kernel boots, and that the compiled
+cache is newer than the code it shipped. Both failures have happened, and neither
+takes the site down in a way that is obvious from the outside.
 
 ## Local development
+
+**Run the dev stack from a git worktree, not the checkout that runs production.**
+Compose derives a project name from the directory, so a dev stack started in the
+production checkout is not a second stack — it replaces the live container. `make
+up`, `down` and `build` refuse when they find a production container, but the habit
+is what keeps you out of trouble:
+
+```
+git worktree add .claude/worktrees/<name> -b <branch>
+cd .claude/worktrees/<name>
+make setup
+```
+
+A worktree gets its own Compose project, network and volumes automatically. Only
+the published ports are shared, so if 80, 443 or 15432 are taken, set `HTTP_PORT`,
+`HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local`.
 
 All tooling runs inside the container; PHP and Composer are not needed on the host.
 The `Makefile` wraps `docker compose exec` for each tool, and `make help` lists
@@ -74,7 +98,12 @@ These values should be set in a local environment file, and the app should be ha
 
 ## Documentation
 
-For a deeper architecture overview, domain model summary, and refactor/security recommendations, see `docs/ARCHITECTURE.md`.
+- `AGENTS.md` — working conventions: where to run the stack, deploying, the
+  design system, and the container gotchas that are easy to lose an hour to.
+- `docs/ARCHITECTURE.md` — architecture overview, domain model, and
+  refactor/security recommendations.
+- `docs/MOBILE.md` — the mobile-first rule and the measurements the current
+  layout was verified against.
 
 ## Notes
 
