@@ -9,7 +9,16 @@ services:
       SERVER_NAME: ${SERVER_NAME:-localhost}
       CADDY_SERVER_LOG_OPTIONS: "output discard"
     volumes:
-      - /app/var
+      # No mount over /app/var. The image ships a warmed cache there (see the
+      # Dockerfile's second COPY of /app/var), and anything mounted on top
+      # hides it. A volume here survives image rebuilds, so Symfony -- which
+      # never revalidates a compiled container, routes or Twig in prod -- goes
+      # on serving whatever was compiled the first time the volume was created.
+      # That is what kept a month of deploys from reaching the live site.
+      #
+      # Only the two directories the app writes to at runtime are mounted, and
+      # both are named explicitly: LedgerService appends to var/log, and
+      # ImportFileWriter writes var/data/imports.
       - ./var/log:/app/var/log
       - ./var/data:/app/var/data
 

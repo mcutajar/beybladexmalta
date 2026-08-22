@@ -44,7 +44,7 @@ ARGS ?=
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
 	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
-	dev-stack-only
+	dev-stack-only deploy verify-deploy prod-logs not-production
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -54,13 +54,13 @@ help: ## List the available targets
 
 setup: up wait-healthy tailwind seed-if-empty ## Bootstrap a fresh clone: stack, stylesheet, database
 
-up: ## Start the dev stack in the background
+up: not-production ## Start the dev stack in the background
 	$(DC) up -d --build
 
-down: ## Stop the dev stack
+down: not-production ## Stop the dev stack
 	$(DC) down
 
-build: ## Rebuild the dev image
+build: not-production ## Rebuild the dev image
 	$(DC) build
 
 restart: down up ## Restart the dev stack
@@ -213,6 +213,34 @@ seed-if-empty:
 		}; \
 	fi
 
+# Compose keys a project on the *directory name*, so a dev stack and a
+# production stack started from the same checkout are the same project: `make
+# up` there does not run alongside production, it recreates production's
+# container with dev config -- and the Cloudflare tunnel goes on pointing at it,
+# so the live domain starts serving the dev app.
+#
+# A worktree has its own directory, therefore its own project, and cannot
+# collide. That is why local work belongs in one.
+#
+# The tell is structural rather than a naming convention: the dev override
+# bind-mounts the working copy at /app, and the production image has no such
+# mount.
+not-production:
+	@cid=$$($(DC) ps -q $(SERVICE) 2>/dev/null); \
+	if [ -n "$$cid" ] && ! docker inspect "$$cid" \
+		--format '{{range .Mounts}}{{println .Destination}}{{end}}' \
+		2>/dev/null | grep -qx '/app'; then \
+		echo 'A production container is running in this directory.'; \
+		echo; \
+		echo 'The dev stack shares its Compose project, so this would replace the'; \
+		echo 'live site rather than start something beside it.'; \
+		echo; \
+		echo 'Do local work in a git worktree:'; \
+		echo '  git worktree add .claude/worktrees/<name> -b <branch>'; \
+		echo 'See AGENTS.md, "Where to run the dev stack".'; \
+		exit 1; \
+	fi
+
 # Every target is scoped to the dev Compose file, and a production stack is a
 # different Compose project started from compose.yaml. Refuse outright rather
 # than drop the tables of whatever COMPOSE_FILE has been pointed at.
@@ -223,3 +251,56 @@ dev-stack-only:
 		   echo 'The database targets are for the dev stack only.'; \
 		   exit 1;; \
 	esac
+
+## --- Deploy ----------------------------------------------------------------
+
+# Production is a separate Compose project built from compose.yaml alone.
+# Plain "docker compose" in this checkout also reads compose.override.yaml,
+# which builds the *dev* target and bind-mounts the working copy over /app --
+# so every production command names its file explicitly. Getting this wrong
+# during an incident is how a rebuild silently produced a dev image.
+PROD_COMPOSE_FILE ?= compose.yaml
+DC_PROD := docker compose $(ENV_FILES) -f $(PROD_COMPOSE_FILE)
+
+deploy: ## Rebuild and restart production, then prove it is serving this code
+	$(DC_PROD) up -d --build --force-recreate $(SERVICE)
+	@$(MAKE) --no-print-directory wait-healthy COMPOSE_FILE=$(PROD_COMPOSE_FILE)
+	@$(MAKE) --no-print-directory verify-deploy
+
+prod-logs: ## Tail the production container's logs
+	$(DC_PROD) logs -f --tail=100 $(SERVICE)
+
+# Two things a deploy can get wrong without the site going down, both of which
+# have happened:
+#
+#   1. The image ships a package the code needs but composer never installed,
+#      so the kernel cannot boot. A stale cache can hide this until something
+#      forces a rebuild, at which point the site 502s.
+#   2. A compiled cache outlives the code it was compiled from. Symfony never
+#      revalidates the container, routes or Twig in prod, so the site keeps
+#      serving an older build and every release looks like a no-op.
+#
+# "about" boots the kernel, which fails loudly on the first; comparing mtimes
+# catches the second.
+verify-deploy: ## Assert production booted this build and compiled it fresh
+	@cid=$$($(DC_PROD) ps -q $(SERVICE)); \
+	if [ -z "$$cid" ]; then \
+		echo 'The production "$(SERVICE)" service is not running.'; exit 1; \
+	fi; \
+	if ! docker exec "$$cid" php bin/console about --env=prod >/dev/null 2>&1; then \
+		echo 'The kernel does not boot in production.'; \
+		echo 'Usually a package in composer.json that the image never installed.'; \
+		echo 'Look at: make prod-logs'; \
+		exit 1; \
+	fi; \
+	docker exec "$$cid" sh -c '\
+		if [ ! -d /app/var/cache/prod ]; then exit 0; fi; \
+		stale=$$(find /app/src /app/config /app/templates -type f \
+			-newer /app/var/cache/prod -print -quit 2>/dev/null); \
+		if [ -n "$$stale" ]; then \
+			echo "Compiled cache is older than the code it should have been built from,"; \
+			echo "starting with: $$stale"; \
+			echo "Production is serving a different build to the one in this checkout."; \
+			exit 1; \
+		fi' || exit 1; \
+	echo 'Production booted this build and compiled it fresh.'
