@@ -124,6 +124,44 @@ It attaches to a running stack rather than starting one, so `make up` first. If
 navigation starts failing with "denied or failed" after a container restart, the
 preview session has gone stale — attach again.
 
+## Deploying
+
+```bash
+make deploy
+```
+
+That is the whole thing: it rebuilds the production image, recreates the
+container, waits for the healthcheck, and then asserts the deploy actually
+landed. Run it from the main checkout, not a worktree -- Compose finds the
+running stack by project name, which is the directory's.
+
+**Never deploy with a bare `docker compose`.** In this checkout that also reads
+`compose.override.yaml`, which builds the `frankenphp_dev` target and bind-mounts
+the working copy over `/app`. Every production command names its file:
+`-f compose.yaml`. `make deploy` does this for you; the point of the target is
+that the flag is not something anyone has to remember.
+
+### Why `make deploy` verifies rather than just restarting
+
+Two things can go wrong without the site going down, and both have:
+
+1. **The image ships code whose dependencies were never installed.** The kernel
+   cannot boot, and the site 502s -- but only once something forces it to boot
+   fresh. `verify-deploy` runs `bin/console about`, which fails loudly instead.
+2. **A compiled cache outlives the code it was compiled from.** Symfony never
+   revalidates the container, the routes or Twig in production, so the site goes
+   on serving an older build and every release looks like a no-op. This happened
+   for a month: `compose.yaml` mounted a volume over `/app/var`, hiding the
+   warmed cache the image ships (the Dockerfile copies `/app/var` in as its own
+   layer) behind one compiled in July. `verify-deploy` fails if any file under
+   `src/`, `config/` or `templates/` is newer than `var/cache/prod`.
+
+Nothing may be mounted over `/app/var` in production. Only the two directories
+the app writes to at runtime are mounted, and both are named: `LedgerService`
+appends to `var/log`, `ImportFileWriter` writes `var/data/imports`.
+
+If a deploy fails verification, `make prod-logs` is the next stop.
+
 ## Tests
 
 - PHPUnit 13 with Zenstruck Foundry factories and stories (`tests/Factory`,
