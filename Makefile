@@ -44,7 +44,7 @@ ARGS ?=
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
 	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
-	dev-stack-only deploy verify-deploy prod-logs
+	dev-stack-only deploy verify-deploy prod-logs not-production
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -54,13 +54,13 @@ help: ## List the available targets
 
 setup: up wait-healthy tailwind seed-if-empty ## Bootstrap a fresh clone: stack, stylesheet, database
 
-up: ## Start the dev stack in the background
+up: not-production ## Start the dev stack in the background
 	$(DC) up -d --build
 
-down: ## Stop the dev stack
+down: not-production ## Stop the dev stack
 	$(DC) down
 
-build: ## Rebuild the dev image
+build: not-production ## Rebuild the dev image
 	$(DC) build
 
 restart: down up ## Restart the dev stack
@@ -211,6 +211,34 @@ seed-if-empty:
 			echo 'Fix the cause, then rebuild with: make db-reset'; \
 			exit 1; \
 		}; \
+	fi
+
+# Compose keys a project on the *directory name*, so a dev stack and a
+# production stack started from the same checkout are the same project: `make
+# up` there does not run alongside production, it recreates production's
+# container with dev config -- and the Cloudflare tunnel goes on pointing at it,
+# so the live domain starts serving the dev app.
+#
+# A worktree has its own directory, therefore its own project, and cannot
+# collide. That is why local work belongs in one.
+#
+# The tell is structural rather than a naming convention: the dev override
+# bind-mounts the working copy at /app, and the production image has no such
+# mount.
+not-production:
+	@cid=$$($(DC) ps -q $(SERVICE) 2>/dev/null); \
+	if [ -n "$$cid" ] && ! docker inspect "$$cid" \
+		--format '{{range .Mounts}}{{println .Destination}}{{end}}' \
+		2>/dev/null | grep -qx '/app'; then \
+		echo 'A production container is running in this directory.'; \
+		echo; \
+		echo 'The dev stack shares its Compose project, so this would replace the'; \
+		echo 'live site rather than start something beside it.'; \
+		echo; \
+		echo 'Do local work in a git worktree:'; \
+		echo '  git worktree add .claude/worktrees/<name> -b <branch>'; \
+		echo 'See AGENTS.md, "Where to run the dev stack".'; \
+		exit 1; \
 	fi
 
 # Every target is scoped to the dev Compose file, and a production stack is a
