@@ -44,7 +44,7 @@ ARGS ?=
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
 	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
-	dev-stack-only
+	dev-stack-only deploy verify-deploy prod-logs
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -223,3 +223,56 @@ dev-stack-only:
 		   echo 'The database targets are for the dev stack only.'; \
 		   exit 1;; \
 	esac
+
+## --- Deploy ----------------------------------------------------------------
+
+# Production is a separate Compose project built from compose.yaml alone.
+# Plain "docker compose" in this checkout also reads compose.override.yaml,
+# which builds the *dev* target and bind-mounts the working copy over /app --
+# so every production command names its file explicitly. Getting this wrong
+# during an incident is how a rebuild silently produced a dev image.
+PROD_COMPOSE_FILE ?= compose.yaml
+DC_PROD := docker compose $(ENV_FILES) -f $(PROD_COMPOSE_FILE)
+
+deploy: ## Rebuild and restart production, then prove it is serving this code
+	$(DC_PROD) up -d --build --force-recreate $(SERVICE)
+	@$(MAKE) --no-print-directory wait-healthy COMPOSE_FILE=$(PROD_COMPOSE_FILE)
+	@$(MAKE) --no-print-directory verify-deploy
+
+prod-logs: ## Tail the production container's logs
+	$(DC_PROD) logs -f --tail=100 $(SERVICE)
+
+# Two things a deploy can get wrong without the site going down, both of which
+# have happened:
+#
+#   1. The image ships a package the code needs but composer never installed,
+#      so the kernel cannot boot. A stale cache can hide this until something
+#      forces a rebuild, at which point the site 502s.
+#   2. A compiled cache outlives the code it was compiled from. Symfony never
+#      revalidates the container, routes or Twig in prod, so the site keeps
+#      serving an older build and every release looks like a no-op.
+#
+# "about" boots the kernel, which fails loudly on the first; comparing mtimes
+# catches the second.
+verify-deploy: ## Assert production booted this build and compiled it fresh
+	@cid=$$($(DC_PROD) ps -q $(SERVICE)); \
+	if [ -z "$$cid" ]; then \
+		echo 'The production "$(SERVICE)" service is not running.'; exit 1; \
+	fi; \
+	if ! docker exec "$$cid" php bin/console about --env=prod >/dev/null 2>&1; then \
+		echo 'The kernel does not boot in production.'; \
+		echo 'Usually a package in composer.json that the image never installed.'; \
+		echo 'Look at: make prod-logs'; \
+		exit 1; \
+	fi; \
+	docker exec "$$cid" sh -c '\
+		if [ ! -d /app/var/cache/prod ]; then exit 0; fi; \
+		stale=$$(find /app/src /app/config /app/templates -type f \
+			-newer /app/var/cache/prod -print -quit 2>/dev/null); \
+		if [ -n "$$stale" ]; then \
+			echo "Compiled cache is older than the code it should have been built from,"; \
+			echo "starting with: $$stale"; \
+			echo "Production is serving a different build to the one in this checkout."; \
+			exit 1; \
+		fi' || exit 1; \
+	echo 'Production booted this build and compiled it fresh.'
