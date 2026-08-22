@@ -80,11 +80,16 @@ machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
   later files winning, which is why the Makefile passes both. Driving Compose by
   hand needs the same pair.
 - **A production stack may be running on the same host**, started from the main
-  checkout via `compose.yaml` (plus the `production`-profile Cloudflare tunnel). It
-  is a *different* Compose project, so a worktree stack cannot collide with it — but
-  `make down`, `docker compose down` or a prune run from the wrong directory will
-  take the live site down. Check `docker ps` before anything destructive, and keep
-  every command scoped with `-f compose.override.yaml` the way the Makefile does.
+  checkout via `compose.yaml` (plus the `production`-profile Cloudflare tunnel). A
+  *worktree* stack cannot collide with it, because Compose keys a project on the
+  directory name and a worktree has its own. **The main checkout does not get that
+  protection**: there, the dev stack and production are the same project, so
+  `make up` recreates production's container with dev config rather than starting
+  one beside it — and the tunnel keeps pointing at it. `make down`, `docker compose
+  down` or a prune run from that directory takes the live site down outright.
+  `make up`, `down` and `build` now refuse when a production container is present
+  (see `not-production` in the Makefile), but check `docker ps` before anything
+  destructive and keep every command scoped the way the Makefile does.
 - `vendor/` is written into the bind mount, so it lands on the host and the IDE can
   still index it. Keep it that way.
 - On the **first** `make up` of a fresh checkout the entrypoint is running its own
@@ -123,6 +128,36 @@ not open a localhost origin it does not know about. Two things to know:
 It attaches to a running stack rather than starting one, so `make up` first. If
 navigation starts failing with "denied or failed" after a container restart, the
 preview session has gone stale — attach again.
+
+## Where to run the dev stack
+
+**In a git worktree, not the main checkout.** The main checkout is where production
+runs, and Compose derives a project name from the directory — so a dev stack started
+there is not a second stack, it is production being replaced.
+
+```bash
+git worktree add .claude/worktrees/<name> -b <branch>
+cd .claude/worktrees/<name>
+# ports 80/443/15432 are probably taken; see the .env.local note above
+make setup
+```
+
+The worktree gets its own Compose project (`<name>-php-1`), its own network and its
+own volumes, automatically. Nothing needs `COMPOSE_PROJECT_NAME`.
+
+| | Where | Command |
+| --- | --- | --- |
+| Local development | a worktree | `make setup`, `make up`, `make check`, … |
+| Deploying | the main checkout | `make deploy` |
+
+Both directions are guarded: the dev stack targets refuse to run where a production
+container is present, and `make deploy` names `-f compose.yaml` so it cannot pick up
+the dev override. Neither guard is a substitute for knowing which directory you are
+in — `docker ps` shows the project prefix on every container.
+
+Running the *production* compose file from a worktree is harmless, incidentally: it
+would build a separate project named after the worktree and leave the live site
+alone. Only the main checkout reaches production.
 
 ## Deploying
 
