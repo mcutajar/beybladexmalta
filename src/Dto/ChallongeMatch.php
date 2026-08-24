@@ -37,6 +37,20 @@ final class ChallongeMatch
     }
 
     /**
+     * Whether the match was actually contested.
+     *
+     * A forfeit is `complete` and has a winner, but nobody played it, so it is
+     * not a match anybody spun for. The one match in the corpus that finished
+     * `complete` with no winner and a 0-0 scoreline *is* counted: Challonge
+     * displayed it as played, and a snapshot does not get to disagree with the
+     * bracket it transcribed.
+     */
+    public function wasPlayed(): bool
+    {
+        return 'complete' === $this->state && !$this->forfeited;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

@@ -30,6 +30,65 @@ final class ChallongeStage
     ) {
     }
 
+    public function participant(int $id): ?ChallongeParticipant
+    {
+        foreach ($this->participants as $participant) {
+            if ($participant->id === $id) {
+                return $participant;
+            }
+        }
+
+        return null;
+    }
+
+    public function match(int $id): ?ChallongeMatch
+    {
+        foreach ($this->matches as $match) {
+            if ($match->id === $id) {
+                return $match;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<ChallongeMatch>
+     */
+    public function playedMatches(): array
+    {
+        return array_values(array_filter(
+            $this->matches,
+            static fn (ChallongeMatch $match): bool => $match->wasPlayed(),
+        ));
+    }
+
+    /**
+     * The match that ended the stage — in a cut, the one that decided it.
+     *
+     * The third-place playoff is played after the final and would otherwise be
+     * the last match in the list, which is exactly the mistake this exists to
+     * prevent, so consolation matches are left out. Within the last round the
+     * highest id wins, which only matters for a stage that ends with more than
+     * one match and has no bearing on a bracket that ends in a final.
+     */
+    public function decidingMatch(): ?ChallongeMatch
+    {
+        $deciding = null;
+
+        foreach ($this->playedMatches() as $match) {
+            if ($match->consolation) {
+                continue;
+            }
+
+            if (null === $deciding || [$match->round, $match->id] > [$deciding->round, $deciding->id]) {
+                $deciding = $match;
+            }
+        }
+
+        return $deciding;
+    }
+
     /**
      * @return array<string, mixed>
      */

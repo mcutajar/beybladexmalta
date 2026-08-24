@@ -121,6 +121,31 @@ service that owns the domain rules.
   - Assembles the file beside its target and moves it into place, so a failure
     never leaves half a snapshot under the real name.
 
+- `App\Service\ChallongeSnapshotFiles`
+  - Where a captured bracket lives — `var/data/challonge/<slug>.json` — held in one
+    place, because the writer and the reader both need it.
+
+- `App\Service\ChallongeSnapshotReader`
+  - Reads a captured bracket back out of its file. Everything downstream comes
+    through here rather than through Challonge, which is what lets `repeat.sh`
+    replay offline.
+  - Refuses a version it does not read, a field that has changed type and a stage
+    kind it has never heard of, rather than coercing any of them into something
+    plausible.
+
+- `App\Service\ChallongeStandingsResolver`
+  - Joins each standings row to the entrant it is about, by intersecting the
+    players of the matches in the row's match-history cell. A name join cannot do
+    this: a blader who linked their Challonge account is rendered as that account
+    in the standings and under their own name in every match.
+  - Falls back to the name where the intersection cannot decide — a row with one
+    match narrows to two people, and the standings table of a one-stage bracket
+    carries no match history at all.
+
+- `App\Service\ChallongeFields`
+  - The type guards both ends of the pipeline read decoded JSON through. Absent and
+    null are ordinary; present-and-the-wrong-type refuses, naming the field.
+
 - `App\Service\PlayerRegistrationService`
   - Marks a player as paid for a season, auto-creating the player when needed.
 

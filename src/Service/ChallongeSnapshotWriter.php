@@ -6,7 +6,6 @@ namespace App\Service;
 
 use App\Dto\ChallongeSnapshot;
 use App\Exception\ChallongeSnapshotWriteException;
-use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
  * Materialises a fetched bracket on disk, the way ImportFileWriter does for a
@@ -18,8 +17,6 @@ use Symfony\Component\HttpKernel\KernelInterface;
  */
 class ChallongeSnapshotWriter
 {
-    private const DIRECTORY = 'var/data/challonge';
-
     /**
      * Pretty-printed and unescaped so that a tracked snapshot produces a
      * diff a person can read.
@@ -30,13 +27,13 @@ class ChallongeSnapshotWriter
         | \JSON_UNESCAPED_UNICODE;
 
     public function __construct(
-        private KernelInterface $kernel,
+        private ChallongeSnapshotFiles $files,
     ) {
     }
 
     public function pathFor(string $slug): string
     {
-        return sprintf('%s/%s.json', $this->directory(), $slug);
+        return $this->files->pathFor($slug);
     }
 
     /**
@@ -44,7 +41,7 @@ class ChallongeSnapshotWriter
      */
     public function write(ChallongeSnapshot $snapshot): string
     {
-        $directory = $this->directory();
+        $directory = $this->files->directory();
 
         if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
             throw new ChallongeSnapshotWriteException(sprintf('Failed to create the snapshot directory "%s".', $directory));
@@ -78,10 +75,5 @@ class ChallongeSnapshotWriter
         }
 
         return $filePath;
-    }
-
-    private function directory(): string
-    {
-        return $this->kernel->getProjectDir().'/'.self::DIRECTORY;
     }
 }
