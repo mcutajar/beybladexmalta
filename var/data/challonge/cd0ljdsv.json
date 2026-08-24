@@ -1,0 +1,1898 @@
+{
+    "version": 1,
+    "slug": "cd0ljdsv",
+    "source_url": "https://challonge.com/cd0ljdsv/module?show_standings=1",
+    "fetched_at": "2026-08-24T19:38:29+00:00",
+    "tournament": {
+        "id": 18237977,
+        "type": "single elimination",
+        "state": "complete",
+        "is_team": false
+    },
+    "stages": [
+        {
+            "kind": "group",
+            "name": "Group A",
+            "format": "swiss",
+            "rounds": [
+                {
+                    "number": 1,
+                    "title": "Round 1"
+                },
+                {
+                    "number": 2,
+                    "title": "Round 2"
+                },
+                {
+                    "number": 3,
+                    "title": "Round 3"
+                },
+                {
+                    "number": 4,
+                    "title": "Round 4"
+                },
+                {
+                    "number": 5,
+                    "title": "Round 5"
+                }
+            ],
+            "participants": [
+                {
+                    "id": 46585779,
+                    "participant_id": 299549040,
+                    "seed": 1,
+                    "name": "BELTI"
+                },
+                {
+                    "id": 46585780,
+                    "participant_id": 299549083,
+                    "seed": 2,
+                    "name": "Evilbeys"
+                },
+                {
+                    "id": 46585781,
+                    "participant_id": 299549100,
+                    "seed": 3,
+                    "name": "Myers6 (invitation pending) (invitation pending)"
+                },
+                {
+                    "id": 46585782,
+                    "participant_id": 299549200,
+                    "seed": 4,
+                    "name": "Southboy15"
+                },
+                {
+                    "id": 46585783,
+                    "participant_id": 299549243,
+                    "seed": 5,
+                    "name": "markinu (invitation pending)"
+                },
+                {
+                    "id": 46585784,
+                    "participant_id": 299549661,
+                    "seed": 6,
+                    "name": "ABI"
+                },
+                {
+                    "id": 46585785,
+                    "participant_id": 299549662,
+                    "seed": 7,
+                    "name": "BEASTBLADE"
+                },
+                {
+                    "id": 46585786,
+                    "participant_id": 299549663,
+                    "seed": 8,
+                    "name": "KARM"
+                },
+                {
+                    "id": 46585787,
+                    "participant_id": 299549664,
+                    "seed": 9,
+                    "name": "SKELLI"
+                },
+                {
+                    "id": 46585788,
+                    "participant_id": 299549665,
+                    "seed": 10,
+                    "name": "SANYA"
+                },
+                {
+                    "id": 46585789,
+                    "participant_id": 299549666,
+                    "seed": 11,
+                    "name": "MEZZ"
+                },
+                {
+                    "id": 46585790,
+                    "participant_id": 299549667,
+                    "seed": 12,
+                    "name": "DANJEL"
+                },
+                {
+                    "id": 46585791,
+                    "participant_id": 299549668,
+                    "seed": 13,
+                    "name": "BUTCHER"
+                },
+                {
+                    "id": 46585792,
+                    "participant_id": 299549669,
+                    "seed": 14,
+                    "name": "PRIV"
+                },
+                {
+                    "id": 46585793,
+                    "participant_id": 299549670,
+                    "seed": 15,
+                    "name": "GIGLIO"
+                },
+                {
+                    "id": 46585794,
+                    "participant_id": 299549671,
+                    "seed": 16,
+                    "name": "MARKU LEGEND"
+                },
+                {
+                    "id": 46585795,
+                    "participant_id": 299549832,
+                    "seed": 17,
+                    "name": "BLADER 67"
+                },
+                {
+                    "id": 46585796,
+                    "participant_id": 299549905,
+                    "seed": 18,
+                    "name": "GUZMAN93"
+                },
+                {
+                    "id": 46585797,
+                    "participant_id": 299549988,
+                    "seed": 19,
+                    "name": "claude"
+                }
+            ],
+            "matches": [
+                {
+                    "id": 465020426,
+                    "round": 1,
+                    "identifier": "A",
+                    "state": "complete",
+                    "player1": 46585779,
+                    "player2": 46585788,
+                    "games": [
+                        [
+                            0,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        0,
+                        7
+                    ],
+                    "winner": 46585788,
+                    "loser": 46585779,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020427,
+                    "round": 1,
+                    "identifier": "B",
+                    "state": "complete",
+                    "player1": 46585780,
+                    "player2": 46585789,
+                    "games": [
+                        [
+                            8,
+                            4
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        4
+                    ],
+                    "winner": 46585780,
+                    "loser": 46585789,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020428,
+                    "round": 1,
+                    "identifier": "C",
+                    "state": "complete",
+                    "player1": 46585781,
+                    "player2": 46585790,
+                    "games": [
+                        [
+                            8,
+                            4
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        4
+                    ],
+                    "winner": 46585781,
+                    "loser": 46585790,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020429,
+                    "round": 1,
+                    "identifier": "D",
+                    "state": "complete",
+                    "player1": 46585782,
+                    "player2": 46585791,
+                    "games": [
+                        [
+                            7,
+                            1
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        1
+                    ],
+                    "winner": 46585782,
+                    "loser": 46585791,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020430,
+                    "round": 1,
+                    "identifier": "E",
+                    "state": "complete",
+                    "player1": 46585783,
+                    "player2": 46585792,
+                    "games": [
+                        [
+                            8,
+                            2
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        2
+                    ],
+                    "winner": 46585783,
+                    "loser": 46585792,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020431,
+                    "round": 1,
+                    "identifier": "F",
+                    "state": "complete",
+                    "player1": 46585784,
+                    "player2": 46585793,
+                    "games": [
+                        [
+                            0,
+                            8
+                        ]
+                    ],
+                    "score": [
+                        0,
+                        8
+                    ],
+                    "winner": 46585793,
+                    "loser": 46585784,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020432,
+                    "round": 1,
+                    "identifier": "G",
+                    "state": "complete",
+                    "player1": 46585785,
+                    "player2": 46585794,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585794,
+                    "loser": 46585785,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020433,
+                    "round": 1,
+                    "identifier": "H",
+                    "state": "complete",
+                    "player1": 46585786,
+                    "player2": 46585795,
+                    "games": [
+                        [
+                            7,
+                            1
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        1
+                    ],
+                    "winner": 46585786,
+                    "loser": 46585795,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465020434,
+                    "round": 1,
+                    "identifier": "I",
+                    "state": "complete",
+                    "player1": 46585787,
+                    "player2": 46585796,
+                    "games": [
+                        [
+                            5,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        5,
+                        7
+                    ],
+                    "winner": 46585796,
+                    "loser": 46585787,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024370,
+                    "round": 2,
+                    "identifier": "J",
+                    "state": "complete",
+                    "player1": 46585780,
+                    "player2": 46585788,
+                    "games": [
+                        [
+                            3,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        3,
+                        7
+                    ],
+                    "winner": 46585788,
+                    "loser": 46585780,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024371,
+                    "round": 2,
+                    "identifier": "K",
+                    "state": "complete",
+                    "player1": 46585781,
+                    "player2": 46585793,
+                    "games": [
+                        [
+                            8,
+                            2
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        2
+                    ],
+                    "winner": 46585781,
+                    "loser": 46585793,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024372,
+                    "round": 2,
+                    "identifier": "L",
+                    "state": "complete",
+                    "player1": 46585782,
+                    "player2": 46585794,
+                    "games": [
+                        [
+                            7,
+                            5
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        5
+                    ],
+                    "winner": 46585782,
+                    "loser": 46585794,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024373,
+                    "round": 2,
+                    "identifier": "M",
+                    "state": "complete",
+                    "player1": 46585783,
+                    "player2": 46585796,
+                    "games": [
+                        [
+                            6,
+                            8
+                        ]
+                    ],
+                    "score": [
+                        6,
+                        8
+                    ],
+                    "winner": 46585796,
+                    "loser": 46585783,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024374,
+                    "round": 2,
+                    "identifier": "N",
+                    "state": "complete",
+                    "player1": 46585786,
+                    "player2": 46585797,
+                    "games": [
+                        [
+                            9,
+                            0
+                        ]
+                    ],
+                    "score": [
+                        9,
+                        0
+                    ],
+                    "winner": 46585786,
+                    "loser": 46585797,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024375,
+                    "round": 2,
+                    "identifier": "O",
+                    "state": "complete",
+                    "player1": 46585779,
+                    "player2": 46585789,
+                    "games": [
+                        [
+                            8,
+                            2
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        2
+                    ],
+                    "winner": 46585779,
+                    "loser": 46585789,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024383,
+                    "round": 2,
+                    "identifier": "P",
+                    "state": "complete",
+                    "player1": 46585784,
+                    "player2": 46585790,
+                    "games": [
+                        [
+                            3,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        3,
+                        7
+                    ],
+                    "winner": 46585790,
+                    "loser": 46585784,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024384,
+                    "round": 2,
+                    "identifier": "Q",
+                    "state": "complete",
+                    "player1": 46585785,
+                    "player2": 46585791,
+                    "games": [
+                        [
+                            8,
+                            4
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        4
+                    ],
+                    "winner": 46585785,
+                    "loser": 46585791,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465024385,
+                    "round": 2,
+                    "identifier": "R",
+                    "state": "complete",
+                    "player1": 46585787,
+                    "player2": 46585792,
+                    "games": [
+                        [
+                            7,
+                            0
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        0
+                    ],
+                    "winner": 46585787,
+                    "loser": 46585792,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026967,
+                    "round": 3,
+                    "identifier": "S",
+                    "state": "complete",
+                    "player1": 46585781,
+                    "player2": 46585786,
+                    "games": [
+                        [
+                            0,
+                            9
+                        ]
+                    ],
+                    "score": [
+                        0,
+                        9
+                    ],
+                    "winner": 46585786,
+                    "loser": 46585781,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026968,
+                    "round": 3,
+                    "identifier": "T",
+                    "state": "complete",
+                    "player1": 46585782,
+                    "player2": 46585788,
+                    "games": [
+                        [
+                            4,
+                            8
+                        ]
+                    ],
+                    "score": [
+                        4,
+                        8
+                    ],
+                    "winner": 46585788,
+                    "loser": 46585782,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026969,
+                    "round": 3,
+                    "identifier": "U",
+                    "state": "complete",
+                    "player1": 46585796,
+                    "player2": 46585795,
+                    "games": [
+                        [
+                            7,
+                            1
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        1
+                    ],
+                    "winner": 46585796,
+                    "loser": 46585795,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026970,
+                    "round": 3,
+                    "identifier": "V",
+                    "state": "complete",
+                    "player1": 46585794,
+                    "player2": 46585787,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585787,
+                    "loser": 46585794,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026971,
+                    "round": 3,
+                    "identifier": "W",
+                    "state": "complete",
+                    "player1": 46585785,
+                    "player2": 46585779,
+                    "games": [
+                        [
+                            7,
+                            3
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        3
+                    ],
+                    "winner": 46585785,
+                    "loser": 46585779,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026972,
+                    "round": 3,
+                    "identifier": "X",
+                    "state": "complete",
+                    "player1": 46585780,
+                    "player2": 46585790,
+                    "games": [
+                        [
+                            7,
+                            4
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        4
+                    ],
+                    "winner": 46585780,
+                    "loser": 46585790,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026973,
+                    "round": 3,
+                    "identifier": "Y",
+                    "state": "complete",
+                    "player1": 46585783,
+                    "player2": 46585793,
+                    "games": [
+                        [
+                            8,
+                            5
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        5
+                    ],
+                    "winner": 46585783,
+                    "loser": 46585793,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026974,
+                    "round": 3,
+                    "identifier": "Z",
+                    "state": "complete",
+                    "player1": 46585797,
+                    "player2": 46585791,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585791,
+                    "loser": 46585797,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465026975,
+                    "round": 3,
+                    "identifier": "AA",
+                    "state": "complete",
+                    "player1": 46585784,
+                    "player2": 46585789,
+                    "games": [
+                        [
+                            6,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        6,
+                        7
+                    ],
+                    "winner": 46585789,
+                    "loser": 46585784,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029976,
+                    "round": 4,
+                    "identifier": "AB",
+                    "state": "complete",
+                    "player1": 46585788,
+                    "player2": 46585796,
+                    "games": [
+                        [
+                            1,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        1,
+                        7
+                    ],
+                    "winner": 46585796,
+                    "loser": 46585788,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029977,
+                    "round": 4,
+                    "identifier": "AC",
+                    "state": "complete",
+                    "player1": 46585786,
+                    "player2": 46585785,
+                    "games": [
+                        [
+                            7,
+                            5
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        5
+                    ],
+                    "winner": 46585786,
+                    "loser": 46585785,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029978,
+                    "round": 4,
+                    "identifier": "AD",
+                    "state": "complete",
+                    "player1": 46585780,
+                    "player2": 46585782,
+                    "games": [
+                        [
+                            4,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        4,
+                        7
+                    ],
+                    "winner": 46585782,
+                    "loser": 46585780,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029979,
+                    "round": 4,
+                    "identifier": "AE",
+                    "state": "complete",
+                    "player1": 46585781,
+                    "player2": 46585783,
+                    "games": [
+                        [
+                            1,
+                            8
+                        ]
+                    ],
+                    "score": [
+                        1,
+                        8
+                    ],
+                    "winner": 46585783,
+                    "loser": 46585781,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029980,
+                    "round": 4,
+                    "identifier": "AF",
+                    "state": "complete",
+                    "player1": 46585787,
+                    "player2": 46585789,
+                    "games": [
+                        [
+                            6,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        6,
+                        7
+                    ],
+                    "winner": 46585789,
+                    "loser": 46585787,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029981,
+                    "round": 4,
+                    "identifier": "AG",
+                    "state": "complete",
+                    "player1": 46585779,
+                    "player2": 46585794,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585794,
+                    "loser": 46585779,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029982,
+                    "round": 4,
+                    "identifier": "AH",
+                    "state": "complete",
+                    "player1": 46585790,
+                    "player2": 46585792,
+                    "games": [
+                        [
+                            7,
+                            2
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        2
+                    ],
+                    "winner": 46585790,
+                    "loser": 46585792,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029983,
+                    "round": 4,
+                    "identifier": "AI",
+                    "state": "complete",
+                    "player1": 46585791,
+                    "player2": 46585795,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585795,
+                    "loser": 46585791,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465029984,
+                    "round": 4,
+                    "identifier": "AJ",
+                    "state": "complete",
+                    "player1": 46585793,
+                    "player2": 46585797,
+                    "games": [
+                        [
+                            7,
+                            1
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        1
+                    ],
+                    "winner": 46585793,
+                    "loser": 46585797,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032850,
+                    "round": 5,
+                    "identifier": "AK",
+                    "state": "complete",
+                    "player1": 46585796,
+                    "player2": 46585786,
+                    "games": [
+                        [
+                            3,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        3,
+                        7
+                    ],
+                    "winner": 46585786,
+                    "loser": 46585796,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032851,
+                    "round": 5,
+                    "identifier": "AL",
+                    "state": "complete",
+                    "player1": 46585788,
+                    "player2": 46585783,
+                    "games": [
+                        [
+                            4,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        4,
+                        7
+                    ],
+                    "winner": 46585783,
+                    "loser": 46585788,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032852,
+                    "round": 5,
+                    "identifier": "AM",
+                    "state": "complete",
+                    "player1": 46585782,
+                    "player2": 46585785,
+                    "games": [
+                        [
+                            5,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        5,
+                        7
+                    ],
+                    "winner": 46585785,
+                    "loser": 46585782,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032853,
+                    "round": 5,
+                    "identifier": "AN",
+                    "state": "complete",
+                    "player1": 46585780,
+                    "player2": 46585795,
+                    "games": [
+                        [
+                            7,
+                            3
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        3
+                    ],
+                    "winner": 46585780,
+                    "loser": 46585795,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032854,
+                    "round": 5,
+                    "identifier": "AO",
+                    "state": "complete",
+                    "player1": 46585789,
+                    "player2": 46585781,
+                    "games": [
+                        [
+                            4,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        4,
+                        7
+                    ],
+                    "winner": 46585781,
+                    "loser": 46585789,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032855,
+                    "round": 5,
+                    "identifier": "AP",
+                    "state": "complete",
+                    "player1": 46585793,
+                    "player2": 46585787,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585787,
+                    "loser": 46585793,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032856,
+                    "round": 5,
+                    "identifier": "AQ",
+                    "state": "complete",
+                    "player1": 46585794,
+                    "player2": 46585790,
+                    "games": [
+                        [
+                            8,
+                            4
+                        ]
+                    ],
+                    "score": [
+                        8,
+                        4
+                    ],
+                    "winner": 46585794,
+                    "loser": 46585790,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032857,
+                    "round": 5,
+                    "identifier": "AR",
+                    "state": "complete",
+                    "player1": 46585779,
+                    "player2": 46585792,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 46585792,
+                    "loser": 46585779,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465032858,
+                    "round": 5,
+                    "identifier": "AS",
+                    "state": "complete",
+                    "player1": 46585784,
+                    "player2": 46585797,
+                    "games": [
+                        [
+                            7,
+                            2
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        2
+                    ],
+                    "winner": 46585784,
+                    "loser": 46585797,
+                    "forfeited": false,
+                    "consolation": false
+                }
+            ],
+            "standings": [
+                {
+                    "rank": 1,
+                    "name": "KARM",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020433,
+                        465024374,
+                        465026967,
+                        465029977,
+                        465032850
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "5 - 0 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "5.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "30"
+                    }
+                },
+                {
+                    "rank": 2,
+                    "name": "GUZMAN93",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020434,
+                        465024373,
+                        465026969,
+                        465029976,
+                        465032850
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "4 - 1 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "4.0",
+                        "Buchholz": "10.0",
+                        "TB": "0",
+                        "Pts Diff": "12"
+                    }
+                },
+                {
+                    "rank": 3,
+                    "name": "markinu (invitation pending)",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020430,
+                        465024373,
+                        465026973,
+                        465029979,
+                        465032851
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "4 - 1 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "4.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "17"
+                    }
+                },
+                {
+                    "rank": 4,
+                    "name": "SANYA",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020426,
+                        465024370,
+                        465026968,
+                        465029976,
+                        465032851
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "10.0",
+                        "TB": "0",
+                        "Pts Diff": "6"
+                    }
+                },
+                {
+                    "rank": 5,
+                    "name": null,
+                    "challonge_user": "Southboy15",
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020429,
+                        465024372,
+                        465026968,
+                        465029978,
+                        465032852
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "9.0",
+                        "TB": "0",
+                        "Pts Diff": "5"
+                    }
+                },
+                {
+                    "rank": 6,
+                    "name": "MARKU LEGEND",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020432,
+                        465024372,
+                        465026970,
+                        465029981,
+                        465032856
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "8.0",
+                        "TB": "1",
+                        "Pts Diff": "7"
+                    }
+                },
+                {
+                    "rank": 7,
+                    "name": "BEASTBLADE",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020432,
+                        465024384,
+                        465026971,
+                        465029977,
+                        465032852
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "3"
+                    }
+                },
+                {
+                    "rank": 8,
+                    "name": "Myers6 (invitation pending) (invitation pending)",
+                    "challonge_user": null,
+                    "labels": [
+                        "Advanced"
+                    ],
+                    "match_ids": [
+                        465020428,
+                        465024371,
+                        465026967,
+                        465029979,
+                        465032854
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "-3"
+                    }
+                },
+                {
+                    "rank": 9,
+                    "name": "SKELLI",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020434,
+                        465024385,
+                        465026970,
+                        465029980,
+                        465032855
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "7.0",
+                        "TB": "0",
+                        "Pts Diff": "14"
+                    }
+                },
+                {
+                    "rank": 10,
+                    "name": null,
+                    "challonge_user": "Evilbeys",
+                    "labels": [],
+                    "match_ids": [
+                        465020427,
+                        465024370,
+                        465026972,
+                        465029978,
+                        465032853
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "3 - 2 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "3.0",
+                        "Buchholz": "7.0",
+                        "TB": "0",
+                        "Pts Diff": "4"
+                    }
+                },
+                {
+                    "rank": 11,
+                    "name": "GIGLIO",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020431,
+                        465024371,
+                        465026973,
+                        465029984,
+                        465032855
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "2 - 3 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "2.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "0"
+                    }
+                },
+                {
+                    "rank": 12,
+                    "name": "DANJEL",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020428,
+                        465024383,
+                        465026972,
+                        465029982,
+                        465032856
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "2 - 3 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "2.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "-2"
+                    }
+                },
+                {
+                    "rank": 13,
+                    "name": "MEZZ",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020427,
+                        465024375,
+                        465026975,
+                        465029980,
+                        465032854
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "2 - 3 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "2.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "-11"
+                    }
+                },
+                {
+                    "rank": 14,
+                    "name": "BLADER 67 ()",
+                    "challonge_user": "Blader_67",
+                    "labels": [],
+                    "match_ids": [
+                        465020433,
+                        465026969,
+                        465029983,
+                        465032853
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "1 - 3 - 0",
+                        "Byes (+1.0)": "1",
+                        "Score": "2.0",
+                        "Buchholz": "7.0",
+                        "TB": "0",
+                        "Pts Diff": "-11"
+                    }
+                },
+                {
+                    "rank": 15,
+                    "name": "BUTCHER",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020429,
+                        465024384,
+                        465026974,
+                        465029983
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "1 - 3 - 0",
+                        "Byes (+1.0)": "1",
+                        "Score": "2.0",
+                        "Buchholz": "5.0",
+                        "TB": "0",
+                        "Pts Diff": "-10"
+                    }
+                },
+                {
+                    "rank": 16,
+                    "name": "PRIV",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020430,
+                        465024385,
+                        465029982,
+                        465032857
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "1 - 3 - 0",
+                        "Byes (+1.0)": "1",
+                        "Score": "2.0",
+                        "Buchholz": "5.0",
+                        "TB": "0",
+                        "Pts Diff": "-13"
+                    }
+                },
+                {
+                    "rank": 17,
+                    "name": "ABI",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465020431,
+                        465024383,
+                        465026975,
+                        465032858
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "1 - 3 - 0",
+                        "Byes (+1.0)": "1",
+                        "Score": "2.0",
+                        "Buchholz": "4.0",
+                        "TB": "0",
+                        "Pts Diff": "-8"
+                    }
+                },
+                {
+                    "rank": 18,
+                    "name": null,
+                    "challonge_user": "BELTI",
+                    "labels": [],
+                    "match_ids": [
+                        465020426,
+                        465024375,
+                        465026971,
+                        465029981,
+                        465032857
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "1 - 4 - 0",
+                        "Byes (+1.0)": "0",
+                        "Score": "1.0",
+                        "Buchholz": "8.0",
+                        "TB": "0",
+                        "Pts Diff": "-15"
+                    }
+                },
+                {
+                    "rank": 19,
+                    "name": "claude ()",
+                    "challonge_user": "ClaudeS",
+                    "labels": [],
+                    "match_ids": [
+                        465024374,
+                        465026974,
+                        465029984,
+                        465032858
+                    ],
+                    "columns": {
+                        "Match W-L-T (wins +1.0, ties +0.5)": "0 - 4 - 0",
+                        "Byes (+1.0)": "1",
+                        "Score": "1.0",
+                        "Buchholz": "4.0",
+                        "TB": "0",
+                        "Pts Diff": "-25"
+                    }
+                }
+            ]
+        },
+        {
+            "kind": "final",
+            "name": null,
+            "format": "single elimination",
+            "rounds": [
+                {
+                    "number": 1,
+                    "title": "Round 1"
+                },
+                {
+                    "number": 2,
+                    "title": "Semifinals"
+                },
+                {
+                    "number": 3,
+                    "title": "Finals"
+                }
+            ],
+            "participants": [
+                {
+                    "id": 299549663,
+                    "participant_id": null,
+                    "seed": 1,
+                    "name": "KARM"
+                },
+                {
+                    "id": 299549905,
+                    "participant_id": null,
+                    "seed": 2,
+                    "name": "GUZMAN93"
+                },
+                {
+                    "id": 299549243,
+                    "participant_id": null,
+                    "seed": 3,
+                    "name": "markinu (invitation pending)"
+                },
+                {
+                    "id": 299549665,
+                    "participant_id": null,
+                    "seed": 4,
+                    "name": "SANYA"
+                },
+                {
+                    "id": 299549200,
+                    "participant_id": null,
+                    "seed": 5,
+                    "name": "Southboy15"
+                },
+                {
+                    "id": 299549671,
+                    "participant_id": null,
+                    "seed": 6,
+                    "name": "MARKU LEGEND"
+                },
+                {
+                    "id": 299549662,
+                    "participant_id": null,
+                    "seed": 7,
+                    "name": "BEASTBLADE"
+                },
+                {
+                    "id": 299549100,
+                    "participant_id": null,
+                    "seed": 8,
+                    "name": "Myers6 (invitation pending) (invitation pending)"
+                }
+            ],
+            "matches": [
+                {
+                    "id": 465038376,
+                    "round": 1,
+                    "identifier": "A",
+                    "state": "complete",
+                    "player1": 299549663,
+                    "player2": 299549100,
+                    "games": [
+                        [
+                            7,
+                            6
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        6
+                    ],
+                    "winner": 299549663,
+                    "loser": 299549100,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038377,
+                    "round": 1,
+                    "identifier": "B",
+                    "state": "complete",
+                    "player1": 299549665,
+                    "player2": 299549200,
+                    "games": [
+                        [
+                            6,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        6,
+                        7
+                    ],
+                    "winner": 299549200,
+                    "loser": 299549665,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038378,
+                    "round": 1,
+                    "identifier": "C",
+                    "state": "complete",
+                    "player1": 299549905,
+                    "player2": 299549662,
+                    "games": [
+                        [
+                            7,
+                            5
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        5
+                    ],
+                    "winner": 299549905,
+                    "loser": 299549662,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038379,
+                    "round": 1,
+                    "identifier": "D",
+                    "state": "complete",
+                    "player1": 299549243,
+                    "player2": 299549671,
+                    "games": [
+                        [
+                            7,
+                            1
+                        ]
+                    ],
+                    "score": [
+                        7,
+                        1
+                    ],
+                    "winner": 299549243,
+                    "loser": 299549671,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038380,
+                    "round": 2,
+                    "identifier": "E",
+                    "state": "complete",
+                    "player1": 299549663,
+                    "player2": 299549200,
+                    "games": [
+                        [
+                            2,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        2,
+                        7
+                    ],
+                    "winner": 299549200,
+                    "loser": 299549663,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038381,
+                    "round": 2,
+                    "identifier": "F",
+                    "state": "complete",
+                    "player1": 299549905,
+                    "player2": 299549243,
+                    "games": [
+                        [
+                            5,
+                            8
+                        ]
+                    ],
+                    "score": [
+                        5,
+                        8
+                    ],
+                    "winner": 299549243,
+                    "loser": 299549905,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038382,
+                    "round": 3,
+                    "identifier": "G",
+                    "state": "complete",
+                    "player1": 299549200,
+                    "player2": 299549243,
+                    "games": [
+                        [
+                            3,
+                            9
+                        ]
+                    ],
+                    "score": [
+                        3,
+                        9
+                    ],
+                    "winner": 299549243,
+                    "loser": 299549200,
+                    "forfeited": false,
+                    "consolation": false
+                },
+                {
+                    "id": 465038383,
+                    "round": 0,
+                    "identifier": "3P",
+                    "state": "complete",
+                    "player1": 299549663,
+                    "player2": 299549905,
+                    "games": [
+                        [
+                            6,
+                            7
+                        ]
+                    ],
+                    "score": [
+                        6,
+                        7
+                    ],
+                    "winner": 299549905,
+                    "loser": 299549663,
+                    "forfeited": false,
+                    "consolation": true
+                }
+            ],
+            "standings": [
+                {
+                    "rank": 1,
+                    "name": "markinu (invitation pending)",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038379,
+                        465038381,
+                        465038382
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 2,
+                    "name": "Southboy15",
+                    "challonge_user": "Southboy15",
+                    "labels": [],
+                    "match_ids": [
+                        465038377,
+                        465038380,
+                        465038382
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 3,
+                    "name": "GUZMAN93",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038378,
+                        465038381,
+                        465038383
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 4,
+                    "name": "KARM",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038376,
+                        465038380,
+                        465038383
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 5,
+                    "name": "BEASTBLADE",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038378
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 5,
+                    "name": "MARKU LEGEND",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038379
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 5,
+                    "name": "Myers6 (invitation pending) (invitation pending)",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038376
+                    ],
+                    "columns": []
+                },
+                {
+                    "rank": 5,
+                    "name": "SANYA",
+                    "challonge_user": null,
+                    "labels": [],
+                    "match_ids": [
+                        465038377
+                    ],
+                    "columns": []
+                }
+            ]
+        }
+    ]
+}

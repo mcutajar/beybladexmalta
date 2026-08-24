@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Fetching a bracket is the only thing in the app that touches the network,
+    # and a suite that touched it would depend on Challonge still serving the
+    # same bracket. The fetcher answers from tests/Fixtures/challonge/ instead;
+    # everything else about it is the real class.
+    challonge.http_client.fake:
+        class: Symfony\Component\HttpClient\MockHttpClient
+        factory: ['App\Tests\Support\FakeChallonge', 'httpClient']
+
+    App\Service\ChallongeFetcher:
+        arguments:
+            $httpClient: '@challonge.http_client.fake'
