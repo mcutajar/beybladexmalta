@@ -24,6 +24,8 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 | `make cs-fix` | Apply code style fixes |
 | `make phpstan` | Run static analysis (level 6) |
 | `make check` | Every quality gate — run before declaring work done |
+| `make release VERSION=1.1.0` | Tag a release; CI builds and publishes the image |
+| `make versions` | List the releases, marking the one production is running |
 | `make console ARGS="debug:router"` | Any `bin/console` command |
 | `make composer ARGS="require --dev foo/bar"` | Any Composer command |
 | `make shell` | Interactive shell in the container |
@@ -148,37 +150,79 @@ own volumes, automatically. Nothing needs `COMPOSE_PROJECT_NAME`.
 | | Where | Command |
 | --- | --- | --- |
 | Local development | a worktree | `make setup`, `make up`, `make check`, … |
-| Deploying | the main checkout | `make deploy` |
+| Deploying | the main checkout | `make deploy VERSION=1.1.0` |
 
 Both directions are guarded: the dev stack targets refuse to run where a production
-container is present, and `make deploy` names `-f compose.yaml` so it cannot pick up
-the dev override. Neither guard is a substitute for knowing which directory you are
+container is present, `make release` refuses to run where one is, and `make deploy`
+names `-f compose.yaml` so it cannot pick up the dev override. Neither guard is a substitute for knowing which directory you are
 in — `docker ps` shows the project prefix on every container.
 
 Running the *production* compose file from a worktree is harmless, incidentally: it
 would build a separate project named after the worktree and leave the live site
 alone. Only the main checkout reaches production.
 
-## Deploying
+## Releasing and deploying
+
+A deploy is no longer a build. **A git tag publishes an image; a deploy pulls
+one.** `docs/RELEASING.md` is the full procedure — the short version:
 
 ```bash
-make deploy
+make release VERSION=1.1.0   # from a worktree, on main: tags and pushes
+                             # CI then tests, builds and pushes the image
+make deploy VERSION=1.1.0    # from the main checkout: pulls it and restarts
+make rollback VERSION=1.0.0  # the same thing, pointed at an older version
 ```
 
-That is the whole thing: it rebuilds the production image, recreates the
-container, waits for the healthcheck, and then asserts the deploy actually
-landed. Run it from the main checkout, not a worktree -- Compose finds the
-running stack by project name, which is the directory's.
+`make versions` lists the releases and marks the live one; `make prod-version`
+prints what production is running, read from the container's
+`org.opencontainers.image.version` label.
 
-**Never deploy with a bare `docker compose`.** In this checkout that also reads
-`compose.override.yaml`, which builds the `frankenphp_dev` target and bind-mounts
-the working copy over `/app`. Every production command names its file:
-`-f compose.yaml`. `make deploy` does this for you; the point of the target is
-that the flag is not something anyone has to remember.
+Things that are load-bearing here:
+
+- **`compose.yaml` has no `build:` key, and must not gain one.** With one, a bare
+  `docker compose -f compose.yaml up -d` builds the working copy and stamps a
+  release version on it, and production serves something no release produced.
+  Without one, that command fails on a missing manifest. The default tag is
+  `:none` for the same reason — nothing publishes it, so a command that forgot
+  to name a version fails rather than picking one.
+- **Never deploy with a bare `docker compose`.** In this checkout it also reads
+  `compose.override.yaml`, which builds the `frankenphp_dev` target and
+  bind-mounts the working copy over `/app`. Every production command names its
+  file: `-f compose.yaml`. `make deploy` does this for you.
+- **Version numbers are never reused.** A bad release is followed by the next
+  number, not a retagged one.
+- **The image is `linux/arm64` only**, because production is Docker Desktop on
+  Apple Silicon. The release job runs on an arm64 runner so that is a native
+  build rather than a QEMU one.
+- **An image built by hand reports version `0.0.0-dev`.** The label comes from a
+  build argument only the release workflow passes, which is what lets
+  `verify-deploy` tell a release apart from a local build.
+
+### Secrets are supplied at run time, not baked in
+
+They used to be baked in: the build ran on the production host, `.env.local` was
+in the build context, and `composer dump-env prod` compiled it into
+`.env.local.php` inside a layer. A published image is public and CI has no
+`.env.local`, so that route is closed at both ends.
+
+`.dockerignore` excludes `.env.local`, `compose.yaml` passes `APP_SECRET`,
+`DATABASE_URL`, `DEFAULT_URI` and both admin passphrases into the container from
+the host's env files, and Symfony's Dotenv leaves an already-set variable alone
+so those win over the image's committed defaults. `make deploy` runs
+`deploy-preflight` first and refuses to start when one is empty, naming the
+variable and never printing a value.
+
+**An unset admin passphrase is an open door, not a locked one.**
+`hash_equals('', '')` is `true`, so a container that never received
+`PAYMENTS_ADMIN_PASSPHRASE` would accept an empty form field. That became
+reachable the moment passphrases stopped being baked in, so
+`AdminPassphraseVerifier` refuses everything when the configured passphrase is
+empty and logs it as critical. Any new passphrase-gated flow goes through it
+rather than calling `hash_equals()` directly.
 
 ### Why `make deploy` verifies rather than just restarting
 
-Two things can go wrong without the site going down, and both have:
+Three things can go wrong without the site going down, and the first two have:
 
 1. **The image ships code whose dependencies were never installed.** The kernel
    cannot boot, and the site 502s -- but only once something forces it to boot
@@ -190,6 +234,9 @@ Two things can go wrong without the site going down, and both have:
    warmed cache the image ships (the Dockerfile copies `/app/var` in as its own
    layer) behind one compiled in July. `verify-deploy` fails if any file under
    `src/`, `config/` or `templates/` is newer than `var/cache/prod`.
+3. **The container that came up is not the version that was asked for.**
+   `verify-deploy` compares the running container's version label against the
+   version the deploy named.
 
 Nothing may be mounted over `/app/var` in production. Only the two directories
 the app writes to at runtime are mounted, and both are named: `LedgerService`
@@ -456,6 +503,7 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   property, so new entity fields should not default to `?T ... = null` out of habit.
 
 `docs/ARCHITECTURE.md` has the fuller picture, including known weak spots.
+`docs/RELEASING.md` covers versioning, publishing and rollback.
 
 ## Before you call the work done
 
