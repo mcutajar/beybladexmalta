@@ -66,6 +66,13 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Reports an existing slug rather than creating a duplicate.
   - Writes its replay command inside the flush transaction, like the other two flows.
 
+- `src/Command/FetchChallongeCommand.php`
+  - Captures a Challonge bracket as `var/data/challonge/<slug>.json`.
+  - Accepts every URL shape Challonge hands out, including the subdomain and
+    invite-link forms.
+  - Writes **no** ledger line: a replay must never depend on Challonge still
+    serving the bracket. The snapshot is what later steps will point at.
+
 ### Application services
 
 Both the web and CLI entry points are thin: they gather input, then hand it to a
@@ -85,6 +92,34 @@ service that owns the domain rules.
 - `App\Service\ImportFileWriter`
   - Materialises a web-submitted placement list into `var/data/imports/`, so the
     ledger replay command always has a source file to point at.
+
+- `App\Service\ChallongeFetcher`
+  - The only class in the app that touches the network. GETs the bracket's module
+    page and returns an `App\Dto\ChallongeSnapshot`.
+  - Fails with what it expected and what came back, so a bot check or a moved
+    endpoint reads as such rather than as a parse error.
+
+- `App\Service\ChallongeModuleParser`
+  - Brace-matches the `_initialStoreState['TournamentStore']` object out of the
+    page's JavaScript, ignoring braces and escaped quotes inside strings, and lifts
+    the `#scorecard` standings table out of the page body.
+
+- `App\Service\ChallongeStandingsParser`
+  - Turns a rendered standings table into rows. Rank, participant, linked Challonge
+    account and match history are read by name; every other column is kept verbatim
+    under its own header label, because the set of them changes with the format and
+    the `Byes` column exists only in the brackets that had byes.
+
+- `App\Service\ChallongeStoreNormaliser`
+  - Flattens Challonge's three bracket shapes into one list of stages, and drops
+    what only the embed needs. Also picks up the third-place playoff, which hangs
+    off the store rather than sitting in `matches_by_round`.
+
+- `App\Service\ChallongeSnapshotWriter`
+  - Materialises a snapshot into `var/data/challonge/`, which is tracked by git for
+    the same reason `var/data/imports/` is.
+  - Assembles the file beside its target and moves it into place, so a failure
+    never leaves half a snapshot under the real name.
 
 - `App\Service\PlayerRegistrationService`
   - Marks a player as paid for a season, auto-creating the player when needed.

@@ -8,6 +8,7 @@
     "require": {
         "php": ">=8.5.7",
         "ext-ctype": "*",
+        "ext-dom": "*",
         "ext-iconv": "*",
         "doctrine/doctrine-bundle": "^3.2",
         "doctrine/doctrine-migrations-bundle": "^4.0",
@@ -18,6 +19,7 @@
         "symfony/flex": "^2",
         "symfony/form": "8.1.*",
         "symfony/framework-bundle": "8.1.*",
+        "symfony/http-client": "8.1.*",
         "symfony/monolog-bundle": "^4.0",
         "symfony/routing": "8.1.*",
         "symfony/runtime": "8.1.*",

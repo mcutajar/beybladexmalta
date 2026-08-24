@@ -263,8 +263,14 @@ If a deploy fails verification, `make prod-logs` is the next stop.
   `bbx_malta` data, via `dbname_suffix` in `config/packages/doctrine.yaml`.
   `#[ResetDatabase]` drops and recreates it on each run.
 - `.env.test` holds the admin passphrases the functional tests submit.
-- `var/data/imports/` is **tracked by git** and holds real league data. Tests that
+- `var/data/imports/` and `var/data/challonge/` are **tracked by git** and hold real
+  league data — the placement lists, and the captured Challonge brackets. Tests that
   write there must clean up after themselves in `tearDown()`.
+- **No test reaches Challonge.** `config/services_test.yaml` hands `ChallongeFetcher`
+  a `MockHttpClient` built by `tests/Support/FakeChallonge`, which answers from
+  `tests/Fixtures/challonge/` and, like the real site, only renders standings when
+  `show_standings=1` was sent. A test needing a new bracket shape adds a fixture
+  there rather than a URL.
 - Nothing else under `var/` belongs in git. `var/tailwind/` holds the built
   stylesheet and a ~112 MB downloaded Tailwind binary; both are generated.
 - `SymfonyStyle` hard-wraps console output, so normalise whitespace before
@@ -440,6 +446,14 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   `FlusherInterface::flushThen()`. The ledger must never gain a line for a change
   the database rejected, and a failed ledger write must roll the change back.
   Preserve this when adding any new ledger-writing flow.
+- **A Challonge snapshot is a transcription, not an interpretation.**
+  `var/data/challonge/<slug>.json` keeps every fact the bracket stated — every
+  match with its per-game scorelines, the entrants, the standings tables column
+  for column — and none of what only the embed needs. What it must never gain is
+  a conclusion: no column renamed into our vocabulary, no display name resolved
+  to one of our players. Those change, and a tracked file cannot. Turning a
+  snapshot into domain objects happens when it is read, where a mistake costs a
+  re-parse rather than a re-fetch of a bracket that may be gone.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you
@@ -508,6 +522,27 @@ contributor needs in its own body. The link is a convenience for whoever owns it
 - Because the Doctrine extension reads the real mapping, **entity property types
   must match the column nullability**. A `NOT NULL` column needs a non-nullable
   property, so new entity fields should not default to `?T ... = null` out of habit.
+- Challonge's human-facing pages return **403** to anything that is not a browser,
+  and so does `/<slug>/standings`. Only `challonge.com/<slug>/module` answers a
+  plain client, and it carries the whole tournament in a
+  `_initialStoreState['TournamentStore']` assignment. Send a User-Agent that names
+  the site — an anonymous client is bounced — and keep `show_standings=1` on the
+  URL, because without it a Swiss bracket renders no standings table at all and
+  nothing fails until something tries to read one.
+- `challonge.com/<slug>` *does* resolve a bracket that lives on a subdomain, by
+  301, but the redirect drops the query string. `ChallongeUrl` therefore keeps the
+  subdomain rather than letting the client follow the hop.
+- The group stage and the final stage of the same bracket use **disjoint id
+  spaces**. A blader who plays both appears under two unrelated ids with only
+  their display name in common, so a snapshot lists participants per stage and
+  never merges them.
+- The **third-place playoff is not in `matches_by_round`**. It hangs off the store
+  as `third_place_match`, and again as `consolation_matches`. Miss it and every
+  bracket with a cut is one match short; merge it in unflagged and it looks like
+  the final, which is how the knockout winner is identified.
+- A standings row does not reliably carry the participant's name: a blader who
+  linked their Challonge account is rendered as **that account instead**. Rows are
+  joined to participants through the match ids in their match-history cell.
 
 `docs/ARCHITECTURE.md` has the fuller picture, including known weak spots.
 `docs/RELEASING.md` covers versioning, publishing and rollback.
