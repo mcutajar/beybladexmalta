@@ -178,6 +178,57 @@ final class ChallongeStoreNormaliserTest extends TestCase
         $this->normalise(['tournament' => ['state' => 'complete']]);
     }
 
+    /**
+     * The store is an undocumented embed payload. A field that changes type is
+     * how we would find out it had changed shape, so it has to be loud — a
+     * snapshot quietly missing a column is the one outcome worth avoiding.
+     */
+    public function testItRefusesAFieldThatHasChangedType(): void
+    {
+        $this->expectException(ChallongeFetchException::class);
+        $this->expectExceptionMessage('The Challonge field "raw_identifier" holds int where text was expected. The module payload has changed shape.');
+
+        $this->normalise([
+            'tournament' => ['id' => 7, 'tournament_type' => 'swiss', 'state' => 'complete'],
+            'matches_by_round' => ['1' => [['id' => 1, 'round' => 1, 'raw_identifier' => 3]]],
+        ]);
+    }
+
+    /**
+     * Null, on the other hand, is Challonge's ordinary way of saying a bracket
+     * had no playoff, or a match no winner yet, or an entrant no account.
+     */
+    public function testItTakesEveryNullChallongeLegitimatelyWrites(): void
+    {
+        $snapshot = $this->normalise([
+            'tournament' => ['id' => 7, 'tournament_type' => 'swiss', 'state' => 'complete', 'is_team' => null],
+            'name' => null,
+            'third_place_match' => null,
+            'matches_by_round' => ['1' => [[
+                'id' => 1,
+                'round' => 1,
+                'state' => 'open',
+                'raw_identifier' => 'A',
+                'player1' => ['id' => 11, 'seed' => 1, 'display_name' => 'Obelix', 'participant_id' => null],
+                'player2' => null,
+                'games' => [],
+                'scores' => [],
+                'winner_id' => null,
+                'loser_id' => null,
+                'forfeited' => null,
+            ]]],
+        ]);
+
+        $match = $snapshot->stages[0]->matches[0];
+
+        self::assertNull($match->player2Id);
+        self::assertNull($match->winnerId);
+        self::assertFalse($match->forfeited);
+        self::assertSame([], $match->games);
+        self::assertNull($snapshot->stages[0]->name);
+        self::assertNull($snapshot->stages[0]->participants[0]->participantId);
+    }
+
     public function testItRefusesAMatchWithNoId(): void
     {
         $this->expectException(ChallongeFetchException::class);
