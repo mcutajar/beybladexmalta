@@ -45,7 +45,7 @@ class ChallongeStoreNormaliser
         $tournament = $this->arrayAt($store, 'tournament');
 
         $id = $this->intAt($tournament, 'id');
-        $type = $this->stringAt($tournament, 'tournament_type');
+        $type = $this->nonEmptyStringAt($tournament, 'tournament_type');
 
         if (null === $id || null === $type) {
             throw new ChallongeFetchException('The tournament store carries no tournament id or type.');
@@ -60,7 +60,7 @@ class ChallongeStoreNormaliser
                 collection: $group,
                 kind: ChallongeStageKind::Group,
                 fallbackFormat: $type,
-                scorecardHtml: $this->stringAt($group, 'scorecard_html'),
+                scorecardHtml: $this->nonEmptyStringAt($group, 'scorecard_html'),
             );
         }
 
@@ -77,7 +77,7 @@ class ChallongeStoreNormaliser
             fetchedAt: $fetchedAt,
             tournamentId: $id,
             tournamentType: $type,
-            tournamentState: $this->stringAt($tournament, 'state') ?? 'unknown',
+            tournamentState: $this->nonEmptyStringAt($tournament, 'state') ?? 'unknown',
             isTeamTournament: true === ($tournament['is_team'] ?? null),
             stages: $stages,
         );
@@ -96,8 +96,8 @@ class ChallongeStoreNormaliser
 
         return new ChallongeStage(
             kind: $kind,
-            name: $this->stringAt($collection, 'name'),
-            format: $this->stringAt($this->arrayAt($collection, 'tournament'), 'tournament_type') ?? $fallbackFormat,
+            name: $this->nonEmptyStringAt($collection, 'name'),
+            format: $this->nonEmptyStringAt($this->arrayAt($collection, 'tournament'), 'tournament_type') ?? $fallbackFormat,
             rounds: $this->rounds($collection),
             participants: $this->participants($rawMatches),
             matches: $this->matches($rawMatches),
@@ -118,7 +118,7 @@ class ChallongeStoreNormaliser
             $number = $this->intAt($round, 'number');
 
             if (null !== $number) {
-                $rounds[] = new ChallongeRound($number, $this->stringAt($round, 'title'));
+                $rounds[] = new ChallongeRound($number, $this->nonEmptyStringAt($round, 'title'));
             }
         }
 
@@ -147,7 +147,7 @@ class ChallongeStoreNormaliser
         ksort($byRound, \SORT_NUMERIC);
 
         foreach ($byRound as $round) {
-            foreach ($this->arrayList($round) as $match) {
+            foreach ($this->arrayListIn($round, 'matches_by_round') as $match) {
                 $matches[] = [$match, false];
 
                 $id = $this->intAt($match, 'id');
@@ -207,12 +207,12 @@ class ChallongeStoreNormaliser
         return new ChallongeMatch(
             id: $id,
             round: $this->intAt($match, 'round') ?? 0,
-            identifier: $this->stringAt($match, 'raw_identifier'),
-            state: $this->stringAt($match, 'state') ?? 'unknown',
+            identifier: $this->nonEmptyStringAt($match, 'raw_identifier'),
+            state: $this->nonEmptyStringAt($match, 'state') ?? 'unknown',
             player1Id: $this->intAt($this->arrayAt($match, 'player1'), 'id'),
             player2Id: $this->intAt($this->arrayAt($match, 'player2'), 'id'),
             games: $this->games($match),
-            score: $this->integers($match['scores'] ?? null),
+            score: $this->integersIn($this->arrayAt($match, 'scores'), 'scores'),
             winnerId: $this->intAt($match, 'winner_id'),
             loserId: $this->intAt($match, 'loser_id'),
             forfeited: true === ($match['forfeited'] ?? null),
@@ -229,8 +229,8 @@ class ChallongeStoreNormaliser
     {
         $games = [];
 
-        foreach ($this->arrayList($match['games'] ?? null) as $game) {
-            $games[] = $this->integers($game);
+        foreach ($this->arrayListAt($match, 'games') as $game) {
+            $games[] = $this->integersIn($game, 'games');
         }
 
         return $games;
@@ -254,7 +254,7 @@ class ChallongeStoreNormaliser
                 $player = $this->arrayAt($match, $side);
 
                 $id = $this->intAt($player, 'id');
-                $name = $this->stringAt($player, 'display_name');
+                $name = $this->nonEmptyStringAt($player, 'display_name');
 
                 if (null === $id || null === $name || isset($participants[$id])) {
                     continue;
@@ -280,6 +280,18 @@ class ChallongeStoreNormaliser
     }
 
     /**
+     * Nothing in the store is guaranteed, so every read out of it goes through
+     * one of these.
+     *
+     * A field that is absent or null is ordinary: Challonge writes null for the
+     * playoff a bracket never had, for a match nobody has won yet, for an
+     * entrant with no linked account. Those answer with null.
+     *
+     * A field that is *present and the wrong type* is not ordinary — it means
+     * the payload has changed shape, and a reader that shrugged and carried on
+     * with null would write a snapshot quietly missing a column and say nothing.
+     * Those refuse, naming the field and what came back.
+     *
      * @param array<string, mixed> $source
      *
      * @return array<string, mixed>
@@ -288,7 +300,15 @@ class ChallongeStoreNormaliser
     {
         $value = $source[$key] ?? null;
 
-        return is_array($value) ? $value : [];
+        if (null === $value) {
+            return [];
+        }
+
+        if (!is_array($value)) {
+            throw $this->wrongType($key, 'an object', $value);
+        }
+
+        return $value;
     }
 
     /**
@@ -298,44 +318,50 @@ class ChallongeStoreNormaliser
      */
     private function arrayListAt(array $source, string $key): array
     {
-        return $this->arrayList($source[$key] ?? null);
+        return $this->arrayListIn($source[$key] ?? null, $key);
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    private function arrayList(mixed $value): array
+    private function arrayListIn(mixed $value, string $key): array
     {
-        if (!is_array($value)) {
+        if (null === $value) {
             return [];
+        }
+
+        if (!is_array($value)) {
+            throw $this->wrongType($key, 'a list', $value);
         }
 
         $list = [];
 
         foreach ($value as $item) {
-            if (is_array($item)) {
-                $list[] = $item;
+            if (!is_array($item)) {
+                throw $this->wrongType($key, 'a list of objects', $item);
             }
+
+            $list[] = $item;
         }
 
         return $list;
     }
 
     /**
+     * @param array<string, mixed> $values
+     *
      * @return list<int>
      */
-    private function integers(mixed $value): array
+    private function integersIn(array $values, string $key): array
     {
-        if (!is_array($value)) {
-            return [];
-        }
-
         $integers = [];
 
-        foreach ($value as $item) {
-            if (is_int($item) || is_float($item) || (is_string($item) && is_numeric($item))) {
-                $integers[] = (int) $item;
+        foreach ($values as $value) {
+            if (!is_int($value)) {
+                throw $this->wrongType($key, 'a list of whole numbers', $value);
             }
+
+            $integers[] = $value;
         }
 
         return $integers;
@@ -348,16 +374,46 @@ class ChallongeStoreNormaliser
     {
         $value = $source[$key] ?? null;
 
-        return is_int($value) ? $value : null;
+        if (null === $value) {
+            return null;
+        }
+
+        if (!is_int($value)) {
+            throw $this->wrongType($key, 'a whole number', $value);
+        }
+
+        return $value;
     }
 
     /**
+     * An empty string is Challonge saying it has nothing, which is the same
+     * thing as the field being absent — a group with no standings renders an
+     * empty `scorecard_html` rather than dropping it.
+     *
      * @param array<string, mixed> $source
      */
-    private function stringAt(array $source, string $key): ?string
+    private function nonEmptyStringAt(array $source, string $key): ?string
     {
         $value = $source[$key] ?? null;
 
-        return is_string($value) && '' !== $value ? $value : null;
+        if (null === $value) {
+            return null;
+        }
+
+        if (!is_string($value)) {
+            throw $this->wrongType($key, 'text', $value);
+        }
+
+        return '' === $value ? null : $value;
+    }
+
+    private function wrongType(string $key, string $expected, mixed $value): ChallongeFetchException
+    {
+        return new ChallongeFetchException(sprintf(
+            'The Challonge field "%s" holds %s where %s was expected. The module payload has changed shape.',
+            $key,
+            get_debug_type($value),
+            $expected,
+        ));
     }
 }
