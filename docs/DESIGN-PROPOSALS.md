@@ -17,6 +17,7 @@ system rules. This is the process that sits on top of both.
 | Rule | Why |
 | --- | --- |
 | Component catalogue comes first | Without shared names, feedback is "the win-rate thing from the third one", which nobody can act on. |
+| The catalogue starts from what already exists | A proposal that invents a component the repo already has is proposing a duplicate, and nobody notices until it is built. |
 | Two or three options per page | One option is a fait accompli. Four is a survey. Three forces each one to have a reason to exist. |
 | Options differ in *purpose*, not styling | Two restyles of the same layout is one option with extra steps. |
 | Every mockup at 375px **and** wide | Most people reach this site on a phone. An option that only works on a laptop has not been designed. |
@@ -28,10 +29,40 @@ system rules. This is the process that sits on top of both.
 **Always the first section.** Every reusable block gets a name, rendered once,
 in isolation, with a one-line description and a note of which pages use it.
 
-Naming:
+### Start from what exists
 
-- `SCREAMING-KEBAB`, one to three words: `KPI-ROW`, `MATCH-LOG`, `H2H-BARS`,
-  `CUT-PATH`, `CONFIRM-BAR`.
+**Open `/_styleguide` before drawing anything.** It renders every component in
+every variant, which is precisely what a catalogue needs as its first draft.
+Then go through `templates/components/` and `src/Twig/Components/`.
+
+Every entry in the catalogue must say which of three things it is:
+
+| | Means |
+| --- | --- |
+| **Existing** | `Card`, `Badge`, `DataTable`, `RankMedal`. Use it. Name it by its real component name so nobody rebuilds it. |
+| **Extension** | An existing component gaining a variant or a prop — a new `Tone` on `Badge`, a value slot on `FeatureTile`. Cheap, and it keeps one component rather than two. |
+| **New** | Genuinely nothing to build on. Has to justify itself in a sentence. |
+
+A block made of existing components is not a new component. It says
+**built from** and lists them: a standings table is `DataTable` plus
+`RankMedal`, not a fresh table.
+
+This matters most for tables. `DataTable` already owns the scroll shell, the
+cell rhythm and the `dense` and `bleed` props, and `.data-table` in
+`assets/styles/app.css` owns the padding. Six different-looking tables across a
+proposal are six sets of columns inside one component.
+
+Get this wrong and the cost is real. The proposal behind #61 named 27 blocks as
+though the cupboard were bare; roughly a dozen were things the repo already had
+or near-variants of them, including one called `DISCLOSURE` when
+`Disclosure.html.twig` was sitting in `templates/components/` with the same
+name and the props already on it.
+
+### Naming
+
+- **An existing component keeps its own name.** `Card`, not `PANEL`.
+- Anything genuinely new gets `SCREAMING-KEBAB`, one to three words:
+  `KPI-ROW`, `MATCH-LOG`, `H2H-BARS`, `CUT-PATH`.
 - Named for the job, not the shape — the same rule the design tokens follow.
   `STANDINGS`, not `wide-table-with-form-column`.
 - Grouped into three or four bands (summary blocks, page-specific blocks,
@@ -42,9 +73,8 @@ so the vocabulary survives the proposal and ends up in the codebase. If a block
 in the catalogue has no plausible component behind it, it is probably two
 blocks.
 
-Mark blocks that are new to this proposal, and blocks that exist in the data
-but are deliberately not rendered — those are decisions, and a reader should
-see them.
+Mark blocks that exist in the data but are deliberately not rendered — those
+are decisions, and a reader should see them.
 
 ## 2. The options
 
@@ -54,7 +84,10 @@ Each option gets:
 - **A sentence on what it is for.** Not what it looks like. "Opens on the
   podium and the sentence that describes the day" is a purpose; "uses cards
   with amber accents" is not.
-- **The components it uses**, by name, as tags.
+- **The components it uses**, by name, as tags — existing ones included, so
+  the true cost of an option is visible. An option built entirely from things
+  that already exist is cheaper than one that needs four new blocks, and that
+  should be legible without reading the code.
 - **Its tradeoffs**, at least one of which is a cost.
 - **The mockup itself**, at 375px and at full width.
 
@@ -129,7 +162,10 @@ So:
 
 Before a design proposal goes out:
 
+- [ ] `/_styleguide` and `templates/components/` reviewed before drawing
 - [ ] Component catalogue is the first section, and every option draws from it
+- [ ] Every entry marked existing, extension or new, and every new one justified
+- [ ] Blocks assembled from existing components say "built from" and list them
 - [ ] Each component has a name, a one-line description and a rendered example
 - [ ] Two or three options per page, each with a stated purpose
 - [ ] Every mockup rendered at 375px and at full width, from the same markup
@@ -145,8 +181,15 @@ Before a design proposal goes out:
 ## Worked example
 
 The Challonge full-import pipeline (#61) went through this. Its proposal named
-27 components, then gave three options each for the import preview, the
-tournament page, the player profile and a new records board — twelve mockups,
-each rendered at 375px and at full width from one markup block. The layout
-choice was deliberately deferred to #57, #58 and #59, which say so in their
-own bodies.
+27 blocks, then gave three options each for the import preview, the tournament
+page, the player profile and a new records board — twelve mockups, each
+rendered at 375px and at full width from one markup block. The layout choice
+was deliberately deferred to #57, #58 and #59, which say so in their own
+bodies.
+
+It also got the reuse rule wrong on the first pass, which is why that rule is
+in this file. The catalogue was drawn from scratch instead of from
+`/_styleguide`, so about a dozen of its 27 entries were duplicates or
+near-variants of components already in `templates/components/`. Every table in
+it is `DataTable` with different columns. That was corrected in the proposal
+rather than discovered during #57.
