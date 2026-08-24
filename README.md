@@ -40,7 +40,7 @@ Production runs a published, versioned image — never a build made on the host.
 A git tag is what publishes one:
 
 ```
-make release VERSION=1.1.0   # from a worktree: runs the gates, pushes the tag
+make release VERSION=1.1.0   # from the production checkout: checks, tags, pushes
                              # CI then tests, builds and publishes the image
 make deploy VERSION=1.1.0    # from the production checkout: pulls it, restarts
 make rollback VERSION=1.0.0  # the same, pointed at an earlier version
