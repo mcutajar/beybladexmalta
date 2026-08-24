@@ -16,7 +16,8 @@ system rules. This is the process that sits on top of both.
 
 | Rule | Why |
 | --- | --- |
-| Component catalogue comes first | Without shared names, feedback is "the win-rate thing from the third one", which nobody can act on. |
+| A shared, named component catalogue | Without shared names, feedback is "the win-rate thing from the third one", which nobody can act on. |
+| The catalogue is its own document | A proposal is finished when its option is picked; the catalogue never is. Bury one inside the other and it dies with it, or gets copied and drifts. |
 | The catalogue starts from what already exists | A proposal that invents a component the repo already has is proposing a duplicate, and nobody notices until it is built. |
 | Two or three options per page | One option is a fait accompli. Four is a survey. Three forces each one to have a reason to exist. |
 | Options differ in *purpose*, not styling | Two restyles of the same layout is one option with extra steps. |
@@ -26,8 +27,36 @@ system rules. This is the process that sits on top of both.
 
 ## 1. The component catalogue
 
-**Always the first section.** Every reusable block gets a name, rendered once,
-in isolation, with a one-line description and a note of which pages use it.
+Every reusable block gets a name, rendered once, in isolation, with a one-line
+description and a note of which pages use it.
+
+### It is its own document
+
+**The catalogue is not a section inside a proposal. It is a separate document
+that proposals link to.**
+
+The two things have different lifespans, and that is the whole argument. A
+proposal is finished the day its option is chosen — after that it is a record of
+a decision, and nobody should be editing it. The catalogue is never finished: it
+gains an entry when a block is invented, and an entry changes from *new* to
+*existing* the moment somebody builds it. Bury it inside a proposal and it dies
+with that proposal, or it gets copied into the next one and the two drift.
+
+So:
+
+- One catalogue per site, living at a stable URL, owned by nobody in particular.
+- A proposal opens with a short section that **links to it** and lists the block
+  names it uses, so the proposal still reads on its own without the catalogue
+  open. Names and status, not rendered examples — those are the catalogue's job.
+- Keep that section numbered `01` even though it is now three paragraphs. The
+  option shorthand (`3A`, `4B`) is derived from section numbers, and renumbering
+  breaks every reference in every ticket that has already been filed.
+- **Updating the catalogue does not need a proposal.** Built a component? Mark
+  it existing. Needed a new block mid-ticket? Add it with its marker and its
+  justification.
+
+The catalogue for this site is **The League Kit**. Anything below about the
+catalogue's contents applies to it.
 
 ### Start from what exists
 
@@ -52,9 +81,9 @@ cell rhythm and the `dense` and `bleed` props, and `.data-table` in
 `assets/styles/app.css` owns the padding. Six different-looking tables across a
 proposal are six sets of columns inside one component.
 
-Get this wrong and the cost is real. The proposal behind #61 named 27 blocks as
-though the cupboard were bare; roughly a dozen were things the repo already had
-or near-variants of them, including one called `DISCLOSURE` when
+Get this wrong and the cost is real. The catalogue behind #61 named 26 blocks
+as though the cupboard were bare; roughly a dozen were things the repo already
+had or near-variants of them, including one called `DISCLOSURE` when
 `Disclosure.html.twig` was sitting in `templates/components/` with the same
 name and the props already on it.
 
@@ -116,9 +145,9 @@ to be made when the ticket that builds it starts.
 
 So the proposal keeps all its options, and the ticket says so explicitly:
 
-> Three options are drawn up in the design document, at both widths, with a
-> catalogue of the named components each uses. **Pick one at the start of this
-> ticket.**
+> Layout options are drawn up in the design proposal, at both widths, and the
+> blocks they use are named in the component catalogue. **Pick one at the start
+> of this ticket.**
 
 This is why the catalogue matters more than the mockups. Options age; a named
 component that maps to a Twig template does not.
@@ -154,16 +183,22 @@ So:
   the acceptance criteria and the mobile rules all live in the issue body.
 - **The link is a convenience, not the source of truth.** Include it, and say
   plainly who it resolves for.
-- Anything a proposal establishes that outlives it — a component name, a metric
-  we decided against, a rule about what is deliberately not displayed — belongs
-  in this repo, either in a ticket or in `docs/`.
+- **A block invented by a proposal belongs in the catalogue**, not only in the
+  proposal that invented it. That is the one piece of a proposal guaranteed to
+  be needed again.
+- Anything else a proposal establishes that outlives it — a metric we decided
+  against, a rule about what is deliberately not displayed — belongs in this
+  repo, either in a ticket or in `docs/`.
 
 ## Checklist
 
 Before a design proposal goes out:
 
 - [ ] `/_styleguide` and `templates/components/` reviewed before drawing
-- [ ] Component catalogue is the first section, and every option draws from it
+- [ ] The catalogue is a separate document; section `01` links to it and lists
+      the block names, so the proposal still reads on its own
+- [ ] Any block the proposal invents has been added to the catalogue, not just
+      drawn in the proposal
 - [ ] Every entry marked existing, extension or new, and every new one justified
 - [ ] Blocks assembled from existing components say "built from" and list them
 - [ ] Each component has a name, a one-line description and a rendered example
@@ -180,16 +215,22 @@ Before a design proposal goes out:
 
 ## Worked example
 
-The Challonge full-import pipeline (#61) went through this. Its proposal named
-27 blocks, then gave three options each for the import preview, the tournament
-page, the player profile and a new records board — twelve mockups, each
-rendered at 375px and at full width from one markup block. The layout choice
-was deliberately deferred to #57, #58 and #59, which say so in their own
-bodies.
+The Challonge full-import pipeline (#61) went through this. Two documents came
+out of it, which is the shape this file describes:
 
-It also got the reuse rule wrong on the first pass, which is why that rule is
-in this file. The catalogue was drawn from scratch instead of from
-`/_styleguide`, so about a dozen of its 27 entries were duplicates or
-near-variants of components already in `templates/components/`. Every table in
-it is `DataTable` with different columns. That was corrected in the proposal
-rather than discovered during #57.
+- **The League Kit** — the catalogue. 26 blocks, each rendered once and marked
+  existing, extension or new, plus an inventory of what `templates/components/`
+  already holds. It outlives the proposal.
+- **Twelve Ways In** — the proposal. Three options each for the import preview,
+  the tournament page, the player profile and a new records board; twelve
+  mockups, each rendered at 375px and at full width from one markup block. Its
+  section `01` links to the kit and lists the names. The layout choice was
+  deliberately deferred to #57, #58 and #59, which say so in their own bodies.
+
+Both rules in this file were learned by getting them wrong first. The catalogue
+started as a section inside the proposal, and it was drawn from scratch rather
+than from `/_styleguide` — so about a dozen of its entries were duplicates or
+near-variants of components already in the repo, including one called
+`DISCLOSURE` while `Disclosure.html.twig` sat in `templates/components/` with
+the same name. Both were corrected in the proposal rather than discovered
+during #57.

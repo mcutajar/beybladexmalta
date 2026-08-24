@@ -255,14 +255,18 @@ Anything that needs a layout decision — a new page, a rebuild of an existing o
 — goes through a **design proposal** before it is built, and proposals here have
 a fixed shape. `docs/DESIGN-PROPOSALS.md` is the format; the short version:
 
-- **A component catalogue comes first, and it starts from what already exists.**
-  Open `/_styleguide` before drawing anything — it renders every component in
-  every variant, which is the catalogue's first draft. Every entry is marked
-  *existing*, *extension* or *new*, an existing component keeps its real name
-  (`Card`, not `PANEL`), and a block assembled from existing ones says **built
-  from** rather than claiming to be new. Only genuinely new blocks get a
-  `SCREAMING-KEBAB` name, and those names become the files in
-  `templates/components/`.
+- **The component catalogue is its own document**, not a section inside the
+  proposal — a proposal is finished the day its option is picked, and the
+  catalogue never is. A proposal's section `01` links to it and lists the block
+  names it uses, so the proposal still reads on its own. Adding to the catalogue
+  does not need a proposal: build a component, mark it as existing.
+- **The catalogue starts from what already exists.** Open `/_styleguide` before
+  drawing anything — it renders every component in every variant, which is the
+  catalogue's first draft. Every entry is marked *existing*, *extension* or
+  *new*, an existing component keeps its real name (`Card`, not `PANEL`), and a
+  block assembled from existing ones says **built from** rather than claiming to
+  be new. Only genuinely new blocks get a `SCREAMING-KEBAB` name, and those names
+  become the files in `templates/components/`.
 - **Tables are the usual offender.** `DataTable` owns the scroll shell, the
   `dense` and `bleed` props and the `.data-table` cell rhythm. Six
   different-looking tables in a proposal are six sets of columns inside one
