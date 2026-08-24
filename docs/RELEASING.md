@@ -34,17 +34,29 @@ arrangement:
 
 ## Cutting a release
 
-From a worktree, on main, with everything pushed:
+**From the main checkout**, with main current and everything pushed:
 
 ```bash
 make release VERSION=1.1.0
 ```
 
+Which is the opposite of where everything else here happens, and for a plain
+reason: git will not check out `main` in a worktree while the main checkout
+holds it, so the main checkout is the only place a release can be cut from.
+`release` touches nothing but git — no Docker, no dev stack — so it is safe
+there even while production is running.
+
 It refuses anything that would produce a release nobody can reproduce — a
-version that is not semver, a branch that is not main, a dirty tree, a commit
-that differs from `origin/main`, a version number already used — then runs
-`make check` and pushes the tag only if the gates pass. A red suite leaves no
-tag behind to delete.
+version that is not semver, a dirty tree, a `HEAD` that is not `origin/main`, a
+version number already used — and checks CI's verdict on the commit before it
+tags. What it does *not* do is re-run the suite locally: the commit is
+`origin/main`, CI has already tested it on push, and the release workflow tests
+it again before publishing. A local `make check` would test the same commit a
+third time.
+
+If CI on that commit failed, it refuses. If CI is still running, it says to wait.
+If there is no verdict to find — or `gh` is unavailable — it says so and carries
+on, because a broken lookup is not a reason to block a release.
 
 Watch what it triggers with `gh run watch`. When the run is green the image
 exists and there is a GitHub Release with generated notes.
@@ -151,7 +163,8 @@ tag would only ever be a way to deploy something without recording what it was.
 - **An image built by hand reports `0.0.0-dev`.** The version label is set from
   a build argument that only the release workflow passes, which is how
   `verify-deploy` can tell a release from something somebody built locally.
-- **`make release` runs from a worktree, `make deploy` from the main checkout.**
-  The same split as everything else here: `release` needs the dev stack for
-  `make check`, and the dev stack must not run in the directory that runs
-  production.
+- **`make release` and `make deploy` both run from the main checkout**, which
+  makes releasing the exception to "work in a worktree". Not by preference:
+  `main` cannot be checked out in a worktree while the main checkout has it, and
+  a release has to be cut from main. Neither target starts a dev stack, so
+  neither is a danger to the production container in that directory.

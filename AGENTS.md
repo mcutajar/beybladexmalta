@@ -151,10 +151,11 @@ own volumes, automatically. Nothing needs `COMPOSE_PROJECT_NAME`.
 | --- | --- | --- |
 | Local development | a worktree | `make setup`, `make up`, `make check`, … |
 | Deploying | the main checkout | `make deploy VERSION=1.1.0` |
+| Releasing | the main checkout | `make release VERSION=1.1.0` |
 
 Both directions are guarded: the dev stack targets refuse to run where a production
-container is present, `make release` refuses to run where one is, and `make deploy`
-names `-f compose.yaml` so it cannot pick up the dev override. Neither guard is a substitute for knowing which directory you are
+container is present, and `make deploy` names `-f compose.yaml` so it cannot pick up
+the dev override. Neither guard is a substitute for knowing which directory you are
 in — `docker ps` shows the project prefix on every container.
 
 Running the *production* compose file from a worktree is harmless, incidentally: it
@@ -167,7 +168,7 @@ A deploy is no longer a build. **A git tag publishes an image; a deploy pulls
 one.** `docs/RELEASING.md` is the full procedure — the short version:
 
 ```bash
-make release VERSION=1.1.0   # from a worktree, on main: tags and pushes
+make release VERSION=1.1.0   # from the main checkout: tags and pushes
                              # CI then tests, builds and pushes the image
 make deploy VERSION=1.1.0    # from the main checkout: pulls it and restarts
 make rollback VERSION=1.0.0  # the same thing, pointed at an older version
@@ -191,6 +192,12 @@ Things that are load-bearing here:
   file: `-f compose.yaml`. `make deploy` does this for you.
 - **Version numbers are never reused.** A bad release is followed by the next
   number, not a retagged one.
+- **`make release` is cut from the main checkout, not a worktree** -- the one
+  exception to working in a worktree. Git will not check out `main` in a
+  worktree while the main checkout holds it, and a release has to be cut from
+  main. It touches only git, so it is safe to run beside a production
+  container; it does not re-run the suite locally, because the commit it tags
+  is `origin/main` and CI has already tested it.
 - **The image is `linux/arm64` only**, because production is Docker Desktop on
   Apple Silicon. The release job runs on an arm64 runner so that is a native
   build rather than a QEMU one.

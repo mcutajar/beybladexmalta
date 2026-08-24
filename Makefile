@@ -44,7 +44,7 @@ ARGS ?=
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
 	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
-	dev-stack-only release deploy rollback deploy-preflight verify-deploy \
+	dev-stack-only release release-gate deploy rollback deploy-preflight verify-deploy \
 	prod-logs prod-version versions not-production
 
 help: ## List the available targets
@@ -278,10 +278,16 @@ REQUIRED_PROD_VARS := APP_SECRET DATABASE_URL PAYMENTS_ADMIN_PASSPHRASE \
 SEMVER_PATTERN := ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$$
 
 # Refuses anything that would produce a release nobody can reproduce: a version
-# that is not semver, a branch that is not main, a dirty or stale tree, a tag
-# that already exists. The quality gates run before the tag is created, so a
-# red suite means no tag rather than a tag someone has to delete.
-release: not-production ## Tag a release and let CI publish the image, e.g. make release VERSION=1.1.0
+# that is not semver, a tree that is not exactly origin/main, a version already
+# used. Only git is touched here -- no Docker, no dev stack -- so this runs
+# wherever main is checked out, which in practice is the main checkout. That is
+# also the only place it *can* run: git will not check out main in a worktree
+# while the main checkout holds it.
+#
+# The commit is the check, not the branch name. What has to be true is that the
+# tag points at origin/main; whether the local ref is called "main" is a proxy
+# for that, and a worse one.
+release: ## Tag a release and let CI publish the image, e.g. make release VERSION=1.1.0
 	@set -e; \
 	version='$(VERSION)'; \
 	if [ -z "$$version" ]; then \
@@ -299,11 +305,6 @@ release: not-production ## Tag a release and let CI publish the image, e.g. make
 		echo 'Expected MAJOR.MINOR.PATCH, e.g. 1.1.0 or 2.0.0-rc.1.'; \
 		exit 1; \
 	fi; \
-	branch=$$(git rev-parse --abbrev-ref HEAD); \
-	if [ "$$branch" != 'main' ]; then \
-		echo "Releases are cut from main, and this is \"$$branch\"."; \
-		exit 1; \
-	fi; \
 	if [ -n "$$(git status --porcelain)" ]; then \
 		echo 'The working tree has uncommitted changes.'; \
 		echo 'A release must name a commit that is pushed, or nobody can rebuild it.'; \
@@ -311,8 +312,10 @@ release: not-production ## Tag a release and let CI publish the image, e.g. make
 	fi; \
 	git fetch --quiet origin main; \
 	if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse origin/main)" ]; then \
-		echo 'This checkout of main is not the same commit as origin/main.'; \
-		echo 'Pull or push first: the tag has to point at a commit origin has.'; \
+		echo 'HEAD is not origin/main, so this would tag something else.'; \
+		echo "  HEAD:        $$(git rev-parse --short HEAD)"; \
+		echo "  origin/main: $$(git rev-parse --short origin/main)"; \
+		echo 'Releases are cut from main. Check it out, or pull, and try again.'; \
 		exit 1; \
 	fi; \
 	if git rev-parse -q --verify "refs/tags/v$$version" >/dev/null \
@@ -320,15 +323,46 @@ release: not-production ## Tag a release and let CI publish the image, e.g. make
 		echo "v$$version already exists. Versions are never reused."; \
 		exit 1; \
 	fi; \
-	echo "Running the quality gates before tagging v$$version."; \
-	$(MAKE) --no-print-directory check; \
+	$(MAKE) --no-print-directory release-gate; \
 	git tag -a "v$$version" -m "Release $$version"; \
 	git push origin "v$$version"; \
 	echo; \
 	echo "Pushed v$$version. The release workflow is now building"; \
 	echo "  $(APP_IMAGE):$$version"; \
 	echo 'Watch it with: gh run watch'; \
-	echo "Then deploy from the production checkout: make deploy VERSION=$$version"
+	echo "Then deploy: make deploy VERSION=$$version"
+
+# What "make check" would have done here, asked of the run that is actually
+# authoritative. The commit being tagged is origin/main, which CI has already
+# tested on push -- re-running the suite locally would test the same commit a
+# second time, and would need a dev stack in a directory that must not have one.
+#
+# The cost this avoids is specific: a version number is spent the moment it is
+# pushed, so tagging a commit whose tests fail leaves a tag with no image behind
+# it and no way back except the next number. A broken or absent gh is not a
+# reason to block a release, so that case warns and carries on.
+release-gate:
+	@set -e; \
+	sha=$$(git rev-parse HEAD); \
+	state=$$(gh run list --commit "$$sha" --workflow ci.yaml --limit 1 \
+		--json status,conclusion \
+		--jq 'map(.status + "/" + (.conclusion // "none")) | first // "missing"' \
+		2>/dev/null || echo 'unknown'); \
+	case "$$state" in \
+		completed/success) \
+			echo "CI is green on $$(git rev-parse --short HEAD)."; ;; \
+		missing|unknown|'') \
+			echo "No CI verdict found for $$(git rev-parse --short HEAD)."; \
+			echo 'The release workflow will be the first thing to test it.'; ;; \
+		completed/*) \
+			echo "CI on this commit finished as \"$${state#completed/}\"."; \
+			echo 'Tagging it would spend a version number on a build that cannot pass.'; \
+			exit 1; ;; \
+		*) \
+			echo 'CI is still running on this commit.'; \
+			echo 'Wait for it -- gh run watch -- then release.'; \
+			exit 1; ;; \
+	esac
 
 versions: ## List the released versions, marking the one production is running
 	@set -e; \
