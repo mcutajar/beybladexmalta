@@ -45,3 +45,5 @@ php bin/console app:import-tournament 'Gamebreaker 08-08' '2026-08-08' '/app/var
 php bin/console app:import-tournament 'Gamesplus 08-09' '2026-08-09' '/app/var/data/imports/2026-08-09-gamesplus-08-09.txt' --season='1' --challonge='https://challonge.com/6uwwkf2x' --knockout='Giglio'
 php bin/console app:import-tournament 'Gamebreaker 15-08' '2026-08-15' '/app/var/data/imports/2026-08-15-gamebreaker-15-08.txt' --season='1' --challonge='https://challonge.com/6top55x2' --knockout='Rizzler'
 php bin/console app:import-tournament 'Gamesplus 16-08' '2026-08-16' '/app/var/data/imports/2026-08-16-gamesplus-16-08.txt' --season='1' --challonge='https://challonge.com/nppk0890' --knockout='Guzman93'
+php bin/console app:import-tournament 'Gamebreaker 22-08' '2026-08-22' '/app/var/data/imports/2026-08-22-gamebreaker-22-08.txt' --season='1' --challonge='https://challonge.com/65jxsotg' --knockout='Markinu'
+php bin/console app:import-tournament 'Gamesplus 23-08' '2026-08-23' '/app/var/data/imports/2026-08-23-gamesplus-23-08.txt' --season='1' --challonge='https://challonge.com/38ztp3w7' --knockout='Giglio'
