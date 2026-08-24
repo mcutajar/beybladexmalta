@@ -62,10 +62,66 @@ final class ChallongeSnapshot
         ];
     }
 
+    /**
+     * The stage whose standings order the event.
+     *
+     * That is the Swiss or round-robin stage everybody played: the group stage
+     * when there is a cut, and the whole tournament when there is not. It is
+     * never the cut itself — eight people play that, and the finishing order
+     * of an event is the order of the stage all of them were in.
+     */
+    public function rankingStage(): ?ChallongeStage
+    {
+        return $this->stages[0] ?? null;
+    }
+
+    /**
+     * The top cut, if the bracket had one.
+     */
+    public function cutStage(): ?ChallongeStage
+    {
+        foreach ($this->stages as $stage) {
+            if (ChallongeStageKind::Final === $stage->kind) {
+                return $stage;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Who won the cut — the winner of the last match played in it, with the
+     * third-place playoff excluded because it is played afterwards.
+     *
+     * Null when the bracket had no cut, or had one that was never finished.
+     */
+    public function knockoutWinner(): ?ChallongeParticipant
+    {
+        $cut = $this->cutStage();
+        $deciding = $cut?->decidingMatch();
+
+        if (null === $cut || null === $deciding || null === $deciding->winnerId) {
+            return null;
+        }
+
+        return $cut->participant($deciding->winnerId);
+    }
+
     public function matchCount(): int
     {
         return array_sum(array_map(
             static fn (ChallongeStage $stage): int => count($stage->matches),
+            $this->stages,
+        ));
+    }
+
+    /**
+     * How many of those matches were contested rather than forfeited.
+     */
+    public function playedMatchCount(): int
+    {
+        return array_sum(array_map(
+            static fn (ChallongeStage $stage): int => count($stage->playedMatches()),
             $this->stages,
         ));
     }

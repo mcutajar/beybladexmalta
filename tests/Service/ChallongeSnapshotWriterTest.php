@@ -12,6 +12,7 @@ use App\Dto\ChallongeStage;
 use App\Dto\ChallongeStageKind;
 use App\Dto\ChallongeStanding;
 use App\Exception\ChallongeSnapshotWriteException;
+use App\Service\ChallongeSnapshotFiles;
 use App\Service\ChallongeSnapshotWriter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\KernelInterface;
@@ -33,7 +34,7 @@ final class ChallongeSnapshotWriterTest extends TestCase
         $kernel = $this->createStub(KernelInterface::class);
         $kernel->method('getProjectDir')->willReturn($this->projectDir);
 
-        $this->writer = new ChallongeSnapshotWriter($kernel);
+        $this->writer = new ChallongeSnapshotWriter(new ChallongeSnapshotFiles($kernel));
     }
 
     protected function tearDown(): void
