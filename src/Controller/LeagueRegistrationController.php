@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Dto\RegisterPaymentData;
 use App\Exception\LedgerWriteException;
 use App\Form\RegisterPaymentType;
+use App\Service\AdminPassphraseVerifier;
 use App\Service\PlayerRegistrationService;
 use App\Service\RegisterSeasonPaymentResult;
 use Psr\Log\LoggerInterface;
@@ -20,6 +21,7 @@ final class LeagueRegistrationController extends AbstractController
 {
     public function __construct(
         private readonly PlayerRegistrationService $registrationService,
+        private readonly AdminPassphraseVerifier $passphrases,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -46,7 +48,7 @@ final class LeagueRegistrationController extends AbstractController
         /** @var RegisterPaymentData $data */
         $data = $form->getData();
 
-        if (!hash_equals($adminPassphrase, $data->passphrase)) {
+        if (!$this->passphrases->matches($adminPassphrase, $data->passphrase)) {
             $this->logger->warning(
                 'Payment registration authentication failed',
                 [
