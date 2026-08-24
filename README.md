@@ -24,7 +24,7 @@ The application runs inside Docker using the following services:
 
 Startup commands:
 
-- Production: `make deploy`
+- Production: `make deploy VERSION=1.1.0`
 - Development: `make setup` (see [Local development](#local-development) for where
   to run it)
 
@@ -34,10 +34,36 @@ the `.env` Compose would otherwise read, so passing only `.env.local` blanks out
 every variable the committed `.env` defines. Repeated flags layer, with the later
 file winning.
 
-`make deploy` builds the production image, recreates the container and then checks
-that the deploy actually landed — that the kernel boots, and that the compiled
-cache is newer than the code it shipped. Both failures have happened, and neither
-takes the site down in a way that is obvious from the outside.
+## Releases
+
+Production runs a published, versioned image — never a build made on the host.
+A git tag is what publishes one:
+
+```
+make release VERSION=1.1.0   # from a worktree: runs the gates, pushes the tag
+                             # CI then tests, builds and publishes the image
+make deploy VERSION=1.1.0    # from the production checkout: pulls it, restarts
+make rollback VERSION=1.0.0  # the same, pointed at an earlier version
+make versions                # the releases, with the live one marked
+```
+
+Images are kept at `ghcr.io/mcutajar/beybladexmalta`, one tag per version, and
+nothing prunes them — so any release can be started again, and a rollback is a
+pull rather than a rebuild. Versions follow semantic versioning and are never
+reused.
+
+`make deploy` checks that the deploy actually landed: that the kernel boots, that
+the compiled cache is newer than the code it shipped, and that the container is
+running the version that was asked for. The first two have gone wrong before, and
+neither takes the site down in a way that is obvious from the outside.
+
+Secrets are not in the image. The published image is public and is built by CI
+from a checkout with no `.env.local`, so `APP_SECRET`, `DATABASE_URL` and the
+admin passphrases are passed into the container at run time from the production
+host's env files; `make deploy` refuses to start when one of them is empty.
+
+[`docs/RELEASING.md`](docs/RELEASING.md) has the whole procedure, including what
+to bump and what a rollback does not undo.
 
 ## Local development
 
