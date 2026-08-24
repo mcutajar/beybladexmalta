@@ -28,6 +28,12 @@ tests/
 var/
 vendor/
 .editorconfig
+# Secrets must not reach the image. "composer dump-env prod" runs during the
+# build and compiles whatever dotenv files it finds into .env.local.php, so a
+# .env.local left in the context bakes the host's real passphrases into a layer
+# -- and the published image is public. Production is handed its secrets at
+# runtime by compose.yaml instead.
+.env.local
 .env.*.local
 .env.local.php
 .env.test

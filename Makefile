@@ -44,11 +44,12 @@ ARGS ?=
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
 	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
-	dev-stack-only deploy verify-deploy prod-logs not-production
+	dev-stack-only release deploy rollback deploy-preflight verify-deploy \
+	prod-logs prod-version versions not-production
 
 help: ## List the available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
-		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
+		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 ## --- Stack -----------------------------------------------------------------
 
@@ -252,6 +253,106 @@ dev-stack-only:
 		   exit 1;; \
 	esac
 
+## --- Release ---------------------------------------------------------------
+
+# A release is a git tag, and a tag is the only thing that publishes an image.
+# The version is recorded nowhere else -- no VERSION file to forget to bump, and
+# no way to build something by hand and call it 1.2.3. The release workflow
+# reacts to the pushed tag, builds the production image from that exact commit
+# and pushes it to the registry below; "deploy" then pulls what CI built.
+VERSION ?=
+
+# Where the release workflow pushes and where "deploy" pulls from. Overridable
+# so a fork can point somewhere else without editing compose.yaml.
+APP_IMAGE ?= ghcr.io/mcutajar/beybladexmalta
+
+# Everything the published image deliberately does not carry. It is built by CI
+# from a checkout with no .env.local, so these have to come from this host at
+# run time -- see the environment block in compose.yaml.
+REQUIRED_PROD_VARS := APP_SECRET DATABASE_URL PAYMENTS_ADMIN_PASSPHRASE \
+	TOURNAMENTS_ADMIN_PASSPHRASE
+
+# Semantic versioning, without the leading "v" -- the tag gets the prefix, the
+# image tag does not. A pre-release suffix is allowed; build metadata is not,
+# because "+" is not legal in a Docker tag.
+SEMVER_PATTERN := ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$$
+
+# Refuses anything that would produce a release nobody can reproduce: a version
+# that is not semver, a branch that is not main, a dirty or stale tree, a tag
+# that already exists. The quality gates run before the tag is created, so a
+# red suite means no tag rather than a tag someone has to delete.
+release: not-production ## Tag a release and let CI publish the image, e.g. make release VERSION=1.1.0
+	@set -e; \
+	version='$(VERSION)'; \
+	if [ -z "$$version" ]; then \
+		echo 'Name the version: make release VERSION=1.1.0'; \
+		echo 'The current releases are: make versions'; \
+		exit 1; \
+	fi; \
+	case "$$version" in v*) \
+		echo "Drop the \"v\": make release VERSION=$${version#v}"; \
+		echo 'The tag gets the prefix, the version does not.'; \
+		exit 1;; \
+	esac; \
+	if ! printf '%s' "$$version" | grep -qE '$(SEMVER_PATTERN)'; then \
+		echo "\"$$version\" is not a semantic version."; \
+		echo 'Expected MAJOR.MINOR.PATCH, e.g. 1.1.0 or 2.0.0-rc.1.'; \
+		exit 1; \
+	fi; \
+	branch=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$branch" != 'main' ]; then \
+		echo "Releases are cut from main, and this is \"$$branch\"."; \
+		exit 1; \
+	fi; \
+	if [ -n "$$(git status --porcelain)" ]; then \
+		echo 'The working tree has uncommitted changes.'; \
+		echo 'A release must name a commit that is pushed, or nobody can rebuild it.'; \
+		exit 1; \
+	fi; \
+	git fetch --quiet origin main; \
+	if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse origin/main)" ]; then \
+		echo 'This checkout of main is not the same commit as origin/main.'; \
+		echo 'Pull or push first: the tag has to point at a commit origin has.'; \
+		exit 1; \
+	fi; \
+	if git rev-parse -q --verify "refs/tags/v$$version" >/dev/null \
+		|| [ -n "$$(git ls-remote --tags origin "refs/tags/v$$version")" ]; then \
+		echo "v$$version already exists. Versions are never reused."; \
+		exit 1; \
+	fi; \
+	echo "Running the quality gates before tagging v$$version."; \
+	$(MAKE) --no-print-directory check; \
+	git tag -a "v$$version" -m "Release $$version"; \
+	git push origin "v$$version"; \
+	echo; \
+	echo "Pushed v$$version. The release workflow is now building"; \
+	echo "  $(APP_IMAGE):$$version"; \
+	echo 'Watch it with: gh run watch'; \
+	echo "Then deploy from the production checkout: make deploy VERSION=$$version"
+
+versions: ## List the released versions, marking the one production is running
+	@set -e; \
+	live=''; \
+	cid=$$($(DC_PROD) ps -q $(SERVICE) 2>/dev/null || true); \
+	if [ -n "$$cid" ]; then \
+		live=$$(docker inspect --format \
+			'{{index .Config.Labels "org.opencontainers.image.version"}}' \
+			"$$cid" 2>/dev/null || true); \
+	fi; \
+	tags=$$(git tag -l 'v*' --sort=-v:refname); \
+	if [ -z "$$tags" ]; then \
+		echo 'No releases yet. Cut the first with: make release VERSION=1.0.0'; \
+		exit 0; \
+	fi; \
+	for tag in $$tags; do \
+		version=$${tag#v}; \
+		if [ "$$version" = "$$live" ]; then \
+			echo "  $$version  <- live"; \
+		else \
+			echo "  $$version"; \
+		fi; \
+	done
+
 ## --- Deploy ----------------------------------------------------------------
 
 # Production is a separate Compose project built from compose.yaml alone.
@@ -262,16 +363,89 @@ dev-stack-only:
 PROD_COMPOSE_FILE ?= compose.yaml
 DC_PROD := docker compose $(ENV_FILES) -f $(PROD_COMPOSE_FILE)
 
-deploy: ## Rebuild and restart production, then prove it is serving this code
-	$(DC_PROD) up -d --build --force-recreate $(SERVICE)
-	@$(MAKE) --no-print-directory wait-healthy COMPOSE_FILE=$(PROD_COMPOSE_FILE)
-	@$(MAKE) --no-print-directory verify-deploy
+# Set by "deploy" so "verify-deploy" can assert that what came up is what was
+# asked for. Empty when verify-deploy is run on its own, which only reports.
+EXPECT_VERSION ?=
+
+# Nothing is built here. The image was built and tested by CI from the tagged
+# commit, so a deploy is a pull and a restart -- which is also why a rollback
+# costs the same as a deploy and needs no source checkout at all.
+deploy: ## Deploy a released version, e.g. make deploy VERSION=1.0.0
+	@set -e; \
+	version='$(VERSION)'; \
+	if [ -z "$$version" ]; then \
+		version=$$(git describe --tags --exact-match 2>/dev/null | sed 's/^v//' || true); \
+	fi; \
+	if [ -z "$$version" ]; then \
+		echo 'Name the version to deploy: make deploy VERSION=1.0.0'; \
+		echo 'HEAD carries no release tag to fall back on.'; \
+		echo 'The published versions are: make versions'; \
+		exit 1; \
+	fi; \
+	$(MAKE) --no-print-directory deploy-preflight; \
+	echo "Deploying $(APP_IMAGE):$$version"; \
+	APP_VERSION="$$version" $(DC_PROD) pull $(SERVICE); \
+	APP_VERSION="$$version" $(DC_PROD) up -d --force-recreate $(SERVICE); \
+	$(MAKE) --no-print-directory wait-healthy COMPOSE_FILE=$(PROD_COMPOSE_FILE); \
+	$(MAKE) --no-print-directory verify-deploy EXPECT_VERSION="$$version"
+
+# Deploying an earlier version is the whole rollback procedure, because the
+# image for it still exists in the registry and nothing rebuilds it. Named
+# separately so it is in "make help" when somebody needs it in a hurry.
+rollback: ## Put production back on an earlier version, e.g. make rollback VERSION=1.0.0
+	@set -e; \
+	if [ -z '$(VERSION)' ]; then \
+		echo 'Name the version to go back to: make rollback VERSION=1.0.0'; \
+		echo 'The published versions are: make versions'; \
+		exit 1; \
+	fi; \
+	$(MAKE) --no-print-directory deploy VERSION='$(VERSION)'
+
+# The published image carries the committed .env defaults and nothing else, so
+# an unset passphrase here does not fail loudly -- it starts a site whose admin
+# forms compare against an empty string. Checked before anything is pulled or
+# recreated, and reported by name: no value is ever printed.
+deploy-preflight: ## Check this host supplies the secrets the image does not carry
+	@set -e; \
+	missing=''; \
+	for var in $(REQUIRED_PROD_VARS); do \
+		value=''; \
+		for f in $(ENV_FILE) $(LOCAL_ENV_FILE); do \
+			[ -f "$$f" ] || continue; \
+			line=$$(grep -E "^[[:space:]]*$$var=" "$$f" | tail -1 || true); \
+			if [ -n "$$line" ]; then value=$${line#*=}; fi; \
+		done; \
+		from_env=$$(printenv "$$var" 2>/dev/null || true); \
+		if [ -n "$$from_env" ]; then value="$$from_env"; fi; \
+		if [ -z "$$(printf '%s' "$$value" | tr -d '[:space:]')" ]; then \
+			missing="$$missing $$var"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo 'Production would start without values it needs:'; \
+		for var in $$missing; do echo "  $$var"; done; \
+		echo; \
+		echo 'The published image is built by CI and carries no secrets, so these'; \
+		echo 'are read from this host. Set them in $(LOCAL_ENV_FILE) and try again.'; \
+		exit 1; \
+	fi; \
+	echo 'Every value production needs at run time is set.'
 
 prod-logs: ## Tail the production container's logs
 	$(DC_PROD) logs -f --tail=100 $(SERVICE)
 
-# Two things a deploy can get wrong without the site going down, both of which
-# have happened:
+prod-version: ## Print the version production is running
+	@set -e; \
+	cid=$$($(DC_PROD) ps -q $(SERVICE) 2>/dev/null || true); \
+	if [ -z "$$cid" ]; then \
+		echo 'The production "$(SERVICE)" service is not running.'; \
+		exit 1; \
+	fi; \
+	docker inspect --format \
+		'{{index .Config.Labels "org.opencontainers.image.version"}}' "$$cid"
+
+# Three things a deploy can get wrong without the site going down, all of which
+# have happened or are now possible:
 #
 #   1. The image ships a package the code needs but composer never installed,
 #      so the kernel cannot boot. A stale cache can hide this until something
@@ -279,17 +453,31 @@ prod-logs: ## Tail the production container's logs
 #   2. A compiled cache outlives the code it was compiled from. Symfony never
 #      revalidates the container, routes or Twig in prod, so the site keeps
 #      serving an older build and every release looks like a no-op.
+#   3. The container that came up is not the version that was asked for --
+#      compose reused an existing one, or something local was tagged by hand.
 #
 # "about" boots the kernel, which fails loudly on the first; comparing mtimes
-# catches the second.
-verify-deploy: ## Assert production booted this build and compiled it fresh
-	@cid=$$($(DC_PROD) ps -q $(SERVICE)); \
+# catches the second; the version label catches the third. That label is set
+# only by the release workflow, so an image built anywhere else reads
+# "0.0.0-dev" and cannot pass for a release.
+verify-deploy: ## Assert production booted the version it was given and compiled it fresh
+	@set -e; \
+	cid=$$($(DC_PROD) ps -q $(SERVICE)); \
 	if [ -z "$$cid" ]; then \
 		echo 'The production "$(SERVICE)" service is not running.'; exit 1; \
 	fi; \
 	if ! docker exec "$$cid" php bin/console about --env=prod >/dev/null 2>&1; then \
 		echo 'The kernel does not boot in production.'; \
 		echo 'Usually a package in composer.json that the image never installed.'; \
+		echo 'Look at: make prod-logs'; \
+		exit 1; \
+	fi; \
+	running=$$(docker inspect --format \
+		'{{index .Config.Labels "org.opencontainers.image.version"}}' \
+		"$$cid" 2>/dev/null || true); \
+	if [ -n '$(EXPECT_VERSION)' ] && [ "$$running" != '$(EXPECT_VERSION)' ]; then \
+		echo "Production is running \"$$running\", not \"$(EXPECT_VERSION)\"."; \
+		echo 'The container that came up is not the image this deploy pulled.'; \
 		echo 'Look at: make prod-logs'; \
 		exit 1; \
 	fi; \
@@ -300,7 +488,7 @@ verify-deploy: ## Assert production booted this build and compiled it fresh
 		if [ -n "$$stale" ]; then \
 			echo "Compiled cache is older than the code it should have been built from,"; \
 			echo "starting with: $$stale"; \
-			echo "Production is serving a different build to the one in this checkout."; \
+			echo "Production is serving a different build to the one in this image."; \
 			exit 1; \
 		fi' || exit 1; \
-	echo 'Production booted this build and compiled it fresh.'
+	echo "Production is running $${running:-an unlabelled image} and compiled it fresh."

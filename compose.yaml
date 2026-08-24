@@ -1,13 +1,42 @@
 services:
   php:
-    image: ${IMAGES_PREFIX:-}app-php
+    # Production runs a published image and never builds one. The release
+    # workflow is the only thing that pushes to this repository, so a tag here
+    # names an artifact that CI built from a tagged commit whose suite passed --
+    # which is also what makes rolling back a pull rather than a rebuild.
+    #
+    # There is deliberately no "build:" key. With one, a bare
+    # "docker compose -f compose.yaml up -d" would quietly build the working
+    # copy and stamp a release version on it, and the site would be serving
+    # something no release ever produced. Without one, the same command fails on
+    # a missing manifest, which is the outcome we want.
+    #
+    # The ":none" default is a tag nothing publishes, for the same reason: a
+    # command that forgot to name a version must fail rather than pick one.
+    # "make deploy VERSION=1.2.3" sets APP_VERSION, and a shell variable beats
+    # both --env-file arguments.
+    image: ${APP_IMAGE:-ghcr.io/mcutajar/beybladexmalta}:${APP_VERSION:-none}
     restart: unless-stopped
-    build:
-      context: .
-      target: frankenphp_prod
     environment:
       SERVER_NAME: ${SERVER_NAME:-localhost}
       CADDY_SERVER_LOG_OPTIONS: "output discard"
+      # Secrets reach production at runtime, not through the image.
+      #
+      # They used to arrive baked in: the build ran on this host, .env.local sat
+      # in the build context, and "composer dump-env prod" compiled it into
+      # .env.local.php inside a layer. CI has no .env.local and the published
+      # image is public, so that route is now closed at both ends -- .dockerignore
+      # excludes the file, and the values are handed to the container here,
+      # sourced from the host's .env.local through the Makefile's --env-file pair.
+      #
+      # Symfony's Dotenv never overwrites a variable that is already set, so a
+      # real environment variable wins over the .env.local.php the image ships.
+      # "make deploy" refuses to start until each of these has a value.
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      DEFAULT_URI: ${DEFAULT_URI}
+      PAYMENTS_ADMIN_PASSPHRASE: ${PAYMENTS_ADMIN_PASSPHRASE}
+      TOURNAMENTS_ADMIN_PASSPHRASE: ${TOURNAMENTS_ADMIN_PASSPHRASE}
     volumes:
       # No mount over /app/var. The image ships a warmed cache there (see the
       # Dockerfile's second COPY of /app/var), and anything mounted on top

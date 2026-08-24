@@ -1,0 +1,165 @@
+name: Release
+
+# A pushed tag is the only thing that publishes an image, and the image it
+# publishes is the only thing production runs. "make release VERSION=1.1.0"
+# creates the tag; everything below is what happens next.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+
+permissions:
+  contents: read
+
+# Never cancelled. A half-finished release leaves a tag with no image behind it,
+# and versions are not reused, so the recovery is a whole new number.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # The tag has usually already been through CI on main, but "usually" is not a
+  # guarantee: a tag can be pushed at any commit by hand, and by the time a bad
+  # image is in the registry the version is spent. This job is the gate.
+  verify:
+    name: Verify the tagged commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # Full history, because the ancestry check below needs main.
+      - name: Check out the tag
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # "make release" refuses to tag anything but main, so a tag that is not on
+      # main was pushed around it. Releasing one would publish an image nobody
+      # can find the source of by reading the default branch.
+      - name: Assert the tag is on main
+        run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "::error::${GITHUB_REF_NAME} is not an ancestor of main."
+            echo "Releases are cut from main. Delete the tag and use: make release VERSION=..."
+            exit 1
+          fi
+
+      # ~112 MB that tailwind:build would otherwise download. Same key as ci.yaml
+      # so a release reuses whatever the branch runs already warmed.
+      - name: Cache the Tailwind binary
+        uses: actions/cache@v4
+        with:
+          path: var/tailwind/*/tailwindcss-*
+          key: tailwind-${{ hashFiles('config/packages/symfonycasts_tailwind.yaml') }}
+
+      - name: Start the dev stack
+        run: docker compose -f compose.override.yaml up -d --build --wait
+
+      # Coverage is a pull request concern; this run only needs a verdict.
+      - name: Run the test suite
+        run: make phpunit
+
+      - name: Dump the container logs
+        if: ${{ failure() }}
+        run: docker compose -f compose.override.yaml logs --no-color
+
+  publish:
+    name: Publish the image
+    needs: verify
+    # Production is Docker Desktop on Apple Silicon, so the image it runs has to
+    # be linux/arm64. Building it on an arm64 runner keeps that native -- the
+    # alternative, QEMU on an amd64 runner, turns a five-minute build into a
+    # much longer one to produce the same thing. Only this one platform is
+    # published, because only this one platform is deployed; a second
+    # architecture belongs here the day something else has to run it.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+
+    permissions:
+      # The GitHub Release created at the end.
+      contents: write
+      # Pushing to GHCR. No secret involved: the repository is public, so the
+      # package is public, and GITHUB_TOKEN is enough to write it.
+      packages: write
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # The registry path has to be lowercase, which the owner/repo pair is not
+      # obliged to be. The version drops the tag's "v": tags are vX.Y.Z, image
+      # tags are X.Y.Z.
+      - name: Name the image
+        id: name
+        run: |
+          {
+            echo "image=ghcr.io/${GITHUB_REPOSITORY,,}"
+            echo "version=${GITHUB_REF_NAME#v}"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # No "latest" tag on purpose. Every image is a version and deploys name
+      # one, so a moving tag would only ever be a way to deploy something
+      # without knowing what it was.
+      #
+      # provenance is off so the push is a plain single-platform manifest.
+      # With it on, the registry gains an "unknown/unknown" entry beside the
+      # real image, which reads as a broken listing on the packages page.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: frankenphp_prod
+          push: true
+          provenance: false
+          tags: ${{ steps.name.outputs.image }}:${{ steps.name.outputs.version }}
+          build-args: |
+            APP_VERSION=${{ steps.name.outputs.version }}
+            APP_REVISION=${{ github.sha }}
+            APP_BUILD_DATE=${{ steps.name.outputs.created }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The image that just went to the registry, booted. It is the same
+      # assertion "make verify-deploy" makes after a deploy, made early enough
+      # that a broken image never becomes a version somebody has to skip. The
+      # entrypoint is bypassed deliberately: it would wait for a database this
+      # job has no reason to start.
+      - name: Boot the published image
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}:${{ steps.name.outputs.version }}
+        run: |
+          docker run --rm --pull=always --entrypoint php "$IMAGE" \
+            bin/console about --env=prod > /dev/null
+          echo "The published image boots."
+
+      # The body names the image and the command, and --generate-notes appends
+      # the commit list underneath it, so the notes exist without anyone
+      # maintaining a changelog by hand.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ steps.name.outputs.image }}:${{ steps.name.outputs.version }}
+          VERSION: ${{ steps.name.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "Image: \`${IMAGE}\`
+
+          Deploy it from the production checkout with \`make deploy VERSION=${VERSION}\`."
