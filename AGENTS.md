@@ -249,6 +249,30 @@ and test only, through `config/routes/styleguide.yaml`, and has no controller
 because it shows no data. `PageRendersTest` requests it, so a component that
 breaks fails the suite rather than a page.
 
+## Proposing a layout
+
+Anything that needs a layout decision — a new page, a rebuild of an existing one
+— goes through a **design proposal** before it is built, and proposals here have
+a fixed shape. `docs/DESIGN-PROPOSALS.md` is the format; the short version:
+
+- **A component catalogue comes first.** Every reusable block gets a
+  `SCREAMING-KEBAB` name, rendered once with a one-line description. The names
+  become the files in `templates/components/`, so the vocabulary outlives the
+  proposal.
+- **Two or three options per page**, each a different idea about what the page is
+  *for* rather than a restyle, each tagged with the components it uses, each with
+  at least one honest cost.
+- **Every mockup rendered at 375px and at full width from the same markup**,
+  using container queries rather than viewport media queries — so the narrow view
+  is the same component at phone size and not a second drawing of it.
+- **Choices are communicated as a letter per page plus component swaps**:
+  `3A but swap H2H-TABLE for H2H-BARS`.
+- **The choice is made when the ticket starts, not when the proposal is written.**
+  The ticket says so explicitly.
+
+Proposals are published as private artifacts, so a ticket must carry everything a
+contributor needs in its own body. The link is a convenience for whoever owns it.
+
 ## Conventions
 
 - `declare(strict_types=1);` in every PHP file — enforced by php-cs-fixer.
