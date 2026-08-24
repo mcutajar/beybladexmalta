@@ -178,6 +178,29 @@ USER www-data
 
 WORKDIR /app
 
+# Stamped by the release workflow, which is the only thing that publishes an
+# image. The defaults are what a hand-rolled local build gets, and that is the
+# point: "make verify-deploy" reads the version label off the running container,
+# so an image that was never released cannot pass itself off as one.
+#
+# Declared here at the end of the stage so a version bump invalidates nothing
+# but the metadata layers -- the vendor install, the asset build and the binary
+# scrape above are all still cache hits.
+ARG APP_VERSION=0.0.0-dev
+ARG APP_REVISION=unknown
+ARG APP_BUILD_DATE=1970-01-01T00:00:00Z
+
+LABEL org.opencontainers.image.title="Malta Beyblade League" \
+      org.opencontainers.image.source="https://github.com/mcutajar/beybladexmalta" \
+      org.opencontainers.image.licenses="AGPL-3.0-or-later" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${APP_REVISION}" \
+      org.opencontainers.image.created="${APP_BUILD_DATE}"
+
+# The same value the label carries, readable from inside the container without
+# docker inspect -- which is what the app would need to render it on a page.
+ENV APP_VERSION=${APP_VERSION}
+
 ENTRYPOINT ["docker-entrypoint"]
 
 HEALTHCHECK --start-period=60s CMD php -r 'exit(false === @file_get_contents("http://localhost:2019/metrics", context: stream_context_create(["http" => ["timeout" => 5]])) ? 1 : 0);'
