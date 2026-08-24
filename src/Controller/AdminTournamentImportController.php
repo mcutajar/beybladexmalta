@@ -8,6 +8,7 @@ use App\Dto\ImportTournamentData;
 use App\Exception\ImportFileWriteException;
 use App\Exception\LedgerWriteException;
 use App\Form\ImportTournamentType;
+use App\Service\AdminPassphraseVerifier;
 use App\Service\PlacementListParser;
 use App\Service\TournamentImportResult;
 use App\Service\TournamentImportService;
@@ -28,6 +29,7 @@ final class AdminTournamentImportController extends AbstractController
     public function __construct(
         private readonly TournamentImportService $importService,
         private readonly PlacementListParser $placementListParser,
+        private readonly AdminPassphraseVerifier $passphrases,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -54,7 +56,7 @@ final class AdminTournamentImportController extends AbstractController
         /** @var ImportTournamentData $data */
         $data = $form->getData();
 
-        if (!hash_equals($adminPassphrase, $data->passphrase)) {
+        if (!$this->passphrases->matches($adminPassphrase, $data->passphrase)) {
             $this->logger->warning(
                 'Tournament web import failed: Unauthorized passphrase input.',
             );
