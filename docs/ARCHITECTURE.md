@@ -93,6 +93,17 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Writes its replay command inside the flush transaction, naming the blader
     under the name the database holds.
 
+- `src/Command/BootstrapAliasesCommand.php`
+  - `app:bootstrap-aliases [--force]` — reads the alias table out of the events
+    already imported, and prints it before it writes anything. The default run
+    touches nothing.
+  - Every event already imported is a labelled example: rank *n* of its captured
+    bracket is line *n* of the placement list typed at the time. Fifteen aliases
+    fall out of the sixteen non-team events, all of them in `repeat.sh`.
+  - Prints what it could not decide as prominently as what it could —
+    contradictions, ranks that paired with nothing, and every event it read
+    nothing out of.
+
 ### Application services
 
 Both the web and CLI entry points are thin: they gather input, then hand it to a
@@ -212,8 +223,22 @@ service that owns the domain rules.
     refusing a collision rather than picking a side, until #54 stops the console
     commands inventing bladers.
   - Builds one `AliasIndex` per write and threads it through both the blader
-    lookup and the namespace check, which is what #51 will feel when it seeds
-    sixty aliases in a loop.
+    lookup and the namespace check, which is what `app:bootstrap-aliases` comes
+    through once per alias it seeds.
+
+- `App\Service\AliasBootstrapper`
+  - Derives the alias table from the league's own history and applies it through
+    `AliasService`, one row at a time, so each seeded alias is checked and
+    ledgered like a typed one.
+  - Writes nothing two events disagree about, nothing the normaliser already
+    folds, nothing already on file, and nothing that would point one blader's
+    name at another. All four are reported instead.
+  - Reads nothing out of a **team event**. Its entrants are teams, and the lists
+    it was imported from name one blader per team slot — padded, where the
+    roster was never known, with `JG1`, `JG2` and the literal `-`, `--`, `---`,
+    which are rows in `players` and are not people. A team event is one bracket
+    imported twice, which is how it is told apart until #67 makes it a
+    declaration.
 
 - `App\Service\PlayerRegistrationService`
   - Marks a player as paid for a season, auto-creating the player when needed.
