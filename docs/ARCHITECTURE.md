@@ -73,6 +73,16 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Writes **no** ledger line: a replay must never depend on Challonge still
     serving the bracket. The snapshot is what later steps will point at.
 
+- `src/Command/ChallongeSmokeCommand.php`
+  - `app:challonge-smoke [url] [--file=PATH]` — the smoke check on its own,
+    against a live bracket or a page already on disk. Writes nothing either way.
+  - Named no URL it reads one known finished bracket, which is what the
+    `Challonge smoke check` workflow runs on a Wednesday-morning cron. A failure
+    there raises an issue, so a change to `/module` surfaces days before an event
+    rather than during one.
+  - Prints the whole checklist, passes included: the expectations either side of
+    a failure are what say how much of the page is still the page we knew.
+
 ### Application services
 
 Both the web and CLI entry points are thin: they gather input, then hand it to a
@@ -96,8 +106,23 @@ service that owns the domain rules.
 - `App\Service\ChallongeFetcher`
   - The only class in the app that touches the network. GETs the bracket's module
     page and returns an `App\Dto\ChallongeSnapshot`.
+  - Runs the smoke check on the response before anything is parsed or written, so
+    every path that ever reads a bracket is gated by it — the fetch command today,
+    the import screen when it arrives.
   - Fails with what it expected and what came back, so a bot check or a moved
     endpoint reads as such rather than as a parse error.
+
+- `App\Service\ChallongeSmokeCheck`
+  - Asks a module page whether it is still the page this app reads: an HTML
+    response, a tournament store that decodes, a tournament with a format, rounds,
+    matches carrying `player1`/`player2`/`scores`/`winner_id`, and a standings
+    table wherever the bracket's own shape puts it.
+  - Reports every expectation as an `App\Dto\ChallongeSmokeReport` rather than
+    throwing at the first one, because a checklist is what makes a Challonge change
+    diagnosable. Only the page and the store are prerequisites; everything after
+    them is looked for independently.
+  - Checks the stage that orders the event, not the cut. A cut nobody has played
+    yet is a bracket mid-event, not a route that has changed.
 
 - `App\Service\ChallongeModuleParser`
   - Brace-matches the `_initialStoreState['TournamentStore']` object out of the
