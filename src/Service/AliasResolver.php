@@ -23,15 +23,25 @@ use App\Repository\PlayerRepositoryInterface;
  * the import in #53 can show a preview at all — a preview is only worth
  * looking at if the alternative to approving it is nothing happening.
  *
- * Resolution is two lookups against normalised spellings, in one namespace:
- * a blader's own name first, then the alias table. The two cannot collide,
- * because AliasService refuses to file an alias that folds onto somebody's
- * name, so the order is a statement of precedence rather than a tie-break.
+ * Resolution is one lookup against one namespace. A blader's own name and an
+ * alias are two ways of spelling the same claim, and this class does not rank
+ * them: it collects everybody the normalised spelling reaches, and answers
+ * only when that is exactly one person.
  *
- * When both miss, the suggestion pass runs. Nothing it produces is ever acted
- * on here; it exists so that the person answering the question has the three
- * or four bladers worth considering in front of them instead of a list of
- * seventy-six.
+ * Reaching two is not a tie to break. `AliasService` refuses to file an alias
+ * onto a blader's name, but that rule only guards the alias side, and the
+ * league gains bladers the other way — `app:import-tournament` auto-creates
+ * them from a placement list. So a blader created after the fact can shadow an
+ * alias filed before they existed, and preferring either one would split
+ * somebody's career across two rows without saying so. Both come back as the
+ * answer instead, which is what makes the collision visible the first time
+ * anything asks. Closing the hole at the point of creation belongs to #54,
+ * where the console commands stop inventing bladers at all.
+ *
+ * When nobody is reached, the suggestion pass runs. Nothing it produces is
+ * ever acted on here; it exists so that the person answering the question has
+ * the three or four bladers worth considering in front of them instead of a
+ * list of seventy-six.
  */
 class AliasResolver
 {
@@ -70,13 +80,19 @@ class AliasResolver
      */
     public function resolve(string $name, ?string $challongeAccount = null): AliasResolution
     {
-        return $this->against($this->index(), $name, $challongeAccount);
+        return $this->resolveWith($this->index(), $name, $challongeAccount);
     }
 
     /**
      * The same question asked of a whole bracket, reading the two tables once.
      *
-     * @param list<string> $names
+     * Each entry carries its own account, because that is often the only
+     * string in a standings row that reaches anybody — a blader who linked
+     * their Challonge account is rendered as the account there and under their
+     * own name in every match. A bulk call that could not carry it would be
+     * the shape #53 needs and the one that loses the suggestion it needs most.
+     *
+     * @param list<array{name: string, account?: ?string}> $names
      *
      * @return list<AliasResolution>
      */
@@ -85,8 +101,54 @@ class AliasResolver
         $index = $this->index();
 
         return array_map(
-            fn (string $name): AliasResolution => $this->against($index, $name),
+            fn (array $entry): AliasResolution => $this->resolveWith(
+                $index,
+                $entry['name'],
+                $entry['account'] ?? null,
+            ),
             $names,
+        );
+    }
+
+    /**
+     * One name against an index somebody else built.
+     *
+     * Public so that a caller resolving several names in one operation reads
+     * the two tables once rather than once per name — which `AliasService`
+     * does, and which matters when #51 seeds sixty aliases in a loop. An index
+     * goes stale the moment an alias is written, so it is passed in rather
+     * than cached here.
+     */
+    public function resolveWith(AliasIndex $index, string $name, ?string $challongeAccount = null): AliasResolution
+    {
+        $normalised = $this->normaliser->normalise($name);
+
+        if ('' === $normalised) {
+            return AliasResolution::question($name, $normalised, []);
+        }
+
+        $claimants = $this->everybodyCalled($index, $normalised);
+
+        if (count($claimants) > 1) {
+            return AliasResolution::ambiguous($name, $normalised, $this->collision($index, $claimants, $normalised, $challongeAccount));
+        }
+
+        $bladers = $index->bladersCalled($normalised);
+
+        if (1 === count($bladers)) {
+            return AliasResolution::blader($name, $normalised, $bladers[0], AliasMatch::BladerName);
+        }
+
+        $aliased = $index->aliasedTo($normalised);
+
+        if (null !== $aliased) {
+            return AliasResolution::blader($name, $normalised, $aliased, AliasMatch::Alias);
+        }
+
+        return AliasResolution::question(
+            $name,
+            $normalised,
+            $this->suggestions($index, $normalised, $challongeAccount),
         );
     }
 
@@ -110,50 +172,51 @@ class AliasResolver
         return new AliasIndex($bladers, $aliases);
     }
 
-    private function against(AliasIndex $index, string $name, ?string $challongeAccount = null): AliasResolution
+    /**
+     * Everybody this exact spelling reaches, by their own name or by an alias.
+     *
+     * @return list<Player>
+     */
+    private function everybodyCalled(AliasIndex $index, string $normalised): array
     {
-        $normalised = $this->normaliser->normalise($name);
+        $claimants = $index->bladersCalled($normalised);
+        $aliased = $index->aliasedTo($normalised);
 
-        if ('' === $normalised) {
-            return AliasResolution::question($name, $normalised, []);
+        if (null !== $aliased && !in_array($aliased, $claimants, true)) {
+            $claimants[] = $aliased;
         }
 
-        $bladers = $index->bladersCalled($normalised);
+        return $claimants;
+    }
 
-        if (1 === count($bladers)) {
-            return AliasResolution::blader($name, $normalised, $bladers[0], AliasMatch::BladerName);
-        }
-
-        /*
-         * Two bladers whose names fold together settle nothing. The table is
-         * unique on the raw name, so `Rip N' Burst` and `Ripnburst` can both
-         * exist; picking one of them here would be right half the time and
-         * silent the rest. They go out as the suggestions instead, which is
-         * how the merge in #56 gets asked for.
-         */
-        if (count($bladers) > 1) {
-            return AliasResolution::question($name, $normalised, array_map(
+    /**
+     * The shortlist for a spelling more than one blader answers to.
+     *
+     * Only the claimants, plus the account if it points at one of them — a
+     * name that is already exactly two people's is not made clearer by
+     * offering a third who is nearly spelled like it. The account is worth
+     * consulting here of all places: where the collision is what stops the
+     * row being read, an exact hit on a linked account is the one fact that
+     * says which side of it was meant.
+     *
+     * @param list<Player> $claimants
+     *
+     * @return list<AliasSuggestion>
+     */
+    private function collision(AliasIndex $index, array $claimants, string $normalised, ?string $challongeAccount): array
+    {
+        return $this->best(array_merge(
+            $this->fromChallongeAccount($index, $challongeAccount),
+            array_map(
                 static fn (Player $player): AliasSuggestion => new AliasSuggestion(
                     $player,
                     $normalised,
-                    AliasSuggestionReason::Spelling,
+                    AliasSuggestionReason::SpelledTheSameWay,
                     0,
                 ),
-                $bladers,
-            ));
-        }
-
-        $aliased = $index->aliasedTo($normalised);
-
-        if (null !== $aliased) {
-            return AliasResolution::blader($name, $normalised, $aliased, AliasMatch::Alias);
-        }
-
-        return AliasResolution::question(
-            $name,
-            $normalised,
-            $this->suggestions($index, $normalised, $challongeAccount),
-        );
+                $claimants,
+            ),
+        ));
     }
 
     /**
@@ -198,14 +261,13 @@ class AliasResolver
             return [];
         }
 
-        $named = $index->bladersCalled($account);
-        $player = $index->aliasedTo($account) ?? (1 === count($named) ? $named[0] : null);
+        $claimants = $this->everybodyCalled($index, $account);
 
-        if (null === $player) {
+        if (1 !== count($claimants)) {
             return [];
         }
 
-        return [new AliasSuggestion($player, $account, AliasSuggestionReason::ChallongeAccount, 0)];
+        return [new AliasSuggestion($claimants[0], $account, AliasSuggestionReason::ChallongeAccount, 0)];
     }
 
     private function compare(string $normalised, string $known, Player $player): ?AliasSuggestion
@@ -258,6 +320,12 @@ class AliasResolver
     /**
      * Best first, one entry per blader, and no more than a person can weigh.
      *
+     * The blader's name is the last tie-break rather than the first thing left
+     * to chance. Two suggestions that agree on reason, distance and spelling
+     * — which is every collision — would otherwise come out in whatever order
+     * `findAll()` happened to return, and an unordered shortlist is a
+     * different shortlist on every run.
+     *
      * @param list<AliasSuggestion> $suggestions
      *
      * @return list<AliasSuggestion>
@@ -266,8 +334,8 @@ class AliasResolver
     {
         usort(
             $suggestions,
-            static fn (AliasSuggestion $a, AliasSuggestion $b): int => [$a->reason->ordinal(), $a->distance, $a->spelling]
-                <=> [$b->reason->ordinal(), $b->distance, $b->spelling],
+            static fn (AliasSuggestion $a, AliasSuggestion $b): int => [$a->reason->ordinal(), $a->distance, $a->spelling, $a->player->getName()]
+                <=> [$b->reason->ordinal(), $b->distance, $b->spelling, $b->player->getName()],
         );
 
         $seen = [];

@@ -230,15 +230,92 @@ final class AliasResolverTest extends ServiceTestCase
         $resolution = $this->resolver->resolve('Rip_N_Burst');
 
         self::assertFalse($resolution->isResolved());
+        self::assertTrue($resolution->isAmbiguous());
         self::assertSame(["Rip N' Burst", 'Ripnburst'], self::suggested($resolution));
+        self::assertStringContainsString(
+            '"Rip_N_Burst" is how more than one blader is already spelled',
+            $resolution->problem(),
+        );
     }
 
     /**
-     * A blader's own name outranks an alias, and the two can never disagree
-     * anyway: AliasService refuses to file a spelling that folds onto somebody's
-     * name.
+     * A collision is not a near miss, and must not be reported as one. Both
+     * claimants are an exact hit, so "0 edits from" would be both meaningless
+     * and the one distance the suggestion vocabulary reserves for an account.
      */
-    public function testABladersOwnNameOutranksAnAlias(): void
+    public function testACollisionSaysWhatItIsRatherThanCountingEdits(): void
+    {
+        $this->blader("Rip N' Burst");
+        $this->blader('Ripnburst');
+
+        $suggestion = $this->resolver->resolve('Rip_N_Burst')->suggestions[0];
+
+        self::assertSame(AliasSuggestionReason::SpelledTheSameWay, $suggestion->reason);
+        self::assertSame('is already spelled "ripnburst"', $suggestion->because());
+    }
+
+    /**
+     * The shortlist for a collision is the only one that does not go through a
+     * distance, so it is the one that would otherwise come out in whatever
+     * order `findAll()` returned. Alphabetical by blader, every time.
+     */
+    public function testACollisionShortlistIsOrderedTheSameWayEveryTime(): void
+    {
+        $this->blader('Ripnburst');
+        $this->blader("Rip N' Burst");
+
+        self::assertSame(
+            ["Rip N' Burst", 'Ripnburst'],
+            self::suggested($this->resolver->resolve('Rip_N_Burst')),
+        );
+    }
+
+    /**
+     * Where a collision is what stops the row being read, an exact hit on a
+     * linked account is the one fact that says which side of it was meant. It
+     * is offered first, and it is still only offered.
+     */
+    public function testAnAccountIsOfferedFirstAgainstACollision(): void
+    {
+        $this->blader("Rip N' Burst");
+        $this->blader('Ripnburst');
+        $this->alias($this->blader('Sanya'), 'RNBmlt');
+
+        $resolution = $this->resolver->resolve('Rip_N_Burst', 'RNBmlt');
+
+        self::assertTrue($resolution->isAmbiguous());
+        self::assertSame(['Sanya', "Rip N' Burst", 'Ripnburst'], self::suggested($resolution));
+        self::assertSame(AliasSuggestionReason::ChallongeAccount, $resolution->suggestions[0]->reason);
+    }
+
+    /**
+     * The hole the one-namespace rule does not cover. AliasService refuses to
+     * file an alias onto a blader's name, but bladers also arrive by being
+     * invented from a placement list — so `KARM` can be created as a blader
+     * long after `karm` was filed against Il-Karm. Preferring either one
+     * splits somebody's career across two rows and says nothing; both come
+     * back instead, which is what makes it visible.
+     */
+    public function testABladerCreatedLaterCannotShadowAnAlias(): void
+    {
+        $this->alias($this->blader('Il-Karm'), 'KARM');
+
+        $shadow = $this->blader('KARM');
+
+        $resolution = $this->resolver->resolve('karm');
+
+        self::assertFalse($resolution->isResolved());
+        self::assertTrue($resolution->isAmbiguous());
+        self::assertSame(['Il-Karm', 'KARM'], self::suggested($resolution));
+        self::assertNotNull($shadow->getId());
+    }
+
+    /**
+     * A blader's own name and an alias are two spellings in one namespace, not
+     * two tables with a precedence between them. Each says which it came from,
+     * because when a result looks wrong the alias row is what to go and read.
+     */
+    public function testAResolutionSaysWhichSpellingReachedTheBlader(): void
     {
         $karm = $this->blader('Il-Karm');
         $this->alias($karm, 'KARM');
@@ -252,7 +329,11 @@ final class AliasResolverTest extends ServiceTestCase
         $this->alias($this->blader('Lanzjan'), 'Anzjan');
         $this->blader('Obelix');
 
-        $resolutions = $this->resolver->resolveAll(['ANZJAN', 'Obelisk', 'obelix']);
+        $resolutions = $this->resolver->resolveAll([
+            ['name' => 'ANZJAN'],
+            ['name' => 'Obelisk'],
+            ['name' => 'obelix'],
+        ]);
 
         self::assertSame(
             ['Lanzjan', null, 'Obelix'],
@@ -261,6 +342,25 @@ final class AliasResolverTest extends ServiceTestCase
                 $resolutions,
             ),
         );
+    }
+
+    /**
+     * A standings row carries its own linked account, so the bulk call has to
+     * carry one per name. A shape that could not would be exactly the shape
+     * #53 needs and would drop the suggestion that reaches most of the rows.
+     */
+    public function testEachNameInABracketCarriesItsOwnAccount(): void
+    {
+        $this->alias($this->blader('Sanya'), 'Sanya0207');
+
+        $resolutions = $this->resolver->resolveAll([
+            ['name' => 'legion', 'account' => 'Sanya0207'],
+            ['name' => 'nobody at all'],
+        ]);
+
+        self::assertSame(['Sanya'], self::suggested($resolutions[0]));
+        self::assertSame(AliasSuggestionReason::ChallongeAccount, $resolutions[0]->suggestions[0]->reason);
+        self::assertSame([], self::suggested($resolutions[1]));
     }
 
     private function blader(string $name): Player

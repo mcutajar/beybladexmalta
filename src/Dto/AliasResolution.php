@@ -17,6 +17,12 @@ use App\Entity\Player;
  * blader's career in half, and the split is silent — which is why the answer
  * comes back as `suggestions` for a person to choose from rather than as a
  * best guess already acted on.
+ *
+ * A name that reaches *two* people is the same refusal pointed the other way,
+ * and it is the one this class cares most about. It means the league's own
+ * records have a collision in them — two blader rows spelled alike, or a
+ * blader whose name shadows an alias filed before they existed — and picking
+ * one of them would be right half the time and silent the rest.
  */
 final class AliasResolution
 {
@@ -47,9 +53,22 @@ final class AliasResolution
         return new self($name, $normalised, null, AliasMatch::None, $suggestions);
     }
 
+    /**
+     * @param list<AliasSuggestion> $claimants everyone the spelling reaches
+     */
+    public static function ambiguous(string $name, string $normalised, array $claimants): self
+    {
+        return new self($name, $normalised, null, AliasMatch::Ambiguous, $claimants);
+    }
+
     public function isResolved(): bool
     {
         return null !== $this->player;
+    }
+
+    public function isAmbiguous(): bool
+    {
+        return AliasMatch::Ambiguous === $this->match;
     }
 
     /**
@@ -61,6 +80,14 @@ final class AliasResolution
             return '';
         }
 
+        if ($this->isAmbiguous()) {
+            return sprintf(
+                '"%s" is how more than one blader is already spelled: %s. Nothing can be read out of it until that is settled.',
+                $this->name,
+                $this->reasons(),
+            );
+        }
+
         if ([] === $this->suggestions) {
             return sprintf('"%s" is nobody the league knows, and nothing is close to it.', $this->name);
         }
@@ -68,14 +95,19 @@ final class AliasResolution
         return sprintf(
             '"%s" is nobody the league knows. It could be %s.',
             $this->name,
-            implode('; or ', array_map(
-                static fn (AliasSuggestion $suggestion): string => sprintf(
-                    '%s (%s)',
-                    $suggestion->player->getName(),
-                    $suggestion->because(),
-                ),
-                $this->suggestions,
-            )),
+            $this->reasons(),
         );
+    }
+
+    private function reasons(): string
+    {
+        return implode('; or ', array_map(
+            static fn (AliasSuggestion $suggestion): string => sprintf(
+                '%s (%s)',
+                $suggestion->player->getName(),
+                $suggestion->because(),
+            ),
+            $this->suggestions,
+        ));
     }
 }

@@ -193,16 +193,27 @@ service that owns the domain rules.
     never creates anybody: an unresolved name comes back with suggestions
     attached and the caller stops, which is what keeps a seventy-seventh blader
     out of the table.
+  - A name that reaches *two* people is refused the same way. A blader created
+    from a placement list can shadow an alias filed before they existed, and
+    preferring either would split a career across two rows in silence.
   - Suggestions are offered and never applied — an exact hit on the Challonge
     account a bracket rendered in place of the name, a known spelling within two
     edits, and a known name one spelling is built on (`BladerZ` inside
-    `BladerZMLT`).
+    `BladerZMLT`). The shortlist is ordered deterministically, blader name last.
+  - `resolveAll()` answers a whole bracket off one index, each name carrying its
+    own linked account.
 
 - `App\Service\AliasService`
   - The only thing that writes to the alias table. Refuses a spelling that folds
     onto a blader's own name, so aliases and blader names stay one namespace and
     nothing downstream has to decide which wins. Two rows for one person is a
     merge, not an alias.
+  - That guard covers the alias side only; the resolver covers the other by
+    refusing a collision rather than picking a side, until #54 stops the console
+    commands inventing bladers.
+  - Builds one `AliasIndex` per write and threads it through both the blader
+    lookup and the namespace check, which is what #51 will feel when it seeds
+    sixty aliases in a loop.
 
 - `App\Service\PlayerRegistrationService`
   - Marks a player as paid for a season, auto-creating the player when needed.

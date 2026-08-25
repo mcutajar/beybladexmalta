@@ -11,10 +11,15 @@ use App\Entity\Player;
  *
  * Resolving a single name is a lookup, but resolving one that misses means
  * comparing it against everything — and a bracket arrives as forty names at a
- * time. So the two tables are read in full, once, and passed around as this.
- * Seventy-six bladers and a few hundred aliases is small enough that the
- * honest thing is to hold them in memory rather than to build an index in
- * Postgres for a console command.
+ * time. So the two tables are read in full once per operation and passed
+ * around as this, rather than once per name. Seventy-six bladers and a few
+ * hundred aliases is small enough that the honest thing is to hold them in
+ * memory rather than to build an index in Postgres for a console command.
+ *
+ * It is a snapshot, and it goes stale the moment an alias is written. Nothing
+ * caches one across a write; a caller that adds aliases in a loop builds a
+ * fresh index per alias, because the one it added has to be visible to the
+ * next.
  */
 final class AliasIndex
 {

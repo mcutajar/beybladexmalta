@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\AliasIndex;
 use App\Dto\AliasResolution;
 use App\Entity\Player;
 use App\Entity\PlayerAlias;
@@ -27,6 +28,12 @@ use Psr\Log\LoggerInterface;
  *    never has to decide which of the two wins. Where that refusal is wrong —
  *    two rows for one person — the answer is the merge in #56, not an alias
  *    quietly pointing one name at the other.
+ *
+ * The second rule only guards this side. Bladers also arrive by being invented
+ * from a placement list, and `app:import-tournament` still does that, so a
+ * blader created later can shadow an alias filed before they existed. Nothing
+ * here can prevent it; `AliasResolver` refuses to resolve the collision rather
+ * than pick a side, and #54 closes it at the point of creation.
  */
 class AliasService
 {
@@ -60,18 +67,28 @@ class AliasService
             return AddAliasResult::NotAName;
         }
 
-        $player = $this->resolver->resolve($bladerName)->player;
+        /*
+         * One index for the whole operation, which is what AliasIndex is for.
+         * The blader lookup and the namespace check both read the same two
+         * tables, and #51 runs this in a loop sixty times.
+         */
+        $index = $this->resolver->index();
+        $blader = $this->resolver->resolveWith($index, $bladerName);
+        $player = $blader->player;
 
         if (null === $player) {
-            $this->logger->warning('Alias rejected: no such blader', [
+            $this->logger->warning('Alias rejected: the blader named is not one blader', [
                 'blader' => $bladerName,
                 'alias' => $alias,
+                'why' => $blader->match->value,
             ]);
 
-            return AddAliasResult::BladerNotFound;
+            return $blader->isAmbiguous()
+                ? AddAliasResult::BladerIsAmbiguous
+                : AddAliasResult::BladerNotFound;
         }
 
-        $clash = $this->clashWithABladersName($normalised, $player);
+        $clash = $this->clashWithABladersName($index, $normalised, $player);
 
         if (null !== $clash) {
             return $clash;
@@ -151,9 +168,9 @@ class AliasService
      * Whether the spelling is already somebody's name rather than a nickname
      * for one.
      */
-    private function clashWithABladersName(string $normalised, Player $player): ?AddAliasResult
+    private function clashWithABladersName(AliasIndex $index, string $normalised, Player $player): ?AddAliasResult
     {
-        $bladers = $this->resolver->index()->bladersCalled($normalised);
+        $bladers = $index->bladersCalled($normalised);
 
         if ([] === $bladers) {
             return null;

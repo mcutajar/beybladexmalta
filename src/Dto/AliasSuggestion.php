@@ -20,7 +20,7 @@ final class AliasSuggestion
         /** The known spelling that brought them up, normalised. */
         public readonly string $spelling,
         public readonly AliasSuggestionReason $reason,
-        /** Edits between the two normalised spellings; 0 for an exact hit. */
+        /** Edits between the two normalised spellings; 0 where they are equal. */
         public readonly int $distance,
     ) {
     }
@@ -32,6 +32,7 @@ final class AliasSuggestion
     {
         return match ($this->reason) {
             AliasSuggestionReason::ChallongeAccount => sprintf('the bracket rendered the Challonge account "%s"', $this->spelling),
+            AliasSuggestionReason::SpelledTheSameWay => sprintf('is already spelled "%s"', $this->spelling),
             AliasSuggestionReason::Spelling => sprintf('%d %s from "%s"', $this->distance, 1 === $this->distance ? 'edit' : 'edits', $this->spelling),
             AliasSuggestionReason::PartOfAKnownName => sprintf('shares a stem with "%s"', $this->spelling),
         };

@@ -155,7 +155,14 @@ final class AliasCommand extends Command
                 $spelling,
                 $this->named($spelling),
             )),
-            AddAliasResult::BladerNotFound => $this->noSuchBlader($io, $bladerName),
+            AddAliasResult::BladerNotFound => $this->noBlader($io, $bladerName, sprintf(
+                'There is no blader called "%s", and an alias never creates one.',
+                $bladerName,
+            )),
+            AddAliasResult::BladerIsAmbiguous => $this->noBlader($io, $bladerName, sprintf(
+                '"%s" is how more than one blader is already spelled, so it names nobody in particular.',
+                $bladerName,
+            )),
             AddAliasResult::NotAName => $this->refuse($io, sprintf(
                 '"%s" has no name in it once case, punctuation and "(invitation pending)" are taken out.',
                 $spelling,
@@ -177,10 +184,18 @@ final class AliasCommand extends Command
         $blader = null;
 
         if (1 === count($names)) {
-            $blader = $this->aliases->whoCouldThisBe($names[0])->player;
+            $resolution = $this->aliases->whoCouldThisBe($names[0]);
+            $blader = $resolution->player;
 
             if (null === $blader) {
-                return $this->noSuchBlader($io, $names[0]);
+                /*
+                 * Listing creates nothing, so it does not get the message
+                 * about aliases never creating a blader. It says what is
+                 * wrong with the name it was handed and offers the shortlist.
+                 */
+                return $this->noBlader($io, $names[0], $resolution->isAmbiguous()
+                    ? sprintf('"%s" is how more than one blader is already spelled.', $names[0])
+                    : sprintf('There is no blader called "%s".', $names[0]));
             }
         }
 
@@ -241,14 +256,16 @@ final class AliasCommand extends Command
      * The refusal the whole ticket is about, printed with the shortlist the
      * resolver came back with. Never acted on — the person reading it decides,
      * and then types the alias.
+     *
+     * The sentence is the caller's, because a name that reaches nobody and a
+     * name that reaches two people are different problems and only one of them
+     * is about the league not knowing somebody.
      */
-    private function noSuchBlader(SymfonyStyle $io, string $name): int
+    private function noBlader(SymfonyStyle $io, string $name, string $problem): int
     {
-        $resolution = $this->aliases->whoCouldThisBe($name);
+        $io->error($problem);
 
-        $io->error(sprintf('There is no blader called "%s", and an alias never creates one.', $name));
-
-        $this->offer($io, $resolution);
+        $this->offer($io, $this->aliases->whoCouldThisBe($name));
 
         return Command::FAILURE;
     }
@@ -272,8 +289,10 @@ final class AliasCommand extends Command
 
     /**
      * The blader a spelling reaches, under the name the database holds — or
-     * the spelling as typed, when it reaches nobody. Only ever used to phrase
-     * a message.
+     * the spelling as typed, when it reaches nobody or more than one. Only
+     * ever used to phrase a message, which is why it is allowed to read the
+     * tables again rather than thread an index through: it runs once, after
+     * the write, on the path a person is watching.
      */
     private function named(string $name): string
     {
