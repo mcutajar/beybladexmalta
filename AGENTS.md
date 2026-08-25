@@ -478,6 +478,15 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   `FlusherInterface::flushThen()`. The ledger must never gain a line for a change
   the database rejected, and a failed ledger write must roll the change back.
   Preserve this when adding any new ledger-writing flow.
+- **Nothing reads a Challonge bracket without the smoke check.** It lives inside
+  `ChallongeFetcher`, ahead of the parse and the write, so an import cannot begin
+  on a page that has changed shape — and a path added later inherits the gate
+  rather than having to remember it. `app:challonge-smoke` runs the same check on
+  its own, against a live bracket, a page saved with `--file`, or on a cron.
+  A consequence worth knowing: a bracket whose ranking stage renders no readable
+  standings can no longer be captured at all. That is deliberate — there is no
+  finishing order to import out of one — and `app:challonge-smoke` is how such a
+  page is looked at instead.
 - **A Challonge snapshot is a transcription, not an interpretation.**
   `var/data/challonge/<slug>.json` keeps every fact the bracket stated — every
   match with its per-game scorelines, the entrants, the standings tables column
