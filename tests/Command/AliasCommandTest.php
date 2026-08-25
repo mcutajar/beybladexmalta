@@ -52,8 +52,9 @@ final class AliasCommandTest extends ConsoleTestCase
     }
 
     /**
-     * A rebuilt database is repeat.sh replayed from nothing, and #51 will put
-     * sixty seeded aliases into it. A seeded line has to come back as seeded,
+     * A rebuilt database is repeat.sh replayed from nothing, and
+     * `app:bootstrap-aliases` puts fifteen seeded aliases into it. A seeded
+     * line has to come back as seeded,
      * or the record of which aliases nobody actually looked at is lost the
      * first time the schema changes.
      */

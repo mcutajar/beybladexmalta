@@ -70,7 +70,8 @@ class AliasService
         /*
          * One index for the whole operation, which is what AliasIndex is for.
          * The blader lookup and the namespace check both read the same two
-         * tables, and #51 runs this in a loop sixty times.
+         * tables, and `app:bootstrap-aliases` comes through here once per
+         * alias it seeds.
          */
         $index = $this->resolver->index();
         $blader = $this->resolver->resolveWith($index, $bladerName);

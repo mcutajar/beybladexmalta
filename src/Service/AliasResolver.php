@@ -115,9 +115,9 @@ class AliasResolver
      *
      * Public so that a caller resolving several names in one operation reads
      * the two tables once rather than once per name — which `AliasService`
-     * does, and which matters when #51 seeds sixty aliases in a loop. An index
-     * goes stale the moment an alias is written, so it is passed in rather
-     * than cached here.
+     * does, and which `AliasBootstrapper` leans on when it weighs a whole
+     * league's worth of evidence at once. An index goes stale the moment an
+     * alias is written, so it is passed in rather than cached here.
      */
     public function resolveWith(AliasIndex $index, string $name, ?string $challongeAccount = null): AliasResolution
     {
