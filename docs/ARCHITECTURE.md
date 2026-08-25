@@ -83,6 +83,16 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Prints the whole checklist, passes included: the expectations either side of
     a failure are what say how much of the page is still the page we knew.
 
+- `src/Command/AliasCommand.php`
+  - `app:alias add|list|remove` — the stored table that says which Challonge
+    spelling belongs to which blader.
+  - `add` refuses a blader nobody has heard of, and prints who the name might
+    have been instead. An alias never creates a player.
+  - `add` is replay-safe: a line already on file reports itself and writes
+    nothing, so `repeat.sh` can be replayed whole.
+  - Writes its replay command inside the flush transaction, naming the blader
+    under the name the database holds.
+
 ### Application services
 
 Both the web and CLI entry points are thin: they gather input, then hand it to a
@@ -171,6 +181,29 @@ service that owns the domain rules.
   - The type guards both ends of the pipeline read decoded JSON through. Absent and
     null are ordinary; present-and-the-wrong-type refuses, naming the field.
 
+- `App\Service\AliasNormaliser`
+  - Folds a display name to the part of it that is identity: case, punctuation,
+    spacing and Challonge's `(invitation pending)` suffix, which one bracket
+    managed to append twice. Over the eighteen captured brackets that takes 207
+    distinct spellings to 129. It deliberately goes no further — `Obelix` and
+    `Obelisk` are two letters apart and are two people.
+
+- `App\Service\AliasResolver`
+  - Turns a display name into the blader it belongs to, or into a question. It
+    never creates anybody: an unresolved name comes back with suggestions
+    attached and the caller stops, which is what keeps a seventy-seventh blader
+    out of the table.
+  - Suggestions are offered and never applied — an exact hit on the Challonge
+    account a bracket rendered in place of the name, a known spelling within two
+    edits, and a known name one spelling is built on (`BladerZ` inside
+    `BladerZMLT`).
+
+- `App\Service\AliasService`
+  - The only thing that writes to the alias table. Refuses a spelling that folds
+    onto a blader's own name, so aliases and blader names stay one namespace and
+    nothing downstream has to decide which wins. Two rows for one person is a
+    merge, not an alias.
+
 - `App\Service\PlayerRegistrationService`
   - Marks a player as paid for a season, auto-creating the player when needed.
 
@@ -198,6 +231,12 @@ service that owns the domain rules.
 - `App\Entity\TournamentResult`
   - Associates a player with a tournament finish.
   - Stores rank, `f1Points`, `bonusPoints`, and derived `totalPoints`.
+
+- `App\Entity\PlayerAlias`
+  - One spelling a blader has appeared under, unique on its normalised form, with
+    the source that recorded it (`manual`, `seeded`, `challonge-account`).
+  - Both spellings are stored: `alias` verbatim so a row can be recognised,
+    `normalised` because that is what it is looked up by.
 
 - `App\Entity\SeasonRegistration`
   - Tracks whether a player has paid for a season.
