@@ -1,0 +1,104 @@
+name: Challonge smoke check
+
+# `/module` is an embed endpoint, not a documented API. It is the only road in
+# while the official API is unusable, and Challonge owes nobody notice before
+# changing it. This is how that change surfaces on a Wednesday morning rather
+# than in the middle of an event on Saturday night.
+on:
+  schedule:
+    # Wednesdays, 06:00 UTC. Events are held at the weekend, so a failure here
+    # leaves three days to do something about it.
+    - cron: '0 6 * * 3'
+  workflow_dispatch:
+    inputs:
+      bracket:
+        description: 'A bracket URL to check instead of the known one'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: challonge-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Read a known bracket
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      # Only so a failure can raise an issue. A scheduled run nobody is
+      # watching is worth as much as no run at all.
+      issues: write
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      # The same stack a developer runs, so what fails here fails the same way
+      # locally. Nothing is seeded: the check reads Challonge and writes
+      # nothing, so it needs no data of its own.
+      - name: Start the dev stack
+        run: docker compose -f compose.override.yaml up -d --build --wait
+
+      # The input arrives through the environment rather than interpolated into
+      # the script, so a workflow_dispatch cannot smuggle shell into the run.
+      - name: Check the module route
+        id: smoke
+        env:
+          BRACKET: ${{ inputs.bracket }}
+        run: |
+          set -o pipefail
+          make console ARGS="app:challonge-smoke${BRACKET:+ $BRACKET}" 2>&1 | tee smoke.log
+
+      # Whichever way it went. The checklist is the useful part: the passes
+      # either side of a failure say how much of the page is still the page we
+      # knew, and a passing run records what it read.
+      - name: Put the checklist in the summary
+        if: ${{ always() && steps.smoke.outcome != 'skipped' }}
+        run: |
+          {
+            echo '## Challonge smoke check'
+            echo
+            echo '```'
+            cat smoke.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # One issue, reopened and commented on rather than duplicated, so a route
+      # that stays broken for a month does not leave four issues behind.
+      - name: Raise an issue when the route has changed
+        if: ${{ failure() && steps.smoke.outcome == 'failure' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'The Challonge module route no longer reads the way the importer expects'
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "The scheduled smoke check failed. Nothing can be imported from a bracket until this is understood."
+            echo
+            echo "Run: $RUN_URL"
+            echo
+            echo '```'
+            cat smoke.log
+            echo '```'
+          } > issue.md
+
+          existing=$(gh issue list --state open --search "$TITLE in:title" --json number,title \
+            --jq "map(select(.title == env.TITLE)) | .[0].number // empty")
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file issue.md
+          else
+            gh issue create --title "$TITLE" --body-file issue.md --label challonge
+          fi
+
+      - name: Dump the container logs
+        if: ${{ failure() }}
+        run: docker compose -f compose.override.yaml logs --no-color
