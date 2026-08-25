@@ -1,0 +1,94 @@
+# How the changelog is built.
+#
+# The input is the commit history, which here is already conventional and
+# already carries the reasoning in its bodies. The alternative -- "gh release
+# create --generate-notes" -- builds its list out of pull request titles
+# instead: one flat list, with the Dependabot bumps mixed into it, and no way
+# to see at a glance what a release changed for the site.
+#
+# One config, two consumers. The release workflow renders the latest section
+# into the GitHub Release; "make release" renders the whole file into
+# CHANGELOG.md before it tags. Both read this, so the two cannot disagree.
+
+[changelog]
+header = """
+# Changelog
+
+Every released version, grouped by what its commits said they were doing.
+Generated from the commit history by [git-cliff](https://git-cliff.org):
+`make release` rewrites it as part of cutting a version, and `make changelog`
+does it on demand. It is not edited by hand.
+"""
+
+# One entry per commit, linked to the commit rather than to a pull request --
+# the commit body is where the reasoning is, and a pull request may hold four
+# unrelated ones.
+#
+# Only released versions are rendered. A section for unreleased work would be
+# accurate for as long as it took the next commit to land on main and then be
+# quietly wrong, because nothing regenerates this file on a push. Preview what
+# the next release will say with "make changelog VERSION=1.1.0", which renders
+# it under the version it is about to become.
+#
+# The "<!-- n -->" prefixes on the group names are how the order below is
+# fixed: git-cliff sorts groups by name, and striptags drops the marker on the
+# way out.
+body = """
+{% set repo = "https://github.com/mcutajar/beybladexmalta" -%}
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}]({{ repo }}/releases/tag/{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits %}
+- {% if commit.breaking %}**Breaking:** {% endif %}{{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}]({{ repo }}/commit/{{ commit.id }}))
+{%- endfor %}
+{% endfor %}
+{% endif -%}
+"""
+
+# Off, so the blank line between the last entry of a version and the next
+# version's heading survives. With it on, git-cliff strips the trailing
+# newline from every rendered section and the headings run into the entries
+# above them.
+trim = false
+
+[git]
+conventional_commits = true
+
+# Neither filter is allowed to drop anything. A commit that does not parse is
+# untidy; a commit that silently vanishes from the changelog is a release note
+# that lies by omission -- so the catch-all parser at the bottom of the list
+# picks up whatever the ones above it did not match, and the only commits ever
+# skipped are the two named explicitly.
+filter_unconventional = false
+filter_commits = false
+
+protect_breaking_commits = true
+split_commits = false
+tag_pattern = "v[0-9]*"
+topo_order = false
+sort_commits = "oldest"
+
+commit_parsers = [
+  # Dependabot, which occupied half of the v1.0.0 notes and told the reader
+  # nothing about the site. ".github/dependabot.yaml" sets the "chore(deps)"
+  # prefix; the scope is optional here because the first four bumps landed
+  # before it did, as a plain "chore: bump ...".
+  { message = "^chore(\\(deps\\))?: bump ", skip = true },
+
+  # The commit "make release" writes to carry CHANGELOG.md into the tag. It is
+  # made after the notes are rendered, so the only place it could ever appear
+  # is the *next* version's changelog, describing the previous one.
+  { message = "^chore\\(release\\)", skip = true },
+
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Fixes" },
+  { message = "^perf", group = "<!-- 2 -->Performance" },
+  { message = "^refactor", group = "<!-- 3 -->Refactoring" },
+  { message = "^docs", group = "<!-- 4 -->Documentation" },
+  { message = "^test", group = "<!-- 5 -->Testing" },
+  { message = "^(chore|build|ci|style)", group = "<!-- 6 -->Maintenance" },
+
+  # Deliberately last, and deliberately matching everything.
+  { message = ".*", group = "<!-- 7 -->Other" },
+]
