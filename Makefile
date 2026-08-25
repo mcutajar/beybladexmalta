@@ -44,7 +44,7 @@ ARGS ?=
 .PHONY: help up down build restart logs ps shell console composer install \
 	tailwind tailwind-watch db-create db-drop seed db-reset setup phpunit test \
 	coverage cs cs-fix phpstan check running wait-healthy seed-if-empty \
-	dev-stack-only release release-gate deploy rollback deploy-preflight verify-deploy \
+	dev-stack-only changelog release release-gate deploy rollback deploy-preflight verify-deploy \
 	prod-logs prod-version versions not-production
 
 help: ## List the available targets
@@ -272,21 +272,59 @@ APP_IMAGE ?= ghcr.io/mcutajar/beybladexmalta
 REQUIRED_PROD_VARS := APP_SECRET DATABASE_URL PAYMENTS_ADMIN_PASSPHRASE \
 	TOURNAMENTS_ADMIN_PASSPHRASE
 
+# The generated changelog, and the pinned image that generates it. git-cliff is
+# not a PHP tool, so it has no place in the dev container, and the one rule
+# still holds either way: nothing is installed on the host. The version here
+# and the one the release workflow pins are the same on purpose -- both render
+# the same file from the same cliff.toml, and only stay identical if they are
+# the same git-cliff.
+CHANGELOG       ?= CHANGELOG.md
+GIT_CLIFF_IMAGE ?= orhunp/git-cliff:2.13.1
+
 # Semantic versioning, without the leading "v" -- the tag gets the prefix, the
 # image tag does not. A pre-release suffix is allowed; build metadata is not,
 # because "+" is not legal in a Docker tag.
 SEMVER_PATTERN := ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$$
 
+# Renders the whole file, so it is a product of the history rather than a thing
+# anyone appends to. Naming a VERSION renders the commits since the last tag
+# under that version instead of leaving them out, which is what "make release"
+# wants and what a preview of the next release looks like.
+#
+# Both the working tree and the git directory are mounted, at their real host
+# paths. In a worktree ".git" is a file holding an absolute path into the main
+# checkout, and that path resolves inside the container only if it is the same
+# path outside it; in the main checkout the second mount is the first one's
+# ".git" and changes nothing. --user keeps the rendered file owned by whoever
+# ran make rather than by root.
+changelog: ## Rewrite CHANGELOG.md from the commits, e.g. make changelog VERSION=1.1.0
+	@set -e; \
+	top=$$(git rev-parse --show-toplevel); \
+	common=$$(cd "$$(git rev-parse --git-common-dir)" && pwd); \
+	docker run --rm --user "$$(id -u):$$(id -g)" \
+		-v "$$top:$$top" -v "$$common:$$common" -w "$$top" \
+		$(GIT_CLIFF_IMAGE) --config cliff.toml \
+		$(if $(VERSION),--tag "v$(VERSION)") --output "$(CHANGELOG)"
+
 # Refuses anything that would produce a release nobody can reproduce: a version
 # that is not semver, a tree that is not exactly origin/main, a version already
-# used. Only git is touched here -- no Docker, no dev stack -- so this runs
-# wherever main is checked out, which in practice is the main checkout. That is
-# also the only place it *can* run: git will not check out main in a worktree
-# while the main checkout holds it.
+# used. No dev stack is started, so this is safe in the main checkout beside a
+# running production container -- which is also the only place it *can* run:
+# git will not check out main in a worktree while the main checkout holds it.
 #
 # The commit is the check, not the branch name. What has to be true is that the
 # tag points at origin/main; whether the local ref is called "main" is a proxy
 # for that, and a worse one.
+#
+# The changelog is rendered, pushed to main and only then tagged, so the tag's
+# own tree contains the entry describing it. That ordering is why this is not a
+# step in the release workflow: a workflow push happens after the tag exists,
+# and would have to reach main with a token that cannot satisfy main's required
+# status check -- GITHUB_TOKEN pushes do not trigger workflows, so the check it
+# needs would never report. The cost is that the tagged commit is one past the
+# one release-gate read CI's verdict for. It differs by a generated markdown
+# file, and the release workflow runs the suite on the tag before it publishes
+# anything.
 release: ## Tag a release and let CI publish the image, e.g. make release VERSION=1.1.0
 	@set -e; \
 	version='$(VERSION)'; \
@@ -324,6 +362,13 @@ release: ## Tag a release and let CI publish the image, e.g. make release VERSIO
 		exit 1; \
 	fi; \
 	$(MAKE) --no-print-directory release-gate; \
+	$(MAKE) --no-print-directory changelog VERSION="$$version"; \
+	if [ -n "$$(git status --porcelain -- $(CHANGELOG))" ]; then \
+		git add -- $(CHANGELOG); \
+		git commit --quiet -m "chore(release): v$$version"; \
+		git push --quiet origin HEAD:main; \
+		echo "Wrote $(CHANGELOG) for v$$version and pushed it to main."; \
+	fi; \
 	git tag -a "v$$version" -m "Release $$version"; \
 	git push origin "v$$version"; \
 	echo; \
