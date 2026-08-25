@@ -73,6 +73,19 @@ final class CapturedBracketsTest extends TestCase
      */
     private const ALIASES_FOLDING_CATCHES = 8;
 
+    /**
+     * The rows `app:bootstrap-aliases` writes out of all this.
+     *
+     * Fewer than the twenty-six differences below, and the gap is the point of
+     * both halves of the alias problem sitting next to each other: eight of the
+     * differences fold away mechanically and need no row at all, and three of
+     * the spellings that remain are one row each spelled two ways —
+     * `Derius_X` and `DeriusX`, `Guzman` with and without its invitation,
+     * `Myers6` with two of them. What is left is fifteen assertions somebody
+     * would otherwise have typed.
+     */
+    private const SEEDED_ALIASES = 15;
+
     private const STANDINGS_ROWS = 482;
 
     private const ROWS_JOINED_BY_MATCH_IDS = 377;
@@ -376,6 +389,44 @@ final class CapturedBracketsTest extends TestCase
             count(self::KNOWN_ALIASES) - $mechanical,
             'Most of the differences should need a person, or the alias table would not be worth building.',
         );
+    }
+
+    /**
+     * What the seeding pass has to work with, counted off the corpus rather
+     * than off its own output.
+     *
+     * Two things have to hold for `app:bootstrap-aliases` to write anything at
+     * all. Every spelling the brackets use has to reach one blader and not two,
+     * because a spelling two evenings disagree about is reported and never
+     * filed. And the twenty-six differences have to collapse to the fifteen
+     * rows the alias table actually needs, because a row for a spelling the
+     * normaliser already folds is a row nothing ever reads.
+     */
+    public function testTheAliasTableSeedsToFifteenRows(): void
+    {
+        $bladerPerSpelling = [];
+
+        foreach (self::KNOWN_ALIASES as $difference) {
+            [$imported, $bracket] = explode(' = ', $difference);
+
+            $spelling = $this->normaliser->normalise($bracket);
+
+            if ($this->normaliser->normalise($imported) === $spelling) {
+                continue;
+            }
+
+            $bladerPerSpelling[$spelling][$this->normaliser->normalise($imported)] = true;
+        }
+
+        foreach ($bladerPerSpelling as $spelling => $bladers) {
+            self::assertCount(
+                1,
+                $bladers,
+                sprintf('"%s" is spelled the same way by two bladers, so nothing can be seeded from it.', $spelling),
+            );
+        }
+
+        self::assertCount(self::SEEDED_ALIASES, $bladerPerSpelling);
     }
 
     /**

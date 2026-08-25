@@ -24,6 +24,30 @@ class TournamentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every event the league has held, oldest first, with its finishing order
+     * already loaded.
+     *
+     * One query rather than one per tournament, because the bootstrap pass in
+     * #51 walks all of them and reads every result of each. The results come
+     * back ordered by rank, which is what makes "rank n of the bracket is line
+     * n of the import" a comparison rather than a sort.
+     *
+     * @return list<Tournament>
+     */
+    public function everyEventInOrder(): array
+    {
+        return $this->createQueryBuilder('t')
+            ->addSelect('r', 'p')
+            ->leftJoin('t.results', 'r')
+            ->leftJoin('r.player', 'p')
+            ->orderBy('t.heldOn', 'ASC')
+            ->addOrderBy('t.id', 'ASC')
+            ->addOrderBy('r.rank', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Fetches all player results for a single tournament.
      *
      * @return list<array<string, mixed>>
