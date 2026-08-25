@@ -514,6 +514,22 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   rather than picking a side, because picking would split somebody's career
   across two rows silently. Closing it at the point of creation is #54's job;
   until then the collision is meant to be loud.
+- **The table was not typed, it was read out of the imports.** Every event
+  already imported is a labelled example — rank *n* of its captured bracket is
+  line *n* of the placement list somebody typed at the time — so
+  `app:bootstrap-aliases` derives the pairs, prints the lot, and writes only on
+  `--force`. Fifteen rows came out of the sixteen non-team events and they are
+  in `repeat.sh` like every other admin action. It writes nothing two events
+  disagree about and creates nobody.
+- **A team event teaches the alias pass nothing, and that is the phantom rule.**
+  Its entrants are teams, so a name there belongs to two bladers rather than
+  one, and the lists it was imported from name one blader per team slot —
+  padded, where the roster was never known, with `JG1`, `JG2` and the literal
+  `-`, `--` and `---`. Those five are rows in `players` and none of them is a
+  person; `melhina` is the same fact with no placeholder at all, a team that
+  finished eleventh and was never imported. Nothing is to be learned from any of
+  them, nothing merged into them, and nothing resolved onto them. #67 puts an
+  unclaimed team on record and takes the five rows back out.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you
