@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\PlayerAliasSource;
 use App\Exception\LedgerWriteException;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -73,6 +74,45 @@ class LedgerService
         }
 
         $this->append($commandLine);
+    }
+
+    /**
+     * The alias table is rebuilt the same way everything else is: by replaying
+     * repeat.sh into an empty schema. An alias somebody typed and nobody
+     * recorded here survives exactly until the next schema change.
+     *
+     * The blader is written under the name the database holds rather than
+     * whatever was typed, so a replay files the alias against the same person
+     * however the original command spelled them. The source is only named when
+     * it is not the default, which keeps a hand-typed line short and makes the
+     * seeded ones visibly seeded.
+     */
+    public function logAliasAdded(
+        string $bladerName,
+        string $alias,
+        PlayerAliasSource $source = PlayerAliasSource::Manual,
+    ): void {
+        $commandLine = sprintf(
+            'php bin/console app:alias add %s %s',
+            escapeshellarg($bladerName),
+            escapeshellarg($alias),
+        );
+
+        if (PlayerAliasSource::Manual !== $source) {
+            $commandLine .= sprintf(' --source=%s', escapeshellarg($source->value));
+        }
+
+        $this->append($commandLine);
+    }
+
+    public function logAliasRemoved(string $alias): void
+    {
+        $this->append(
+            sprintf(
+                'php bin/console app:alias remove %s',
+                escapeshellarg($alias),
+            ),
+        );
     }
 
     private function append(string $commandLine): void

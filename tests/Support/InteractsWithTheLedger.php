@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Entity\PlayerAliasSource;
+
 /**
  * Assertions about `var/log/command_ledger.sh`.
  *
@@ -84,6 +86,32 @@ trait InteractsWithTheLedger
         }
 
         self::assertLedgerHolds($commandLine);
+    }
+
+    protected static function assertLedgerRecordsAlias(
+        string $bladerName,
+        string $alias,
+        ?PlayerAliasSource $source = null,
+    ): void {
+        $commandLine = sprintf(
+            'php bin/console app:alias add %s %s',
+            escapeshellarg($bladerName),
+            escapeshellarg($alias),
+        );
+
+        if (null !== $source && PlayerAliasSource::Manual !== $source) {
+            $commandLine .= sprintf(' --source=%s', escapeshellarg($source->value));
+        }
+
+        self::assertLedgerHolds($commandLine);
+    }
+
+    protected static function assertLedgerRecordsAliasRemoval(string $alias): void
+    {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:alias remove %s',
+            escapeshellarg($alias),
+        ));
     }
 
     /**
