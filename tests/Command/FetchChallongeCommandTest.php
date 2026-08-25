@@ -91,12 +91,18 @@ final class FetchChallongeCommandTest extends ConsoleTestCase
         self::assertFileExists($this->snapshotPath(FakeChallonge::SLUG));
     }
 
-    public function testItWarnsAboutABracketThatCarriedNoStandings(): void
+    /**
+     * The smoke check runs before anything is parsed or written, so a page
+     * that cannot be ranked is refused rather than captured and found wanting
+     * later. `app:challonge-smoke` is how such a page is looked at.
+     */
+    public function testABracketThatCarriedNoStandingsIsRefused(): void
     {
         $tester = $this->fetch(FakeChallonge::SLUG_WITHOUT_STANDINGS);
 
-        self::assertCommandExited($tester, Command::SUCCESS);
-        self::assertCommandSaid($tester, 'The page carried no standings table.');
+        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandSaid($tester, 'Expected a standings table for the stage that orders the event');
+        self::assertFileDoesNotExist($this->snapshotPath(FakeChallonge::SLUG_WITHOUT_STANDINGS));
     }
 
     public function testItRejectsSomethingThatIsNotABracketUrl(): void

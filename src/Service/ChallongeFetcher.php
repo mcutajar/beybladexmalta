@@ -33,10 +33,47 @@ class ChallongeFetcher
         private HttpClientInterface $httpClient,
         private ChallongeModuleParser $parser,
         private ChallongeStoreNormaliser $normaliser,
+        private ChallongeSmokeCheck $smokeCheck,
     ) {
     }
 
     public function fetch(ChallongeUrl $url): ChallongeSnapshot
+    {
+        $moduleUrl = $url->moduleUrl();
+        $html = $this->fetchPage($url);
+
+        /*
+         * Before anything is parsed or written. `/module` is an embed endpoint
+         * Challonge can change without telling anyone, and this is where every
+         * path that reads a bracket — the fetch command today, the import
+         * screen when it arrives — finds that out, with a sentence rather than
+         * a parse error somewhere in the middle of the file.
+         *
+         * It decodes the store to do so, and the normalise below decodes it
+         * again. That is a few milliseconds spent on keeping a check that can
+         * be run on its own, against a page nobody is importing.
+         */
+        $report = $this->smokeCheck->check($html, $moduleUrl);
+
+        if (!$report->passed()) {
+            throw new ChallongeFetchException($report->problem());
+        }
+
+        return $this->normaliser->normalise(
+            store: $this->parser->readStore($html),
+            bodyScorecardHtml: $this->parser->readScorecard($html),
+            url: $url,
+            fetchedAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+        );
+    }
+
+    /**
+     * The module page as Challonge served it.
+     *
+     * Public so the smoke check can be run against a live bracket without
+     * capturing it — `app:challonge-smoke` reads a page and writes nothing.
+     */
+    public function fetchPage(ChallongeUrl $url): string
     {
         $moduleUrl = $url->moduleUrl();
 
@@ -62,11 +99,6 @@ class ChallongeFetcher
             throw new ChallongeFetchException(sprintf('%s answered %d, expected 200.', $moduleUrl, $statusCode));
         }
 
-        return $this->normaliser->normalise(
-            store: $this->parser->readStore($html),
-            bodyScorecardHtml: $this->parser->readScorecard($html),
-            url: $url,
-            fetchedAt: new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
-        );
+        return $html;
     }
 }

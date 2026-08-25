@@ -25,6 +25,11 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  * an empty database, so a line that fetches a URL would make a replay depend
  * on Challonge still serving the same bracket a year from now. The snapshot
  * this writes is the thing the ledger will point at.
+ *
+ * It says nothing about a bracket that carried no standings, because it can no
+ * longer capture one: ChallongeFetcher runs the smoke check first, and a page
+ * whose ranking stage has no readable standings table fails it. Diagnosing
+ * such a page is `app:challonge-smoke`, which writes nothing.
  */
 #[AsCommand(
     name: 'app:fetch-challonge',
@@ -74,12 +79,6 @@ final class FetchChallongeCommand extends Command
             $io->error($exception->getMessage());
 
             return Command::FAILURE;
-        }
-
-        if (!$snapshot->hasStandings()) {
-            $io->warning(
-                'The page carried no standings table. A bracket that has one only renders it when show_standings=1 is sent.',
-            );
         }
 
         $io->success(sprintf(
