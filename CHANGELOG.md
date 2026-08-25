@@ -5,6 +5,29 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.1.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.1.0) - 2026-08-25
+
+### Features
+
+- Capture a Challonge bracket to a snapshot file ([7e67ca3](https://github.com/mcutajar/beybladexmalta/commit/7e67ca3f11288d39b125de58771b460ab6531160))
+- Read a Challonge snapshot back and join its standings ([96f790d](https://github.com/mcutajar/beybladexmalta/commit/96f790da9da173b8e173035ac6f60b7d30818844))
+- Generate the changelog from the commit history ([86deae3](https://github.com/mcutajar/beybladexmalta/commit/86deae394165d1cac79dfaac3cce60622f0b6fb2))
+- Render the release notes from the commits, not pull request titles ([b345dda](https://github.com/mcutajar/beybladexmalta/commit/b345dda1f5c835e7ea4984646151b5a0e8ae6b31))
+
+### Fixes
+
+- Refuse a Challonge field that has changed type ([0942fe9](https://github.com/mcutajar/beybladexmalta/commit/0942fe989772ca9ec4daa123024fa7d83bd9e1cb))
+- Close the gaps the review found in the reader and the join ([ffade34](https://github.com/mcutajar/beybladexmalta/commit/ffade34d110460c02d77dfb37af4056d9a2d667d))
+
+### Documentation
+
+- Say why the team events are named rather than detected ([89d2079](https://github.com/mcutajar/beybladexmalta/commit/89d2079a49f535c4f2083b6cc0cc589f03dc6e2a))
+- Record where the changelog comes from ([fb622c9](https://github.com/mcutajar/beybladexmalta/commit/fb622c9968678351904077c85b5608bb8d6a38ff))
+
+### Maintenance
+
+- Give Dependabot's commits the deps scope ([652222f](https://github.com/mcutajar/beybladexmalta/commit/652222f6971d652a78d49d57ad0562e7b39f801b))
+
 ## [1.0.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.0.0) - 2026-08-24
 
 ### Features
