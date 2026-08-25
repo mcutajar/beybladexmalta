@@ -1,3 +1,7 @@
+# The "chore(deps)" prefix is what cliff.toml skips on, so a bump stays out of
+# the changelog. A plain "chore" prefix would land these in Maintenance beside
+# the commits that are actually about the site, which is what the v1.0.0 notes
+# looked like.
 version: 2
 updates:
   - package-ecosystem: docker
@@ -5,7 +9,7 @@ updates:
     schedule:
       interval: weekly
     commit-message:
-      prefix: "chore"
+      prefix: "chore(deps)"
     cooldown:
       default-days: 7
 
@@ -14,7 +18,7 @@ updates:
     schedule:
       interval: weekly
     commit-message:
-      prefix: "chore"
+      prefix: "chore(deps)"
     cooldown:
       default-days: 7
 
@@ -23,6 +27,6 @@ updates:
     schedule:
       interval: weekly
     commit-message:
-      prefix: "chore"
+      prefix: "chore(deps)"
     cooldown:
       default-days: 7
