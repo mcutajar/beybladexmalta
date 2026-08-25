@@ -31,11 +31,6 @@ class ChallongeSnapshotWriter
     ) {
     }
 
-    public function pathFor(string $slug): string
-    {
-        return $this->files->pathFor($slug);
-    }
-
     /**
      * @return string the absolute path of the snapshot
      */
@@ -53,7 +48,7 @@ class ChallongeSnapshotWriter
             throw new ChallongeSnapshotWriteException(sprintf('The snapshot for "%s" could not be encoded as JSON: %s', $snapshot->slug, $exception->getMessage()), previous: $exception);
         }
 
-        $filePath = $this->pathFor($snapshot->slug);
+        $filePath = $this->files->pathFor($snapshot->slug);
 
         /*
          * Written beside the target and moved into place, so that a failure

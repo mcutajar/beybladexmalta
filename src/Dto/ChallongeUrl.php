@@ -26,6 +26,18 @@ final class ChallongeUrl
     private const SLUG_PATTERN = '/^[A-Za-z0-9_-]+$/';
 
     /**
+     * Whether a bare string could be a bracket slug.
+     *
+     * Public because the slug outlives the URL it was read from: it names the
+     * snapshot file, and by phase 2 it may well arrive from a request rather
+     * than from a link somebody pasted.
+     */
+    public static function isSlug(string $slug): bool
+    {
+        return 1 === preg_match(self::SLUG_PATTERN, $slug);
+    }
+
+    /**
      * The invite links carry the slug one segment deeper. `/vi/<slug>` and
      * `/<slug>` are the same tournament — both answer on `/module`.
      */
@@ -118,7 +130,7 @@ final class ChallongeUrl
 
         $slug = $segments[0] ?? '';
 
-        if (1 !== preg_match(self::SLUG_PATTERN, $slug)) {
+        if (!self::isSlug($slug)) {
             throw new InvalidChallongeUrlException(sprintf('"%s" names no Challonge bracket.', $url));
         }
 

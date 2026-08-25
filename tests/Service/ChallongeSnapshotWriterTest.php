@@ -23,6 +23,8 @@ final class ChallongeSnapshotWriterTest extends TestCase
 
     private string $projectDir;
 
+    private ChallongeSnapshotFiles $files;
+
     private ChallongeSnapshotWriter $writer;
 
     protected function setUp(): void
@@ -34,7 +36,9 @@ final class ChallongeSnapshotWriterTest extends TestCase
         $kernel = $this->createStub(KernelInterface::class);
         $kernel->method('getProjectDir')->willReturn($this->projectDir);
 
-        $this->writer = new ChallongeSnapshotWriter(new ChallongeSnapshotFiles($kernel));
+        $this->files = new ChallongeSnapshotFiles($kernel);
+
+        $this->writer = new ChallongeSnapshotWriter($this->files);
     }
 
     protected function tearDown(): void
@@ -131,7 +135,7 @@ final class ChallongeSnapshotWriterTest extends TestCase
      */
     public function testAFailedWriteLeavesNoFileBehind(): void
     {
-        $filePath = $this->writer->pathFor(self::SLUG);
+        $filePath = $this->files->pathFor(self::SLUG);
 
         self::assertTrue(mkdir(dirname($filePath), 0775, true));
         self::assertTrue(mkdir($filePath.'.part'));
@@ -153,7 +157,7 @@ final class ChallongeSnapshotWriterTest extends TestCase
      */
     public function testItLeavesNoWorkingFileBesideTheSnapshot(): void
     {
-        $filePath = $this->writer->pathFor(self::SLUG);
+        $filePath = $this->files->pathFor(self::SLUG);
 
         self::assertTrue(mkdir(dirname($filePath), 0775, true));
         self::assertNotFalse(file_put_contents($filePath.'.part', 'left over'));

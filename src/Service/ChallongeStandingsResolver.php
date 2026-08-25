@@ -34,6 +34,10 @@ use App\Dto\ChallongeStanding;
  * either the row's name or the account rendered in its place. Anything cleverer
  * would be aliasing, and aliasing is a stored table a person curates, not a
  * heuristic hidden in a parser.
+ *
+ * The two never overrule each other. Where the matches narrowed the field, the
+ * name may only pick inside it; a name pointing anywhere else leaves the row
+ * unresolved rather than contradicting the bracket.
  */
 class ChallongeStandingsResolver
 {
@@ -77,18 +81,18 @@ class ChallongeStandingsResolver
 
         /*
          * When the intersection narrowed the field without settling it, the
-         * name only has to pick between the people who were actually there.
-         * A name that matches nobody in that set is more likely a rendering
-         * we have not seen than a row about someone else, so the wider match
-         * is kept rather than discarded.
+         * name only picks between the people who were actually there. A name
+         * matching somebody outside that set decides nothing: whatever else it
+         * means, the row lists a match they did not play, and attaching them
+         * to it would be the one place this class states something the bracket
+         * contradicts. The row goes unresolved instead, where the corpus test
+         * will say so.
          */
-        $inBoth = array_values(array_filter(
-            $named,
-            static fn (ChallongeParticipant $participant): bool => in_array($participant->id, $candidates, true),
-        ));
-
-        if ([] !== $inBoth) {
-            $named = $inBoth;
+        if ([] !== $candidates) {
+            $named = array_values(array_filter(
+                $named,
+                static fn (ChallongeParticipant $participant): bool => in_array($participant->id, $candidates, true),
+            ));
         }
 
         if (1 === count($named)) {

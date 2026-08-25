@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
+use App\Exception\UnsupportedChallongeBracketException;
+
 /**
  * One bracket as Challonge served it, at one moment, with the noise removed.
  *
@@ -69,9 +71,27 @@ final class ChallongeSnapshot
      * when there is a cut, and the whole tournament when there is not. It is
      * never the cut itself — eight people play that, and the finishing order
      * of an event is the order of the stage all of them were in.
+     *
+     * Which makes this the first stage, and that holds only because **a
+     * bracket here has at most one group**. Every captured bracket is either a
+     * single stage or exactly a group and a final. A pools event would be
+     * `[pool A, pool B, final]`, and answering with pool A would be a
+     * finishing order for a third of the entrants presented as one for all of
+     * them — wrong, and with nothing out of place to notice. So it refuses
+     * instead: the league does not run pools, and the day it does, this is the
+     * decision that has to be made rather than inherited.
      */
     public function rankingStage(): ?ChallongeStage
     {
+        $groups = array_filter(
+            $this->stages,
+            static fn (ChallongeStage $stage): bool => ChallongeStageKind::Group === $stage->kind,
+        );
+
+        if (count($groups) > 1) {
+            throw new UnsupportedChallongeBracketException(sprintf('The bracket "%s" has %d group stages, and there is no rule yet for how pools combine into one finishing order.', $this->slug, count($groups)));
+        }
+
         return $this->stages[0] ?? null;
     }
 
@@ -116,7 +136,11 @@ final class ChallongeSnapshot
     }
 
     /**
-     * How many of those matches were contested rather than forfeited.
+     * How many of those matches were actually contested.
+     *
+     * Two things are left out and only one of them is a forfeit: the corpus
+     * holds 4 forfeits and 8 matches that were never played at all, the cut of
+     * a 2v2 bracket nobody finished.
      */
     public function playedMatchCount(): int
     {
