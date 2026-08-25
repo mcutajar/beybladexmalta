@@ -24,6 +24,7 @@ Use the `Makefile` — it wraps `docker compose exec` for every tool:
 | `make cs-fix` | Apply code style fixes |
 | `make phpstan` | Run static analysis (level 6) |
 | `make check` | Every quality gate — run before declaring work done |
+| `make changelog` | Rewrite CHANGELOG.md from the commits (add `VERSION=` to preview) |
 | `make release VERSION=1.1.0` | Tag a release; CI builds and publishes the image |
 | `make versions` | List the releases, marking the one production is running |
 | `make console ARGS="debug:router"` | Any `bin/console` command |
@@ -195,15 +196,46 @@ Things that are load-bearing here:
 - **`make release` is cut from the main checkout, not a worktree** -- the one
   exception to working in a worktree. Git will not check out `main` in a
   worktree while the main checkout holds it, and a release has to be cut from
-  main. It touches only git, so it is safe to run beside a production
-  container; it does not re-run the suite locally, because the commit it tags
-  is `origin/main` and CI has already tested it.
+  main. It starts no dev stack, so it is safe to run beside a production
+  container; it does not re-run the suite locally, because CI has already
+  tested the commit it is cutting from and the release workflow tests the tag
+  again before publishing.
+- **The changelog is written before the tag, not after it.** `make release`
+  regenerates `CHANGELOG.md` from the commits, commits it as
+  `chore(release): vX.Y.Z` and pushes to main, and only then tags -- so the
+  tag's tree contains the entry describing it. This cannot move into the
+  release workflow: main's ruleset requires the `PHPUnit` check on any push,
+  only repository admins bypass it, and a push made with `GITHUB_TOKEN` does
+  not trigger the workflows that would report it. The cost is that the tagged
+  commit is one past the one `release-gate` read CI's verdict for.
 - **The image is `linux/arm64` only**, because production is Docker Desktop on
   Apple Silicon. The release job runs on an arm64 runner so that is a native
   build rather than a QEMU one.
 - **An image built by hand reports version `0.0.0-dev`.** The label comes from a
   build argument only the release workflow passes, which is what lets
   `verify-deploy` tell a release apart from a local build.
+
+### The release notes are the commits
+
+`cliff.toml` turns the conventional commit types into groups, and both the
+GitHub Release body and `CHANGELOG.md` are rendered from it -- the workflow
+renders the newest section, `make release` renders the file. Nothing is written
+by hand and `--generate-notes` (pull request titles) is gone.
+
+Three consequences worth carrying:
+
+- **A commit subject is published.** It ends up in a release note and in a file
+  people read, so it is worth the same care as the code. The body is not
+  rendered, and is still where the reasoning belongs.
+- **Nothing is dropped.** A commit that does not parse lands in an `Other`
+  group rather than vanishing, on purpose.
+- **Pull requests are rebase-merged.** Squashing is still enabled but would
+  degrade the changelog to a single pull request title with a blank body, which
+  is what this replaced. `docs/RELEASING.md` records the reasoning.
+
+git-cliff is not a PHP tool, so it is not in the dev container; `make changelog`
+runs it from a pinned image, which keeps the host clean the same way the
+container rule does.
 
 ### Secrets are supplied at run time, not baked in
 
