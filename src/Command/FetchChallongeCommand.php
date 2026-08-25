@@ -9,6 +9,7 @@ use App\Exception\ChallongeFetchException;
 use App\Exception\ChallongeSnapshotWriteException;
 use App\Exception\InvalidChallongeUrlException;
 use App\Service\ChallongeFetcher;
+use App\Service\ChallongeSnapshotFiles;
 use App\Service\ChallongeSnapshotWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -33,6 +34,7 @@ final class FetchChallongeCommand extends Command
 {
     public function __construct(
         private readonly ChallongeFetcher $fetcher,
+        private readonly ChallongeSnapshotFiles $snapshotFiles,
         private readonly ChallongeSnapshotWriter $snapshotWriter,
     ) {
         parent::__construct();
@@ -61,7 +63,7 @@ final class FetchChallongeCommand extends Command
             return Command::INVALID;
         }
 
-        $replacing = is_file($this->snapshotWriter->pathFor($url->slug));
+        $replacing = is_file($this->snapshotFiles->pathFor($url->slug));
 
         $io->text(sprintf('Fetching %s', $url->moduleUrl()));
 

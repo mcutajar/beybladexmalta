@@ -24,6 +24,8 @@ final class ChallongeSnapshotReaderTest extends TestCase
 
     private string $projectDir;
 
+    private ChallongeSnapshotFiles $files;
+
     private ChallongeSnapshotWriter $writer;
 
     private ChallongeSnapshotReader $reader;
@@ -37,10 +39,10 @@ final class ChallongeSnapshotReaderTest extends TestCase
         $kernel = $this->createStub(KernelInterface::class);
         $kernel->method('getProjectDir')->willReturn($this->projectDir);
 
-        $files = new ChallongeSnapshotFiles($kernel);
+        $this->files = new ChallongeSnapshotFiles($kernel);
 
-        $this->writer = new ChallongeSnapshotWriter($files);
-        $this->reader = new ChallongeSnapshotReader($files);
+        $this->writer = new ChallongeSnapshotWriter($this->files);
+        $this->reader = new ChallongeSnapshotReader($this->files);
     }
 
     protected function tearDown(): void
@@ -133,6 +135,24 @@ final class ChallongeSnapshotReaderTest extends TestCase
         $this->reader->read(self::SLUG);
     }
 
+    /**
+     * A capture always produced at least one stage, so a file with none has
+     * been truncated or edited — and an absent list would otherwise read back
+     * as a perfectly valid tournament nobody entered.
+     */
+    public function testItRefusesASnapshotWithNoStages(): void
+    {
+        $snapshot = $this->asArray();
+        $snapshot['stages'] = [];
+
+        $this->save($snapshot);
+
+        $this->expectException(ChallongeSnapshotReadException::class);
+        $this->expectExceptionMessage('The snapshot field "stages" is missing, where at least one stage was expected.');
+
+        $this->reader->read(self::SLUG);
+    }
+
     public function testItRefusesAKindOfStageItHasNeverHeardOf(): void
     {
         $snapshot = $this->asArray();
@@ -155,6 +175,25 @@ final class ChallongeSnapshotReaderTest extends TestCase
 
         $this->expectException(ChallongeSnapshotReadException::class);
         $this->expectExceptionMessage('"last Tuesday" is not a moment in time.');
+
+        $this->reader->read(self::SLUG);
+    }
+
+    /**
+     * The awkward half of the same rule. A date of the right shape but not a
+     * real one does not fail, it rolls over — PHP reads month 13 day 45 back as
+     * February the following year — so parsing successfully proves nothing on
+     * its own.
+     */
+    public function testItRefusesATimestampThatIsNotARealDate(): void
+    {
+        $snapshot = $this->asArray();
+        $snapshot['fetched_at'] = '2026-13-45T99:00:00+00:00';
+
+        $this->save($snapshot);
+
+        $this->expectException(ChallongeSnapshotReadException::class);
+        $this->expectExceptionMessage('"2026-13-45T99:00:00+00:00" is not a moment in time.');
 
         $this->reader->read(self::SLUG);
     }
@@ -197,7 +236,7 @@ final class ChallongeSnapshotReaderTest extends TestCase
 
     private function put(string $contents): void
     {
-        $path = $this->writer->pathFor(self::SLUG);
+        $path = $this->files->pathFor(self::SLUG);
 
         if (!is_dir(dirname($path))) {
             self::assertTrue(mkdir(dirname($path), 0775, true));

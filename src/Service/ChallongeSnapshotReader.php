@@ -90,6 +90,19 @@ class ChallongeSnapshotReader
 
         $tournament = $fields->arrayAt($snapshot, 'tournament');
 
+        $stages = $fields->arrayListAt($snapshot, 'stages');
+
+        /*
+         * An absent list reads as an empty one, which for every other field is
+         * what Challonge having nothing looks like. Not here: a capture always
+         * produced at least one stage, so a bracket with none is a file that
+         * has been truncated or edited, and it would otherwise read back as a
+         * perfectly valid tournament nobody entered.
+         */
+        if ([] === $stages) {
+            throw $fields->missing('stages', 'at least one stage');
+        }
+
         return new ChallongeSnapshot(
             slug: $fields->requiredStringAt($snapshot, 'slug'),
             sourceUrl: $fields->requiredStringAt($snapshot, 'source_url'),
@@ -100,7 +113,7 @@ class ChallongeSnapshotReader
             isTeamTournament: $fields->boolAt($tournament, 'is_team'),
             stages: array_map(
                 fn (array $stage): ChallongeStage => $this->stage($stage, $fields),
-                $fields->arrayListAt($snapshot, 'stages'),
+                $stages,
             ),
         );
     }
@@ -109,7 +122,17 @@ class ChallongeSnapshotReader
     {
         $fetchedAt = \DateTimeImmutable::createFromFormat(\DATE_ATOM, $timestamp);
 
-        if (false === $fetchedAt) {
+        /*
+         * Parsing is not enough. A date that is the right shape but not a real
+         * one — month 13, day 45 — does not fail, it rolls over: PHP reads
+         * `2026-13-45T99:00:00+00:00` back as 18 February 2027 and reports it
+         * as a warning rather than an error. Silently moving a capture eighteen
+         * months is exactly the sort of quiet correction this class exists not
+         * to make.
+         */
+        $errors = \DateTimeImmutable::getLastErrors();
+
+        if (false === $fetchedAt || (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
             throw $fields->refuse(sprintf('"%s" is not a moment in time.', $timestamp));
         }
 

@@ -93,6 +93,22 @@ final class ChallongeStandingsResolverTest extends TestCase
         self::assertSame(ChallongeJoin::MatchIds, $placings[0]->join);
     }
 
+    /**
+     * The name never overrules the matches. Match 902 was Obelix against
+     * legion, so a row listing it is about one of those two whatever it is
+     * called — and a name pointing at Giglio decides nothing, because the one
+     * thing the bracket does say is that Giglio was not there.
+     */
+    public function testANameFromOutsideTheMatchLeavesTheRowUnresolved(): void
+    {
+        $placings = $this->resolver->resolve($this->swissStage([
+            $this->standing(rank: 4, name: 'Giglio', challongeUser: null, matchIds: [902]),
+        ]));
+
+        self::assertNull($placings[0]->participant);
+        self::assertSame(ChallongeJoin::None, $placings[0]->join);
+    }
+
     public function testItMatchesANameWhateverItsCase(): void
     {
         $placings = $this->resolver->resolve($this->swissStage([

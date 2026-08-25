@@ -27,7 +27,7 @@ use Symfony\Component\HttpKernel\KernelInterface;
  *
  * The numbers are written out rather than derived, because a number that
  * derived itself from the same files would agree with anything. Capturing a
- * seventeenth bracket will fail this test, and updating the counts is the
+ * nineteenth bracket will fail this test, and updating the counts is the
  * point at which somebody looks at what changed.
  */
 final class CapturedBracketsTest extends TestCase
@@ -221,10 +221,15 @@ final class CapturedBracketsTest extends TestCase
     public function testNoTwoRowsClaimTheSameEntrant(): void
     {
         foreach ($this->placings() as $slug => $placings) {
-            $claimed = array_map(
+            /*
+             * Unresolved rows are not claims and must not read as colliding
+             * ones — two nulls would fail this with a message about the wrong
+             * thing, on exactly the run where the message matters.
+             */
+            $claimed = array_values(array_filter(array_map(
                 static fn (ChallongePlacing $placing): ?int => $placing->participant?->id,
                 $placings,
-            );
+            )));
 
             self::assertCount(
                 count(array_unique($claimed, \SORT_REGULAR)),
@@ -396,6 +401,8 @@ final class CapturedBracketsTest extends TestCase
             preg_match("/imports\/([^']+)\.txt'/", $line, $file);
             preg_match("/--challonge='([^']+)'/", $line, $url);
             preg_match("/--knockout='([^']+)'/", $line, $knockout);
+
+            self::assertArrayHasKey(1, $file, sprintf('This import line names no placement file: %s', trim($line)));
 
             $slug = basename(rtrim($url[1] ?? '', '/'));
 
