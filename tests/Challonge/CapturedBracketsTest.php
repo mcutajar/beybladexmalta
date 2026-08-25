@@ -65,10 +65,16 @@ final class CapturedBracketsTest extends TestCase
     private const EVENTS_WITH_A_CUT = 14;
 
     /**
-     * The two 2v2 events. Every captured snapshot says `is_team` is false — the
-     * module store does not carry the flag the fetch looks for — so they are
-     * named here instead, and testTheTeamEventsAreTheOnesImportedTwice keeps
-     * this list honest.
+     * The two 2v2 events, named here because nothing in a snapshot says which
+     * they are: `is_team` is false in all eighteen, the module store not
+     * carrying the flag the fetch looks for.
+     *
+     * That is settled rather than outstanding. A team event is something the
+     * importer is told, not something a bracket is asked — the rosters behind
+     * the team names have to be supplied by hand whatever happens, so the same
+     * step declares both. testTheTeamEventsAreTheOnesImportedTwice keeps this
+     * list honest in the meantime: a 2v2 event is the only reason two import
+     * lines ever point at one bracket.
      */
     private const TEAM_EVENTS = ['uhxii7az', 'ivanixk6'];
 
