@@ -495,6 +495,16 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   to one of our players. Those change, and a tracked file cannot. Turning a
   snapshot into domain objects happens when it is read, where a mistake costs a
   re-parse rather than a re-fetch of a bracket that may be gone.
+- **A Challonge display name is never turned into a blader.** Two hundred and
+  seven spellings across the captured brackets belong to about seventy-six
+  people, and `AliasNormaliser` only folds that to a hundred and twenty-nine —
+  case, punctuation and `(invitation pending)`. The rest is `PlayerAlias`, a
+  stored table somebody curates, because `Obelix` and `Obelisk` are two letters
+  apart and are two people. `AliasResolver` returns an unrecognised name as a
+  question with suggestions attached, and no caller may take a suggestion and
+  act on it; `AliasService` is the only thing that writes, it refuses a spelling
+  that folds onto a blader's own name, and it never creates a blader. Two rows
+  for one person is a merge, not an alias.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you
