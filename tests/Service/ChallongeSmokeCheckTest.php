@@ -62,10 +62,10 @@ final class ChallongeSmokeCheckTest extends TestCase
             [
                 '29 KB of HTML.',
                 'a store carrying requested_plotter, tournament, rounds, third_place_match, consolation_matches, matches_by_round, groups.',
-                'tournament 18169778, a single elimination bracket, complete.',
+                'tournament 18169778, complete, with tournament_type "single elimination".',
                 '2 in the group stage "Group A".',
                 '3 across 2 rounds of the group stage "Group A".',
-                '8 matches, 7 of them carrying a winner and a scoreline.',
+                '8 matches: 8 name two entrants, 7 carry a winner and a scoreline.',
                 '4 rows for the group stage "Group A".',
             ],
             array_map(static fn (ChallongeSmokeFinding $finding): string => $finding->detail, $report->findings),
@@ -182,7 +182,7 @@ final class ChallongeSmokeCheckTest extends TestCase
 
         $report = $this->check->check($this->pageFor($store), 'the fixture');
 
-        self::assertSame('matches carrying both players, the scores and a winner', $this->failureOf($report)->expectation);
+        self::assertSame('matches carrying an id, two named entrants, the scores and a winner', $this->failureOf($report)->expectation);
         self::assertStringContainsString('carrying no "scores" field', $this->failureOf($report)->detail);
         self::assertStringContainsString('score_line', $this->failureOf($report)->detail);
     }
@@ -195,6 +195,98 @@ final class ChallongeSmokeCheckTest extends TestCase
         $report = $this->check->check($this->pageFor($store), 'the fixture');
 
         self::assertStringContainsString('whose "winner_id" is string', $this->failureOf($report)->detail);
+    }
+
+    /**
+     * `id` is the one field ChallongeStoreNormaliser throws outright on, so a
+     * rename of it would otherwise reach an import as the bare parse error
+     * this whole check exists to arrive ahead of.
+     */
+    public function testItNamesAMatchIdThatWentMissing(): void
+    {
+        $store = $this->fixtureStore();
+        $match = &$store['groups'][0]['matches_by_round']['1'][0];
+        $match['match_id'] = $match['id'];
+        unset($match['id']);
+
+        $report = $this->check->check($this->pageFor($store), 'the fixture');
+
+        self::assertSame('matches carrying an id, two named entrants, the scores and a winner', $this->failureOf($report)->expectation);
+        self::assertStringContainsString('carrying no "id" field', $this->failureOf($report)->detail);
+        self::assertStringContainsString('match_id', $this->failureOf($report)->detail);
+    }
+
+    /**
+     * The expensive one. ChallongeStoreNormaliser builds its entrant list from
+     * a player's `id` and `display_name` together and skips a player missing
+     * either, so a rename of the nested id costs every entrant in the stage
+     * and raises nothing: the snapshot is written with no participants at all
+     * and every player id null.
+     */
+    public function testItRefusesAnEntrantCarryingHalfAnIdentity(): void
+    {
+        $store = $this->fixtureStore();
+        $player = &$store['groups'][0]['matches_by_round']['1'][0]['player1'];
+        $player['participant_uid'] = $player['id'];
+        unset($player['id']);
+
+        $report = $this->check->check($this->pageFor($store), 'the fixture');
+
+        self::assertSame('matches carrying an id, two named entrants, the scores and a winner', $this->failureOf($report)->expectation);
+        self::assertStringContainsString('whose "player1" is named "Obelix" but carries no numeric "id"', $this->failureOf($report)->detail);
+        self::assertStringContainsString('participant_uid', $this->failureOf($report)->detail);
+    }
+
+    public function testItRefusesAnEntrantWithNoNameLeft(): void
+    {
+        $store = $this->fixtureStore();
+        $player = &$store['groups'][0]['matches_by_round']['1'][0]['player2'];
+        $player['name'] = $player['display_name'];
+        unset($player['display_name']);
+
+        $report = $this->check->check($this->pageFor($store), 'the fixture');
+
+        self::assertStringContainsString('carries no "display_name"', $this->failureOf($report)->detail);
+    }
+
+    /**
+     * And the other half of that rule: a slot nobody has reached yet is null in
+     * every bracket with a cut, and 8 of them sit in the captured corpus. An
+     * empty slot is a bracket mid-event, not a change of shape.
+     */
+    public function testAnUnfilledSlotIsOrdinary(): void
+    {
+        $store = $this->fixtureStore();
+        $store['groups'][0]['matches_by_round']['2'][0]['player1'] = null;
+        $store['groups'][0]['matches_by_round']['2'][0]['player2'] = [];
+
+        $report = $this->check->check($this->pageFor($store), 'the fixture');
+
+        self::assertTrue($report->passed(), $report->problem());
+        self::assertSame('8 matches: 7 name two entrants, 7 carry a winner and a scoreline.', $report->findings[5]->detail);
+    }
+
+    /**
+     * A rename that stayed self-consistent — every player object losing both
+     * halves at once — would leave a bracket in which nobody plays anybody,
+     * which is not a bracket.
+     */
+    public function testItRefusesABracketInWhichNobodyPlaysAnybody(): void
+    {
+        $store = $this->fixtureStore();
+
+        foreach (['1', '2'] as $round) {
+            foreach ($store['groups'][0]['matches_by_round'][$round] as $position => $match) {
+                $store['groups'][0]['matches_by_round'][$round][$position]['player1'] = null;
+                $store['groups'][0]['matches_by_round'][$round][$position]['player2'] = null;
+            }
+        }
+
+        unset($store['groups'][0]['tournament'], $store['rounds'], $store['matches_by_round'], $store['consolation_matches'], $store['third_place_match']);
+
+        $report = $this->check->check($this->pageFor($store), 'the fixture');
+
+        self::assertStringContainsString('not one of which names two entrants', $this->failureOf($report)->detail);
     }
 
     /**
@@ -266,6 +358,20 @@ final class ChallongeSmokeCheckTest extends TestCase
         self::assertStringContainsString('https://challonge.com/fixture1/module?show_standings=1', $report->problem());
         self::assertStringContainsString('Expected a tournament store that decodes as JSON;', $report->problem());
         self::assertStringContainsString("found the page carries no _initialStoreState['TournamentStore']", $report->problem());
+    }
+
+    /**
+     * The scheduled run in .github/workflows/challonge-smoke.yaml sorts a route
+     * change from a Challonge it could not reach by looking for this phrase,
+     * and files a different issue for each. Reword it and the workflow wants
+     * rewording in the same commit.
+     */
+    public function testTheProblemCarriesThePhraseTheScheduledRunSortsOn(): void
+    {
+        self::assertStringContainsString(
+            'is not the page this reads',
+            $this->check->check('<html><body>Nothing to see.</body></html>', 'the fixture')->problem(),
+        );
     }
 
     private function failureOf(ChallongeSmokeReport $report): ChallongeSmokeFinding
