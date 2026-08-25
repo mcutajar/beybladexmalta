@@ -40,6 +40,11 @@ final class ChallongeSmokeCommand extends Command
      *
      * A finished league event, so nothing about its shape can move except
      * Challonge moving it — which is the entire signal this is watching for.
+     *
+     * The day this bracket is deleted or made private the fetch fails before
+     * the check runs, which the workflow files under "could not reach
+     * Challonge" rather than as a route change. That is the right answer, and
+     * the fix is to point this constant at another finished event.
      */
     private const KNOWN_BRACKET = 'https://challonge.com/nppk0890';
 

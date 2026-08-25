@@ -38,7 +38,7 @@ final class ChallongeSmokeFinding
 
     public static function notRun(string $expectation): self
     {
-        return new self($expectation, ChallongeSmokeOutcome::NotRun, 'nothing was left to read it from');
+        return new self($expectation, ChallongeSmokeOutcome::NotRun, 'nothing was left to read it from.');
     }
 
     public function isFailure(): bool

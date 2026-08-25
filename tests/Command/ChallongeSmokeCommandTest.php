@@ -41,7 +41,7 @@ final class ChallongeSmokeCommandTest extends ConsoleTestCase
             'a tournament with an id and a format',
             'at least one round',
             'at least one match',
-            'matches carrying both players, the scores and a winner',
+            'matches carrying an id, two named entrants, the scores and a winner',
         ] as $expectation) {
             self::assertCommandSaid($tester, $expectation);
         }

@@ -43,7 +43,7 @@ class ChallongeSmokeCheck
 
     private const MATCHES = 'at least one match';
 
-    private const MATCH_SHAPE = 'matches carrying both players, the scores and a winner';
+    private const MATCH_SHAPE = 'matches carrying an id, two named entrants, the scores and a winner';
 
     private const STANDINGS = 'a standings table for the stage that orders the event';
 
@@ -61,7 +61,15 @@ class ChallongeSmokeCheck
         self::STANDINGS,
     ];
 
-    private const MATCH_FIELDS = ['player1', 'player2', 'scores', 'winner_id'];
+    /**
+     * The fields an import reads out of a match. `id` earns its place here
+     * rather than in the message alone: ChallongeStoreNormaliser throws
+     * outright on a match without one, which is the bare parse error this
+     * whole check exists to arrive ahead of.
+     */
+    private const MATCH_FIELDS = ['id', 'player1', 'player2', 'scores', 'winner_id'];
+
+    private const PLAYERS = ['player1', 'player2'];
 
     /**
      * What an interstitial says instead of serving the page. Only ever looked
@@ -178,11 +186,17 @@ class ChallongeSmokeCheck
 
         $state = $tournament['state'] ?? null;
 
+        /*
+         * The field, named as the field. On a Swiss bracket with a cut
+         * `tournament_type` is the *cut's* format, and the row below this one
+         * is about the Swiss stage — so this must not read as a description of
+         * the event, which is a different scope entirely.
+         */
         return ChallongeSmokeFinding::passed(self::TOURNAMENT, sprintf(
-            'tournament %d, a %s bracket, %s.',
+            'tournament %d, %s, with tournament_type "%s".',
             $id,
-            $type,
             is_string($state) && '' !== $state ? $state : 'in an unstated state',
+            $type,
         ));
     }
 
@@ -233,10 +247,16 @@ class ChallongeSmokeCheck
     }
 
     /**
-     * The four fields an import reads out of a match. They are checked for
-     * presence rather than for content: Challonge writes null into every one
-     * of them at some point in an ordinary bracket — a slot nobody has reached
-     * yet, a match nobody has won — and a rename is what this is looking for.
+     * The fields an import reads out of a match, and the identities it builds
+     * its entrant list from.
+     *
+     * Mostly this checks presence and type rather than content, because
+     * Challonge writes null into an ordinary bracket all the time — a slot
+     * nobody has reached yet, a match nobody has won — and a rename is what
+     * this is looking for. The exception is the player objects, which are
+     * checked for being *whole*: ChallongeStoreNormaliser builds the entrant
+     * list out of `id` and `display_name` together and skips a player missing
+     * either, so half an identity costs an entrant and says nothing.
      *
      * @param array<string, mixed> $store
      */
@@ -249,30 +269,50 @@ class ChallongeSmokeCheck
         }
 
         $decided = 0;
+        $contested = 0;
 
-        foreach ($matches as $match) {
-            $id = is_int($match['id'] ?? null) ? sprintf('match %d', $match['id']) : 'a match with no id';
+        foreach ($matches as $position => $match) {
+            $where = $this->whichMatch($match, $position);
 
             foreach (self::MATCH_FIELDS as $field) {
                 if (!array_key_exists($field, $match)) {
                     return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf(
                         '%s carrying no "%s" field; it holds %s.',
-                        $id,
+                        $where,
                         $field,
                         implode(', ', array_keys($match)),
                     ));
                 }
             }
 
+            if (!is_int($match['id'])) {
+                return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf('%s, whose "id" is %s.', $where, get_debug_type($match['id'])));
+            }
+
+            $named = 0;
+
+            foreach (self::PLAYERS as $side) {
+                $problem = $this->player($match[$side], $side, $where);
+
+                if (null !== $problem) {
+                    return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, $problem);
+                }
+
+                $player = $match[$side];
+                $named += is_array($player) && is_int($player['id'] ?? null) ? 1 : 0;
+            }
+
+            $contested += 2 === $named ? 1 : 0;
+
             $winner = $match['winner_id'];
             $scores = $match['scores'];
 
             if (null !== $winner && !is_int($winner)) {
-                return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf('%s, whose "winner_id" is %s.', $id, get_debug_type($winner)));
+                return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf('%s, whose "winner_id" is %s.', $where, get_debug_type($winner)));
             }
 
             if (null !== $scores && !is_array($scores)) {
-                return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf('%s, whose "scores" is %s.', $id, get_debug_type($scores)));
+                return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf('%s, whose "scores" is %s.', $where, get_debug_type($scores)));
             }
 
             if (is_int($winner) && is_array($scores) && [] !== $scores) {
@@ -280,11 +320,87 @@ class ChallongeSmokeCheck
             }
         }
 
+        /*
+         * Every slot being empty is the shape a wholesale rename takes when it
+         * happens to stay self-consistent, and a bracket where nobody plays
+         * anybody is not a bracket.
+         */
+        if (0 === $contested) {
+            return ChallongeSmokeFinding::failed(self::MATCH_SHAPE, sprintf(
+                '%d matches, not one of which names two entrants.',
+                count($matches),
+            ));
+        }
+
         return ChallongeSmokeFinding::passed(self::MATCH_SHAPE, sprintf(
-            '%d matches, %d of them carrying a winner and a scoreline.',
+            '%d matches: %d name two entrants, %d carry a winner and a scoreline.',
             count($matches),
+            $contested,
             $decided,
         ));
+    }
+
+    /**
+     * One side of a match: either an empty slot, or an entrant with both
+     * halves of an identity.
+     *
+     * A slot nobody has reached yet is null in every bracket that has a cut,
+     * so absence is ordinary and says nothing. An object that carries a name
+     * and no numeric id — or an id and no name — is the shape a renamed field
+     * takes, and it is the expensive one: the entrant is skipped, the stage
+     * ends up with fewer participants than it had, and nothing raises a word.
+     *
+     * @return ?string what is wrong with it, or null when nothing is
+     */
+    private function player(mixed $player, string $side, string $where): ?string
+    {
+        if (null === $player) {
+            return null;
+        }
+
+        if (!is_array($player)) {
+            return sprintf('%s, whose "%s" is %s.', $where, $side, get_debug_type($player));
+        }
+
+        $id = $player['id'] ?? null;
+        $name = $player['display_name'] ?? null;
+
+        // An unfilled slot, which Challonge also writes as an empty object.
+        if (null === $id && (null === $name || '' === $name)) {
+            return null;
+        }
+
+        if (!is_int($id)) {
+            return sprintf(
+                '%s, whose "%s" is named %s but carries no numeric "id"; it holds %s.',
+                $where,
+                $side,
+                is_string($name) ? sprintf('"%s"', $name) : get_debug_type($name),
+                implode(', ', array_keys($player)),
+            );
+        }
+
+        if (!is_string($name) || '' === $name) {
+            return sprintf(
+                '%s, whose "%s" (%d) carries no "display_name"; it holds %s.',
+                $where,
+                $side,
+                $id,
+                implode(', ', array_keys($player)),
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $match
+     */
+    private function whichMatch(array $match, int $position): string
+    {
+        $id = $match['id'] ?? null;
+
+        return is_int($id) ? sprintf('match %d', $id) : sprintf('match number %d in the payload', $position + 1);
     }
 
     /**
@@ -330,10 +446,16 @@ class ChallongeSmokeCheck
      * The stage whose standings order the event.
      *
      * That is the group stage when the bracket has a cut and the whole bracket
-     * when it does not — the same stage ChallongeSnapshot::rankingStage()
-     * answers with, and the one an import reads a finishing order from. The
+     * when it does not — the stage an import reads a finishing order from. The
      * cut is left out on purpose: a cut that has not been played yet is a
      * bracket mid-event, not a route that has changed.
+     *
+     * ChallongeSnapshot::rankingStage() answers the same question and refuses a
+     * bracket with more than one group stage, because there is no rule yet for
+     * how pools combine into one order. This takes the first and says nothing,
+     * which is not the same thing — but a pools bracket is a bracket we cannot
+     * import rather than a route that has changed, so it is that method's
+     * refusal to raise and not this check's.
      *
      * @param array<string, mixed> $store
      *
