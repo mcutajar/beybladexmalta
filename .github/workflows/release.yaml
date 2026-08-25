@@ -86,9 +86,14 @@ jobs:
       packages: write
 
     steps:
+      # Full history, and for a second reason than the verify job's: git-cliff
+      # reads the commits between this tag and the one before it. At the
+      # default depth of 1 there is neither a previous tag nor a commit to
+      # read, and it renders an empty changelog rather than failing.
       - name: Check out the tag
         uses: actions/checkout@v5
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       # The registry path has to be lowercase, which the owner/repo pair is not
@@ -148,18 +153,38 @@ jobs:
             bin/console about --env=prod > /dev/null
           echo "The published image boots."
 
-      # The body names the image and the command, and --generate-notes appends
-      # the commit list underneath it, so the notes exist without anyone
-      # maintaining a changelog by hand.
+      # The notes come from the commits, via cliff.toml, and not from
+      # --generate-notes -- which builds its list out of pull request titles
+      # instead, mixing the Dependabot bumps into it and throwing away the
+      # commit bodies that say why anything was done.
+      #
+      # This renders the same section "make release" already wrote into
+      # CHANGELOG.md before tagging: same config, same commits, same
+      # git-cliff. The version is pinned rather than left to the action's
+      # default so that stays true; it is the version GIT_CLIFF_IMAGE names in
+      # the Makefile.
+      - name: Render the release notes from the commits
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          version: v2.13.1
+          config: cliff.toml
+          args: --latest --strip header
+
+      # The notes arrive through the environment rather than interpolated into
+      # the script, so a commit subject cannot end up being read as shell.
       - name: Create the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE: ${{ steps.name.outputs.image }}:${{ steps.name.outputs.version }}
           VERSION: ${{ steps.name.outputs.version }}
+          NOTES: ${{ steps.changelog.outputs.content }}
         run: |
+          {
+            printf 'Image: `%s`\n\n' "$IMAGE"
+            printf 'Deploy it from the production checkout with `make deploy VERSION=%s`.\n\n' "$VERSION"
+            printf '%s\n' "$NOTES"
+          } > "${RUNNER_TEMP}/notes.md"
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
-            --notes "Image: \`${IMAGE}\`
-
-          Deploy it from the production checkout with \`make deploy VERSION=${VERSION}\`."
+            --notes-file "${RUNNER_TEMP}/notes.md"
