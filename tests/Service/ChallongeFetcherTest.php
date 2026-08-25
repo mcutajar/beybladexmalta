@@ -8,6 +8,7 @@ use App\Dto\ChallongeUrl;
 use App\Exception\ChallongeFetchException;
 use App\Service\ChallongeFetcher;
 use App\Service\ChallongeModuleParser;
+use App\Service\ChallongeSmokeCheck;
 use App\Service\ChallongeStandingsParser;
 use App\Service\ChallongeStoreNormaliser;
 use App\Tests\Support\FakeChallonge;
@@ -93,13 +94,31 @@ final class ChallongeFetcherTest extends TestCase
             ->fetch(ChallongeUrl::fromString(self::BRACKET));
     }
 
-    public function testItAcceptsABracketWithNoStandingsTable(): void
+    /**
+     * The smoke check runs before the parse, so a page whose ranking stage has
+     * no readable standings never becomes a snapshot — there would be no
+     * finishing order to import out of it.
+     */
+    public function testItRefusesABracketWithNoStandingsTable(): void
     {
-        $snapshot = $this->fetcher(new MockResponse(FakeChallonge::modulePage(withStandings: false)))
-            ->fetch(ChallongeUrl::fromString(self::BRACKET));
+        $this->expectException(ChallongeFetchException::class);
+        $this->expectExceptionMessage('Expected a standings table for the stage that orders the event');
 
-        self::assertFalse($snapshot->hasStandings());
-        self::assertSame(7, $snapshot->matchCount(), 'The matches are still there; only the standings are not.');
+        $this->fetcher(new MockResponse(FakeChallonge::modulePage(withStandings: false)))
+            ->fetch(ChallongeUrl::fromString(self::BRACKET));
+    }
+
+    /**
+     * An abort says what was expected and what came back, because the whole
+     * point of checking first is that somebody can act on the answer.
+     */
+    public function testItAbortsWithWhatChangedRatherThanAParseError(): void
+    {
+        $this->expectException(ChallongeFetchException::class);
+        $this->expectExceptionMessage('The Challonge module page at https://challonge.com/9yuqg2pi/module?show_standings=1 is not the page this reads. Expected a tournament store that decodes as JSON; found a page that says "Verifying you are human", which is a bot check standing in for the bracket.');
+
+        $this->fetcher(new MockResponse('<html><body>Verifying you are human.</body></html>'))
+            ->fetch(ChallongeUrl::fromString(self::BRACKET));
     }
 
     private function fetcher(MockResponse $response): ChallongeFetcher
@@ -109,10 +128,14 @@ final class ChallongeFetcherTest extends TestCase
 
     private function fetcherUsing(MockHttpClient $client): ChallongeFetcher
     {
+        $parser = new ChallongeModuleParser();
+        $standingsParser = new ChallongeStandingsParser();
+
         return new ChallongeFetcher(
             $client,
-            new ChallongeModuleParser(),
-            new ChallongeStoreNormaliser(new ChallongeStandingsParser()),
+            $parser,
+            new ChallongeStoreNormaliser($standingsParser),
+            new ChallongeSmokeCheck($parser, $standingsParser),
         );
     }
 }
