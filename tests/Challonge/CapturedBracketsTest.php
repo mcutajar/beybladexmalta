@@ -8,6 +8,7 @@ use App\Dto\ChallongeJoin;
 use App\Dto\ChallongePlacing;
 use App\Dto\ChallongeSnapshot;
 use App\Dto\ChallongeStage;
+use App\Service\AliasNormaliser;
 use App\Service\ChallongeSnapshotFiles;
 use App\Service\ChallongeSnapshotReader;
 use App\Service\ChallongeStandingsResolver;
@@ -49,6 +50,28 @@ final class CapturedBracketsTest extends TestCase
      * that reconciles with the league's own count of what has been played.
      */
     private const MATCHES_THAT_DECIDED_SOMETHING = 933;
+
+    /**
+     * Every way a bracket has ever spelled an entrant, counted once each.
+     * Team names and Challonge's own `bye` are in here too, because a snapshot
+     * transcribes what the bracket said rather than what we would like it to
+     * have said.
+     */
+    private const DISTINCT_SPELLINGS = 207;
+
+    /**
+     * The same spellings with case, punctuation and `(invitation pending)`
+     * folded away. Seventy-eight of them turn out to be a spelling already in
+     * the list; the gap between what is left and seventy-six bladers is what
+     * the alias table is for.
+     */
+    private const SPELLINGS_AFTER_FOLDING = 129;
+
+    /**
+     * How many of the differences below are mechanical. Eight of twenty-six —
+     * so folding is worth doing and is nowhere near enough on its own.
+     */
+    private const ALIASES_FOLDING_CATCHES = 8;
 
     private const STANDINGS_ROWS = 482;
 
@@ -120,6 +143,8 @@ final class CapturedBracketsTest extends TestCase
 
     private ChallongeStandingsResolver $resolver;
 
+    private AliasNormaliser $normaliser;
+
     /**
      * @var array<string, ChallongeSnapshot>
      */
@@ -134,6 +159,7 @@ final class CapturedBracketsTest extends TestCase
 
         $this->reader = new ChallongeSnapshotReader(new ChallongeSnapshotFiles($kernel));
         $this->resolver = new ChallongeStandingsResolver();
+        $this->normaliser = new AliasNormaliser();
         $this->snapshots = $this->readEveryCapturedBracket();
     }
 
@@ -294,6 +320,62 @@ final class CapturedBracketsTest extends TestCase
         self::assertSame(self::PLACEMENTS, $placements);
         self::assertSame(self::PLACEMENTS_NAMED_THE_SAME_WAY, $sameName);
         self::assertSame(self::KNOWN_ALIASES, $differences, 'A blader is spelled a way the alias table has not been told about.');
+    }
+
+    /**
+     * How far the mechanical half of the alias problem gets, measured on the
+     * real thing rather than asserted about.
+     *
+     * Two hundred and seven spellings fold to a hundred and twenty-nine, which
+     * is the argument for normalising and against stopping there: the league
+     * has about seventy-six bladers, so fifty-odd of these are still two names
+     * for one person with nothing in the strings to say so.
+     */
+    public function testFoldingSpellingsGetsPartOfTheWayAndNoFurther(): void
+    {
+        $spellings = [];
+
+        foreach ($this->snapshots as $snapshot) {
+            foreach ($snapshot->stages as $stage) {
+                foreach ($stage->participants as $participant) {
+                    $spellings[$participant->name] = true;
+                }
+            }
+        }
+
+        $folded = array_unique(array_map(
+            fn (string $spelling): string => $this->normaliser->normalise($spelling),
+            array_map(strval(...), array_keys($spellings)),
+        ));
+
+        self::assertCount(self::DISTINCT_SPELLINGS, $spellings);
+        self::assertCount(self::SPELLINGS_AFTER_FOLDING, $folded);
+    }
+
+    /**
+     * The same point made against the differences that actually cost somebody
+     * an evening: eight of the twenty-six are case, spacing or an invitation
+     * nobody accepted, and the other eighteen are knowledge. `Anzjan` is
+     * `Lanzjan` and `Obelisk` is not `Obelix`, and no rule tells them apart.
+     */
+    public function testTheAliasTableIsWhatFoldingCannotDo(): void
+    {
+        $mechanical = 0;
+
+        foreach (self::KNOWN_ALIASES as $difference) {
+            [$imported, $bracket] = explode(' = ', $difference);
+
+            if ($this->normaliser->normalise($imported) === $this->normaliser->normalise($bracket)) {
+                ++$mechanical;
+            }
+        }
+
+        self::assertSame(self::ALIASES_FOLDING_CATCHES, $mechanical);
+        self::assertGreaterThan(
+            $mechanical,
+            count(self::KNOWN_ALIASES) - $mechanical,
+            'Most of the differences should need a person, or the alias table would not be worth building.',
+        );
     }
 
     /**
