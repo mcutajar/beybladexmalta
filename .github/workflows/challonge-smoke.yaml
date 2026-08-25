@@ -47,6 +47,11 @@ jobs:
       - name: Start the dev stack
         run: docker compose -f compose.override.yaml up -d --build --wait
 
+      # Three attempts before this is called a failure. A datacenter IP is the
+      # client Challonge's front door is least pleased to see, and a monitor
+      # that files an issue for every transient block is a monitor people learn
+      # to ignore.
+      #
       # The input arrives through the environment rather than interpolated into
       # the script, so a workflow_dispatch cannot smuggle shell into the run.
       - name: Check the module route
@@ -54,8 +59,24 @@ jobs:
         env:
           BRACKET: ${{ inputs.bracket }}
         run: |
-          set -o pipefail
-          make console ARGS="app:challonge-smoke${BRACKET:+ $BRACKET}" 2>&1 | tee smoke.log
+          attempt=1
+
+          while :; do
+            if make console ARGS="app:challonge-smoke${BRACKET:+ $BRACKET}" > smoke.log 2>&1; then
+              cat smoke.log
+              exit 0
+            fi
+
+            echo "--- attempt ${attempt} ---"
+            cat smoke.log
+
+            if [ "$attempt" -ge 3 ]; then
+              exit 1
+            fi
+
+            attempt=$((attempt + 1))
+            sleep 30
+          done
 
       # Whichever way it went. The checklist is the useful part: the passes
       # either side of a failure say how much of the page is still the page we
@@ -71,17 +92,35 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # One issue, reopened and commented on rather than duplicated, so a route
-      # that stays broken for a month does not leave four issues behind.
-      - name: Raise an issue when the route has changed
+      # Two failures wear one hat otherwise, and they want different answers.
+      # A route change means the page came back and we did not recognise it; a
+      # fetch failure means it never came back at all, and says nothing
+      # whatsoever about whether Challonge has changed anything.
+      #
+      # Only one open issue per kind, commented on rather than duplicated, so a
+      # breakage that lasts a month does not leave four issues behind. Nothing
+      # reopens a closed one: a later change is a different problem wanting a
+      # different diagnosis, and deserves its own issue.
+      - name: Raise an issue when the check could not be satisfied
         if: ${{ failure() && steps.smoke.outcome == 'failure' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          TITLE: 'The Challonge module route no longer reads the way the importer expects'
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          # Which of the two this is. The phrase belongs to
+          # ChallongeSmokeReport::problem() and nothing else prints it;
+          # ChallongeSmokeCheckTest pins it, naming this workflow, so that
+          # rewording it here and there stays one change rather than two.
+          if grep -q 'is not the page this reads' smoke.log; then
+            export TITLE='The Challonge module route no longer reads the way the importer expects'
+            SUMMARY='The check reached Challonge and did not recognise what came back. No bracket can be imported until this is understood; the checklist below says how much of the page is still the page we knew.'
+          else
+            export TITLE='The scheduled Challonge check could not reach Challonge'
+            SUMMARY='Three attempts failed before a page could be read, so this says nothing about whether the module route has changed. It is Challonge being unreachable, or the bracket this checks being gone, or Challonge declining to serve a GitHub Actions runner at all -- and if it is the last of those, this check belongs somewhere with a residential address rather than here.'
+          fi
+
           {
-            echo "The scheduled smoke check failed. Nothing can be imported from a bracket until this is understood."
+            echo "$SUMMARY"
             echo
             echo "Run: $RUN_URL"
             echo
