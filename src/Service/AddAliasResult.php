@@ -26,6 +26,12 @@ enum AddAliasResult
      */
     case BladerNotFound;
 
+    /**
+     * More than one blader is called that, so naming one of them is not
+     * something this can do on somebody's behalf.
+     */
+    case BladerIsAmbiguous;
+
     /** Punctuation and an invitation suffix, with no name underneath. */
     case NotAName;
 }

@@ -505,6 +505,14 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   act on it; `AliasService` is the only thing that writes, it refuses a spelling
   that folds onto a blader's own name, and it never creates a blader. Two rows
   for one person is a merge, not an alias.
+- **That last rule guards only the alias side, on purpose.** Bladers also arrive
+  by being invented from a placement list, which `app:import-tournament` still
+  does, so a blader created later can shadow an alias filed before they existed.
+  `AliasResolver` therefore treats a spelling that reaches two people — two
+  blader rows, or a blader and an alias pointing elsewhere — as unresolvable
+  rather than picking a side, because picking would split somebody's career
+  across two rows silently. Closing it at the point of creation is #54's job;
+  until then the collision is meant to be loud.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you

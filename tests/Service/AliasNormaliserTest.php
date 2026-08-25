@@ -80,11 +80,4 @@ final class AliasNormaliserTest extends TestCase
             'Normalisation guessed at something only the alias table may say.',
         );
     }
-
-    public function testAStringWithNoNameInItIsNotAName(): void
-    {
-        self::assertFalse($this->normaliser->isAName('(invitation pending)'));
-        self::assertFalse($this->normaliser->isAName('   '));
-        self::assertTrue($this->normaliser->isAName('KARM'));
-    }
 }

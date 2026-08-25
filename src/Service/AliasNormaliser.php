@@ -50,15 +50,4 @@ class AliasNormaliser
 
         return (string) preg_replace(self::PUNCTUATION, '', $folded);
     }
-
-    /**
-     * Whether a string says anything at all once folded.
-     *
-     * `---` and `(invitation pending)` on its own both normalise to nothing,
-     * and nothing is not a name to file an alias under.
-     */
-    public function isAName(string $name): bool
-    {
-        return '' !== $this->normalise($name);
-    }
 }

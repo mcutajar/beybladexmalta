@@ -27,6 +27,12 @@ use Doctrine\ORM\Mapping as ORM;
  * The constructor takes both because they must agree. Doctrine never calls it
  * when hydrating, so it costs nothing there, and it means no code path can
  * store a spelling under a normalised form that is not its own.
+ *
+ * There are no setters, for the same reason. A row that turns out to point at
+ * the wrong blader is removed and typed again — which is what `app:alias` tells
+ * an operator to do — so the alternative would be a correction path the domain
+ * does not have, sitting on the entity where AGENTS.md says such things do not
+ * live. #56 moves a blader's whole history and can add what it needs then.
  */
 #[ORM\Entity(repositoryClass: PlayerAliasRepository::class)]
 #[ORM\Table(name: 'player_aliases')]
@@ -80,16 +86,6 @@ class PlayerAlias
         return $this->player;
     }
 
-    /**
-     * Moving an alias is the correction path: a spelling attached to the wrong
-     * blader is repointed rather than deleted and typed again, so the row that
-     * records where it came from survives being wrong once.
-     */
-    public function setPlayer(Player $player): void
-    {
-        $this->player = $player;
-    }
-
     public function getAlias(): string
     {
         return $this->alias;
@@ -103,11 +99,6 @@ class PlayerAlias
     public function getSource(): PlayerAliasSource
     {
         return $this->source;
-    }
-
-    public function setSource(PlayerAliasSource $source): void
-    {
-        $this->source = $source;
     }
 
     public function getRecordedAt(): \DateTimeImmutable

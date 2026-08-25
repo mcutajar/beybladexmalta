@@ -21,6 +21,13 @@ enum AliasSuggestionReason: string
      */
     case ChallongeAccount = 'challonge-account';
 
+    /**
+     * This blader is already spelled that way, and so is somebody else. Not a
+     * near miss at all — a collision, and the only one of these reasons that
+     * says the league's own records are in a state nothing can resolve.
+     */
+    case SpelledTheSameWay = 'spelled-the-same-way';
+
     /** A known spelling a few edits away. */
     case Spelling = 'spelling';
 
@@ -29,15 +36,17 @@ enum AliasSuggestionReason: string
 
     /**
      * How much weight to give this reason when ordering a shortlist. Lower is
-     * stronger; an exact hit on an account outranks a near-miss on spelling,
-     * which outranks a shared stem.
+     * stronger; an exact hit on an account is the most discriminating thing
+     * there is, a collision is exact but says nothing about which side is
+     * meant, and the two resemblances rank under both.
      */
     public function ordinal(): int
     {
         return match ($this) {
             self::ChallongeAccount => 0,
-            self::Spelling => 1,
-            self::PartOfAKnownName => 2,
+            self::SpelledTheSameWay => 1,
+            self::Spelling => 2,
+            self::PartOfAKnownName => 3,
         };
     }
 }

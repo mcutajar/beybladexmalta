@@ -118,6 +118,54 @@ final class AliasCommandTest extends ConsoleTestCase
     }
 
     /**
+     * "There is no blader called that" is a statement about the database, and
+     * it has to be true. A name two bladers answer to is a different problem
+     * with a different answer, and saying the league has never heard of
+     * somebody it has heard of twice is the worst place to be wrong.
+     */
+    public function testANameTwoBladersAnswerToIsNotReportedAsNobody(): void
+    {
+        PlayerFactory::createOne(['name' => "Rip N' Burst"]);
+        PlayerFactory::createOne(['name' => 'Ripnburst']);
+
+        $tester = $this->add('Rip_N_Burst', 'RNB');
+
+        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandSaid($tester, '"Rip_N_Burst" is how more than one blader is already spelled, so it names nobody in particular.');
+        self::assertStringNotContainsString('There is no blader called', $tester->getDisplay());
+
+        PlayerAliasFactory::assert()->empty();
+        self::assertLedgerIsEmpty();
+    }
+
+    /**
+     * Listing creates nothing, so it does not get the sentence about aliases
+     * never creating a blader.
+     */
+    public function testListingAnUnknownBladerDoesNotTalkAboutCreatingOne(): void
+    {
+        PlayerFactory::createOne(['name' => 'Il-Karm']);
+
+        $tester = $this->executeCommand(['action' => 'list', 'names' => ['Karmy']]);
+
+        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandSaid($tester, 'There is no blader called "Karmy".');
+        self::assertStringNotContainsString('never creates one', $tester->getDisplay());
+    }
+
+    public function testListingANameTwoBladersAnswerToSaysSo(): void
+    {
+        PlayerFactory::createOne(['name' => "Rip N' Burst"]);
+        PlayerFactory::createOne(['name' => 'Ripnburst']);
+
+        $tester = $this->executeCommand(['action' => 'list', 'names' => ['Rip_N_Burst']]);
+
+        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandSaid($tester, '"Rip_N_Burst" is how more than one blader is already spelled.');
+        self::assertCommandSaid($tester, "Rip N' Burst — is already spelled \"ripnburst\"");
+    }
+
+    /**
      * Aliases and blader names are one namespace, so nothing downstream ever
      * has to decide which of the two wins.
      */
