@@ -328,17 +328,18 @@ If a deploy fails verification, `make prod-logs` is the next stop.
   puts in coverage mode, so nothing needs installing — but an `XDEBUG_MODE` in
   `.env.local` without `coverage` in it produces empty reports and a PHPUnit
   warning rather than a failure. It writes three views of the same run to the
-  gitignored `var/coverage/`: `cobertura.xml` (what CI turns into the pull
-  request table), `html/` (which lines are missed) and the text summary in the
+  gitignored `var/coverage/`: `cobertura.xml` (what CI turns into the per-file
+  table), `html/` (which lines are missed) and the text summary in the
   terminal.
-- CI runs the same target on every pull request, posts the per-file table as a
-  single comment that is edited in place on each push, repeats it in the job
-  summary and uploads the HTML report as the `coverage-html` artifact. Nothing
-  is sent to a third-party service and no secret is involved. Coverage is
-  reported only — it never fails the build.
-  - The comment needs a writable token, which a run from a fork or from
-    Dependabot is never given, so it is skipped there. The summary and the
-    artifact still appear.
+- CI runs the same target on every pull request, writes the per-file table to
+  the job summary and uploads the HTML report as the `coverage-html` artifact.
+  Nothing is sent to a third-party service and no secret is involved. Coverage
+  is reported only — it never fails the build.
+  - **The table is not posted as a pull request comment.** It was, and one row
+    per file landing in the review thread on every push drowned the
+    conversation. The job summary carries the same numbers, so the CI job needs
+    no `pull-requests: write` token and a run from a fork or from Dependabot
+    reports exactly as much as one from a branch.
   - Files with no executable lines — interfaces, enums, empty exception classes
     — show as 0%. They are counted as 0/0, so they do not move the total.
   - The README badge reads a shields.io endpoint JSON on the `badges` orphan
