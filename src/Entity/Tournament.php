@@ -35,9 +35,23 @@ class Tournament
     #[ORM\JoinColumn(nullable: false)]
     private Season $season;
 
+    /**
+     * The entrants of a 2v2 event, empty for every other kind.
+     *
+     * Nothing else marks a team event: `is_team` is false in all eighteen
+     * captured brackets, the module store not carrying the flag, so a team
+     * event is declared at import rather than detected. Holding teams is the
+     * declaration's persisted trace.
+     *
+     * @var Collection<int, TournamentTeam>
+     */
+    #[ORM\OneToMany(targetEntity: TournamentTeam::class, mappedBy: 'tournament', orphanRemoval: true)]
+    private Collection $teams;
+
     public function __construct()
     {
         $this->results = new ArrayCollection();
+        $this->teams = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -92,6 +106,24 @@ class Tournament
         $this->challongeUrl = $challongeUrl;
 
         return $this;
+    }
+
+    /** @return Collection<int, TournamentTeam> */
+    public function getTeams(): Collection
+    {
+        return $this->teams;
+    }
+
+    public function addTeam(TournamentTeam $team): void
+    {
+        if (!$this->teams->contains($team)) {
+            $this->teams->add($team);
+        }
+    }
+
+    public function isTeamEvent(): bool
+    {
+        return !$this->teams->isEmpty();
     }
 
     public function getSeason(): Season

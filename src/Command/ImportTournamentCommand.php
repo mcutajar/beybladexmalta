@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Dto\TeamPlacement;
 use App\Dto\TournamentPlacement;
 use App\Entity\Season;
 use App\Exception\ImportFileWriteException;
@@ -11,6 +12,7 @@ use App\Exception\LedgerWriteException;
 use App\Repository\SeasonRepository;
 use App\Service\FlusherInterface;
 use App\Service\PlacementListParser;
+use App\Service\TeamListParser;
 use App\Service\TournamentImportResult;
 use App\Service\TournamentImportService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -30,6 +32,7 @@ final class ImportTournamentCommand extends Command
     public function __construct(
         private readonly TournamentImportService $importService,
         private readonly PlacementListParser $placementListParser,
+        private readonly TeamListParser $teamListParser,
         private readonly SeasonRepository $seasonRepository,
         private readonly FlusherInterface $flusher,
     ) {
@@ -71,7 +74,36 @@ final class ImportTournamentCommand extends Command
                 'k',
                 InputOption::VALUE_OPTIONAL,
                 'The name of the player who won the overall knockout bracket',
-            );
+            )
+            ->addOption(
+                'team',
+                't',
+                InputOption::VALUE_NONE,
+                'A 2v2 event: the file is a roster, one team per line, and each team is scored for everybody in it',
+            )
+            ->setHelp(<<<'HELP'
+                The file is an ordered list of bladers, best finish first, one per
+                line, optionally followed by a comma and any manual bonus points.
+
+                With <info>--team</info> it is a roster instead, one entrant per line, in the
+                same finishing order:
+
+                    irmied u gebel: Butcher + Obelix
+                    JG:
+                    bye
+
+                A 2v2 bracket carries a finishing order and nothing else the league
+                can use, so a team event awards the entrant's rank to each blader in
+                it and writes no match, game or knockout bonus. A team with nobody
+                after the colon is <info>unclaimed</info>: it keeps its rank, scores nothing, and
+                is filled in later with <info>app:team claim</info>. Challonge's own <info>bye</info> is
+                dropped, and the entrants below it keep the rank the bracket gave
+                them.
+
+                A team event is declared here, never detected: nothing in a bracket
+                says which events are 2v2, and the rosters have to be supplied by
+                hand whatever happens.
+                HELP);
     }
 
     protected function execute(
@@ -86,16 +118,31 @@ final class ImportTournamentCommand extends Command
         $challongeUrl = $input->getOption('challonge');
         $knockoutWinner = $input->getOption('knockout');
 
-        $placements = $this->readPlacements($filePath, $io);
+        $teamEvent = (bool) $input->getOption('team');
 
-        if (null === $placements) {
+        if ($teamEvent && null !== $knockoutWinner) {
+            $io->error(
+                'A team event awards no knockout bonus, so --team and --knockout cannot be used together.',
+            );
+
+            return Command::INVALID;
+        }
+
+        $contents = $this->readFile($filePath, $io);
+
+        if (null === $contents) {
             return Command::FAILURE;
         }
 
-        if ([] === $placements) {
-            $io->error(
-                sprintf('The file "%s" holds no placements to import.', $filePath),
-            );
+        $placements = $teamEvent ? [] : $this->placementListParser->parse($contents);
+        $teams = $teamEvent ? $this->teamListParser->parse($contents) : [];
+
+        if ([] === $placements && [] === $teams) {
+            $io->error(sprintf(
+                'The file "%s" holds no %s to import.',
+                $filePath,
+                $teamEvent ? 'teams' : 'placements',
+            ));
 
             return Command::INVALID;
         }
@@ -120,16 +167,28 @@ final class ImportTournamentCommand extends Command
             return Command::INVALID;
         }
 
-        return $this->import(
-            title: $title,
-            date: $date,
-            season: $season,
-            placements: $placements,
-            filePath: $filePath,
-            challongeUrl: null !== $challongeUrl ? (string) $challongeUrl : null,
-            knockoutWinner: null !== $knockoutWinner ? (string) $knockoutWinner : null,
-            io: $io,
-        );
+        $challongeUrl = null !== $challongeUrl ? (string) $challongeUrl : null;
+
+        return $teamEvent
+            ? $this->importTeamEvent(
+                title: $title,
+                date: $date,
+                season: $season,
+                teams: $teams,
+                filePath: $filePath,
+                challongeUrl: $challongeUrl,
+                io: $io,
+            )
+            : $this->import(
+                title: $title,
+                date: $date,
+                season: $season,
+                placements: $placements,
+                filePath: $filePath,
+                challongeUrl: $challongeUrl,
+                knockoutWinner: null !== $knockoutWinner ? (string) $knockoutWinner : null,
+                io: $io,
+            );
     }
 
     /**
@@ -156,28 +215,91 @@ final class ImportTournamentCommand extends Command
                 sourceFilePath: $filePath,
             );
         } catch (LedgerWriteException|ImportFileWriteException $exception) {
-            $io->error(
-                'The import was cancelled because the recovery ledger could not be updated.',
-            );
-
-            if ($io->isVerbose()) {
-                $io->writeln($exception->getMessage());
-            }
-
-            return Command::FAILURE;
+            return $this->showLedgerFailure($io, $exception);
         } catch (\Throwable $exception) {
             $io->error('Transaction aborted: '.$exception->getMessage());
 
             return Command::FAILURE;
         }
 
-        return match ($result) {
-            TournamentImportResult::Imported => $this->showImported(
-                io: $io,
+        return $this->translate($result, $io, $season, sprintf(
+            'Successfully imported "%s" into %s. Logged %d player placements.',
+            $title,
+            $season->getName(),
+            count($placements),
+        ));
+    }
+
+    /**
+     * A 2v2 event, imported as one tournament through its roster.
+     *
+     * @param list<TeamPlacement> $teams
+     */
+    private function importTeamEvent(
+        string $title,
+        string $date,
+        Season $season,
+        array $teams,
+        string $filePath,
+        ?string $challongeUrl,
+        SymfonyStyle $io,
+    ): int {
+        try {
+            $result = $this->importService->importTeamEvent(
                 title: $title,
-                season: $season,
-                placementCount: count($placements),
-            ),
+                heldOn: $date,
+                seasonSlug: $season->getSlug(),
+                teams: $teams,
+                challongeUrl: $challongeUrl,
+                sourceFilePath: $filePath,
+            );
+        } catch (LedgerWriteException|ImportFileWriteException $exception) {
+            return $this->showLedgerFailure($io, $exception);
+        } catch (\Throwable $exception) {
+            $io->error('Transaction aborted: '.$exception->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        $entrants = $this->importService->entrants($teams);
+        $unclaimed = array_filter($entrants, static fn (TeamPlacement $team): bool => $team->isUnclaimed());
+        $placements = array_sum(array_map(
+            static fn (TeamPlacement $team): int => count($team->memberNames),
+            $entrants,
+        ));
+
+        if (TournamentImportResult::Imported === $result && [] !== $unclaimed) {
+            $io->note(sprintf(
+                '%d of the %d teams %s unclaimed: %s. %s a rank and no points, and can be claimed with app:team claim.',
+                count($unclaimed),
+                count($entrants),
+                1 === count($unclaimed) ? 'is' : 'are',
+                implode(', ', array_map(static fn (TeamPlacement $team): string => $team->teamName, $unclaimed)),
+                1 === count($unclaimed) ? 'It holds' : 'They hold',
+            ));
+        }
+
+        return $this->translate($result, $io, $season, sprintf(
+            'Successfully imported "%s" into %s as a team event. Logged %d player placements across %d teams.',
+            $title,
+            $season->getName(),
+            $placements,
+            count($entrants),
+        ));
+    }
+
+    /**
+     * The outcome, said out loud. Both imports report the same four, and only
+     * the sentence for the one that worked differs.
+     */
+    private function translate(
+        TournamentImportResult $result,
+        SymfonyStyle $io,
+        Season $season,
+        string $imported,
+    ): int {
+        return match ($result) {
+            TournamentImportResult::Imported => $this->showImported($io, $imported),
 
             TournamentImportResult::InvalidDate => $this->showError(
                 $io,
@@ -197,9 +319,9 @@ final class ImportTournamentCommand extends Command
     }
 
     /**
-     * @return ?list<TournamentPlacement> null when the file cannot be read
+     * @return ?string null when the file cannot be read
      */
-    private function readPlacements(string $filePath, SymfonyStyle $io): ?array
+    private function readFile(string $filePath, SymfonyStyle $io): ?string
     {
         if (!is_file($filePath) || !is_readable($filePath)) {
             $io->error(
@@ -220,7 +342,7 @@ final class ImportTournamentCommand extends Command
             return null;
         }
 
-        return $this->placementListParser->parse($contents);
+        return $contents;
     }
 
     /**
@@ -299,22 +421,24 @@ final class ImportTournamentCommand extends Command
         return $season;
     }
 
-    private function showImported(
-        SymfonyStyle $io,
-        string $title,
-        Season $season,
-        int $placementCount,
-    ): int {
-        $io->success(
-            sprintf(
-                'Successfully imported "%s" into %s. Logged %d player placements.',
-                $title,
-                $season->getName(),
-                $placementCount,
-            ),
-        );
+    private function showImported(SymfonyStyle $io, string $message): int
+    {
+        $io->success($message);
 
         return Command::SUCCESS;
+    }
+
+    private function showLedgerFailure(SymfonyStyle $io, \Throwable $exception): int
+    {
+        $io->error(
+            'The import was cancelled because the recovery ledger could not be updated.',
+        );
+
+        if ($io->isVerbose()) {
+            $io->writeln($exception->getMessage());
+        }
+
+        return Command::FAILURE;
     }
 
     private function showError(SymfonyStyle $io, string $message): int

@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Dto;
+
+use App\Entity\TournamentTeam;
+use App\Service\ClaimTeamResult;
+
+/**
+ * What happened when somebody said who was in a team.
+ *
+ * The enum is what a caller matches on; the two extra fields are what a
+ * message needs. `blader` is the name that stopped the claim, because a claim
+ * names two or three people and "no such blader" is useless without saying
+ * which. `team` is the row that was found, so the command can say where it
+ * finished without looking it up again.
+ */
+final readonly class ClaimTeamOutcome
+{
+    /**
+     * @param list<string> $attached the bladers now in the team, under the
+     *                               names the database holds
+     */
+    private function __construct(
+        public ClaimTeamResult $result,
+        public ?TournamentTeam $team = null,
+        public ?string $blader = null,
+        public array $attached = [],
+    ) {
+    }
+
+    /**
+     * @param list<string> $attached
+     */
+    public static function claimed(TournamentTeam $team, array $attached): self
+    {
+        return new self(ClaimTeamResult::Claimed, $team, attached: $attached);
+    }
+
+    public static function alreadyRecorded(TournamentTeam $team): self
+    {
+        return new self(ClaimTeamResult::AlreadyRecorded, $team);
+    }
+
+    public static function refused(ClaimTeamResult $result, ?TournamentTeam $team = null, ?string $blader = null): self
+    {
+        return new self($result, $team, $blader);
+    }
+}

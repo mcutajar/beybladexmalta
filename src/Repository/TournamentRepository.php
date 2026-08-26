@@ -48,7 +48,25 @@ class TournamentRepository extends ServiceEntityRepository
     }
 
     /**
+     * The events with this exact title.
+     *
+     * A list rather than one, because nothing stops two events being called
+     * the same thing and the title is how the ledger names one. A caller that
+     * gets two back refuses rather than picks.
+     *
+     * @return list<Tournament>
+     */
+    public function findByTitle(string $title): array
+    {
+        return $this->findBy(['title' => trim($title)], ['heldOn' => 'ASC', 'id' => 'ASC']);
+    }
+
+    /**
      * Fetches all player results for a single tournament.
+     *
+     * The rank is selected rather than counted off the rows, because a team
+     * event awards one to every blader in the entrant: two people share tenth
+     * place, and a row's position in the list stops being its finish.
      *
      * @return list<array<string, mixed>>
      */
@@ -60,6 +78,7 @@ class TournamentRepository extends ServiceEntityRepository
             SELECT 
                 p.id as player_id,
                 p.name as player_name,
+                tr.rank,
                 tr.f1_points,
                 tr.bonus_points,
                 tr.total_points

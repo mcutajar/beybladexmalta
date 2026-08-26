@@ -8,6 +8,7 @@ use App\Tests\Factory\PlayerFactory;
 use App\Tests\Factory\SeasonFactory;
 use App\Tests\Factory\TournamentFactory;
 use App\Tests\Factory\TournamentResultFactory;
+use App\Tests\Factory\TournamentTeamFactory;
 use App\Tests\Story\SeasonStory;
 use App\Tests\Support\ConsoleTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -31,6 +32,17 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
     private const PLACEMENTS = [
         'Giglio', 'Obelix', 'Lanzjan', 'Il-Karm', 'Evilbeys',
         'Derius', 'Rizzler', 'Steve', 'Southboy15', 'Tristan',
+    ];
+
+    /**
+     * The 11 July bracket in miniature: claimed teams, one unclaimed, and the
+     * `bye` that is not an entrant at all.
+     */
+    private const TEAMS = [
+        'irmied u gebel: Butcher + Obelix',
+        'wakanda forever: Privv + Faenza',
+        'JG:',
+        'bye',
     ];
 
     private string $placementFilePath;
@@ -184,6 +196,150 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
         self::assertLedgerIsEmpty();
     }
 
+    public function testItImportsATeamEventAsOneTournament(): void
+    {
+        $this->writePlacementFile(self::TEAMS);
+
+        $tester = $this->importTournament(['--team' => true]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+
+        self::assertCommandSaid(
+            $tester,
+            'Successfully imported "Command Test Cup" into Paid Season as a team event.'
+            .' Logged 4 player placements across 3 teams.',
+        );
+
+        TournamentFactory::assert()->count(1);
+        TournamentTeamFactory::assert()->count(3);
+        TournamentResultFactory::assert()->count(4);
+
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertTeamAtRank($tournament, rank: 1, name: 'irmied u gebel', bladers: ['Butcher', 'Obelix']);
+        self::assertTeamAtRank($tournament, rank: 2, name: 'wakanda forever', bladers: ['Privv', 'Faenza']);
+    }
+
+    /**
+     * The entrant's rank becomes each member's rank, so two bladers share a
+     * finishing position and the same F1 tier. Nothing in the leaderboard
+     * reads rank, and `tournament_results` has no unique index on it.
+     */
+    public function testEveryBladerInATeamScoresTheTeamsRank(): void
+    {
+        $this->writePlacementFile(self::TEAMS);
+
+        self::assertCommandExited($this->importTournament(['--team' => true]), Command::SUCCESS);
+
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertSame(2, TournamentResultFactory::repository()->count([
+            'tournament' => $tournament,
+            'rank' => 1,
+            'f1Points' => 25,
+        ]));
+
+        self::assertSame(2, TournamentResultFactory::repository()->count([
+            'tournament' => $tournament,
+            'rank' => 2,
+            'f1Points' => 20,
+        ]));
+    }
+
+    /**
+     * The team existed and finished where it finished. That is a record rather
+     * than a gap, so it never blocks the import — and it is the one place the
+     * epic's never-auto-create rule resolves to a row instead of a question.
+     */
+    public function testAnUnclaimedTeamKeepsItsRankAndScoresNothing(): void
+    {
+        $this->writePlacementFile(self::TEAMS);
+
+        $tester = $this->importTournament(['--team' => true]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+        self::assertCommandSaid($tester, '1 of the 3 teams is unclaimed: JG.');
+
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertTeamIsUnclaimed($tournament, 'JG');
+        self::assertSame(3, self::teamCalled($tournament, 'JG')->getRank());
+
+        self::assertSame(0, TournamentResultFactory::repository()->count([
+            'tournament' => $tournament,
+            'rank' => 3,
+        ]));
+    }
+
+    /**
+     * `bye` is Challonge's own filler, not somebody who turned up — and taking
+     * it out must not move anybody, because the ranks are the bracket's.
+     */
+    public function testItDropsTheByeWithoutRenumberingAroundIt(): void
+    {
+        $this->writePlacementFile(self::TEAMS);
+
+        self::assertCommandExited($this->importTournament(['--team' => true]), Command::SUCCESS);
+
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertNoTeamCalled($tournament, 'bye');
+        self::assertTeamAtRank($tournament, rank: 3, name: 'JG');
+    }
+
+    public function testATeamEventAwardsNoKnockoutBonus(): void
+    {
+        $this->writePlacementFile(self::TEAMS);
+
+        $tester = $this->importTournament([
+            '--team' => true,
+            '--knockout' => 'Butcher',
+        ]);
+
+        self::assertCommandExited($tester, Command::INVALID);
+
+        self::assertCommandSaid(
+            $tester,
+            'A team event awards no knockout bonus, so --team and --knockout cannot be used together.',
+        );
+
+        self::assertNothingWasImported();
+        self::assertLedgerIsEmpty();
+    }
+
+    public function testItLogsATeamImportAsReplayable(): void
+    {
+        $this->writePlacementFile(self::TEAMS);
+
+        $tester = $this->importTournament([
+            '--team' => true,
+            '--challonge' => 'https://challonge.com/uhxii7az',
+        ]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+
+        self::assertLedgerRecordsImport(
+            title: self::TITLE,
+            heldOn: self::DATE,
+            sourcePath: $this->placementFilePath,
+            seasonSlug: self::SEASON,
+            challongeUrl: 'https://challonge.com/uhxii7az',
+            teamEvent: true,
+        );
+    }
+
+    public function testARosterOfNothingButAByeImportsNobody(): void
+    {
+        $this->writePlacementFile(['bye']);
+
+        $tester = $this->importTournament(['--team' => true]);
+
+        self::assertCommandExited($tester, Command::FAILURE);
+
+        self::assertNothingWasImported();
+        self::assertLedgerIsEmpty();
+    }
+
     #[\Override]
     protected function setUp(): void
     {
@@ -213,8 +369,8 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
     }
 
     /**
-     * @param array<string, string> $overrides arguments and options to replace
-     * @param list<string>          $answers   replies to interactive questions
+     * @param array<string, bool|string> $overrides arguments and options to replace
+     * @param list<string>               $answers   replies to interactive questions
      */
     private function importTournament(
         array $overrides = [],
