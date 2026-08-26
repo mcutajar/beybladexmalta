@@ -37,7 +37,7 @@ jobs:
       # and `make phpunit` rebuilds it only when it is missing, so a restored one
       # would go stale without ever being noticed.
       - name: Cache the Tailwind binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: var/tailwind/*/tailwindcss-*
           key: tailwind-${{ hashFiles('config/packages/symfonycasts_tailwind.yaml') }}
