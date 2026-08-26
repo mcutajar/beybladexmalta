@@ -5,6 +5,39 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.2.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.2.0) - 2026-08-26
+
+### Features
+
+- Check the Challonge module route before reading a bracket ([261b11c](https://github.com/mcutajar/beybladexmalta/commit/261b11c13cb96c28bb4c7f92c000c132c442e0cb))
+- Run the Challonge route check on its own and on a schedule ([8f2c509](https://github.com/mcutajar/beybladexmalta/commit/8f2c5091323978720b086ac550b4b259077a0675))
+- Fold a Challonge spelling to the name underneath it ([c1d292a](https://github.com/mcutajar/beybladexmalta/commit/c1d292a58fbf96706ed5b6a44bb590ebb03147ed))
+- Resolve a display name to a blader, or to a question ([4a282b4](https://github.com/mcutajar/beybladexmalta/commit/4a282b4959b9cf907d9e5eed32d8dcd79bff9694))
+- Record which spelling belongs to which blader from the shell ([8cc957e](https://github.com/mcutajar/beybladexmalta/commit/8cc957e4d39fb969a2ef45be6a9aba10a2564d5b))
+- Read the alias table out of the tournaments already imported ([15f5212](https://github.com/mcutajar/beybladexmalta/commit/15f5212380a5e5fa6d476bfba157595d78ae9b01))
+- Seed the fifteen aliases the sixteen imported events agree on ([1be7068](https://github.com/mcutajar/beybladexmalta/commit/1be7068a110708f6cdcdffdb15ffe8ba7075d829))
+
+### Fixes
+
+- Check the fields a match is actually read through ([39751f2](https://github.com/mcutajar/beybladexmalta/commit/39751f299366b2a7d0eefd7b6e2e2cf4b73894c6))
+- Tell a Challonge we could not reach from one that changed ([ef7f2b6](https://github.com/mcutajar/beybladexmalta/commit/ef7f2b6c1bd31ae62d11bd68d0c594ad664c26f9))
+- Refuse a spelling that reaches two bladers instead of picking one ([6e05cd7](https://github.com/mcutajar/beybladexmalta/commit/6e05cd7fa1a3e6cf067d8aab975fe1564f6e255d))
+- Two silent guards, and a ledger failure that reported the wrong fact ([111de32](https://github.com/mcutajar/beybladexmalta/commit/111de325717bbe51ba61cff24dc0e20a558968ed))
+
+### Documentation
+
+- Record where the Challonge smoke check sits ([facb2a1](https://github.com/mcutajar/beybladexmalta/commit/facb2a182a83b73efc15a9096b69292026617ad0))
+- Record the alias table and the rule underneath it ([29ba714](https://github.com/mcutajar/beybladexmalta/commit/29ba71423ec8ce9020fcb447da0127ed9a6f9640))
+- Record the phantom rule, and that the alias table was derived ([b4e9a62](https://github.com/mcutajar/beybladexmalta/commit/b4e9a6237bec91ab09f37870ef01bbc332af38ce))
+
+### Testing
+
+- Stop a bootstrap test depending on a bracket staying uncaptured ([4d39c04](https://github.com/mcutajar/beybladexmalta/commit/4d39c04496ebddc78801ad34e04cfe6efbd3d542))
+
+### Maintenance
+
+- Report coverage in the job summary instead of a pull request comment ([38a7f2c](https://github.com/mcutajar/beybladexmalta/commit/38a7f2c8e86e11f0edee71c2be71f78c31c7a17a))
+
 ## [1.1.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.1.0) - 2026-08-25
 
 ### Features
