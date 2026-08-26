@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\TeamImportOutcome;
 use App\Dto\TeamPlacement;
 use App\Dto\TournamentPlacement;
 use App\Entity\Player;
@@ -125,6 +126,12 @@ class TournamentImportService
      * epic where a name nobody recognises becomes a record instead of a
      * question.
      *
+     * **A blader in two entrants keeps both places and is scored once, at the
+     * better of the two ranks.** It is not supposed to happen and the league
+     * does not sanction it, but the roster is the record of who played with
+     * whom and dropping half of it would lose that; awarding both would pay
+     * somebody twice for one evening. The command says whose name it was.
+     *
      * @param list<TeamPlacement> $teams          in finishing order, best first
      * @param ?string             $sourceFilePath the replayable roster file, generated when absent
      */
@@ -135,7 +142,7 @@ class TournamentImportService
         array $teams,
         ?string $challongeUrl = null,
         ?string $sourceFilePath = null,
-    ): TournamentImportResult {
+    ): TeamImportOutcome {
         $title = trim($title);
         $seasonSlug = trim($seasonSlug);
 
@@ -144,8 +151,20 @@ class TournamentImportService
         $opened = $this->open($title, $heldOn, $seasonSlug, $challongeUrl, [] === $entrants);
 
         if ($opened instanceof TournamentImportResult) {
-            return $opened;
+            return TeamImportOutcome::refused($opened);
         }
+
+        /**
+         * Who is to be scored and at what rank, keyed the way the league
+         * identifies a blader — `PlayerRepository::findByName()` compares
+         * case-folded, so this key reaches the same person that does, and two
+         * spellings of somebody the league has never heard of resolve to one
+         * new row rather than to two the unique index would reject.
+         *
+         * @var array<string, array{blader: Player, rank: int}> $scoring
+         */
+        $scoring = [];
+        $inTwoTeams = [];
 
         foreach ($entrants as $entrant) {
             $team = new TournamentTeam(
@@ -156,13 +175,28 @@ class TournamentImportService
             );
 
             foreach ($entrant->memberNames as $memberName) {
-                $blader = $this->blader($memberName);
+                $key = mb_strtolower(trim($memberName));
+                $blader = $scoring[$key]['blader'] ?? $this->blader($memberName);
 
                 if (null === $team->addMember($blader)) {
                     continue;
                 }
 
-                $this->results->save($this->scoreFor($opened, $blader, $entrant->rank));
+                if (isset($scoring[$key])) {
+                    $inTwoTeams[] = $blader->getName();
+
+                    $this->logger->warning('Blader entered in more than one team', [
+                        'tournament' => $title,
+                        'blader' => $blader->getName(),
+                        'team' => $entrant->teamName,
+                        'scoredAt' => $scoring[$key]['rank'],
+                    ]);
+                }
+
+                $scoring[$key] = [
+                    'blader' => $blader,
+                    'rank' => min($entrant->rank, $scoring[$key]['rank'] ?? $entrant->rank),
+                ];
             }
 
             $this->teams->save($team);
@@ -174,6 +208,10 @@ class TournamentImportService
                     'rank' => $entrant->rank,
                 ]);
             }
+        }
+
+        foreach ($scoring as $scored) {
+            $this->results->save($this->scoreFor($opened, $scored['blader'], $scored['rank']));
         }
 
         /*
@@ -192,21 +230,25 @@ class TournamentImportService
             ),
         );
 
-        return TournamentImportResult::Imported;
+        return TeamImportOutcome::imported(
+            teams: count($entrants),
+            placements: count($scoring),
+            unclaimed: array_values(array_map(
+                static fn (TeamPlacement $team): string => $team->teamName,
+                array_filter($entrants, static fn (TeamPlacement $team): bool => $team->isUnclaimed()),
+            )),
+            inTwoTeams: array_values(array_unique($inTwoTeams)),
+        );
     }
 
     /**
      * The lines of a roster that are actually entrants.
      *
-     * Public because the command that reads the file summarises what it
-     * imported, and counting teams is only right if it counts them the same
-     * way the import does.
-     *
      * @param list<TeamPlacement> $teams
      *
      * @return list<TeamPlacement>
      */
-    public function entrants(array $teams): array
+    private function entrants(array $teams): array
     {
         return array_values(array_filter(
             $teams,

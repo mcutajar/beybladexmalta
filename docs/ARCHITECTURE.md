@@ -132,6 +132,15 @@ service that owns the domain rules.
     expanded into one `TournamentResult` per blader in it, and no match, game or
     knockout bonus at all. An entrant with no members is stored and scores
     nothing. `bye` is dropped and nothing below it renumbers.
+  - A blader named in two entrants keeps both places and is scored once, at the
+    better rank. Members are resolved through one case-folded index, matching
+    `PlayerRepository::findByName()`, so two spellings of the same person are
+    the same person — including one the league has never heard of, who would
+    otherwise become two rows the unique index rejects.
+  - Returns an `App\Dto\TeamImportOutcome` rather than the bare enum. A roster's
+    lines and the rows it produces are not the same number, and a command that
+    recounted the file to describe what happened would reimplement all three
+    rules that make them differ.
 
 - `App\Service\TeamListParser`
   - Parses a roster file — `team: blader + blader`, one entrant per line in
@@ -139,11 +148,18 @@ service that owns the domain rules.
     nothing after it is an unclaimed team.
 
 - `App\Service\TournamentTeamService`
-  - The only thing that claims a team: it attaches bladers to an entrant that is
-    already on record, writes their placements retroactively and awards that
-    rank's points, inside the flush transaction with its ledger line.
-  - Never creates a blader (unlike an import, it is filed long after the event),
-    never creates a team, and never lets a blader finish twice in one event.
+  - The only thing that claims a team, and the writing half of the two tables;
+    reads go through `TournamentTeamRepository`. It attaches bladers to an
+    entrant that is already on record, writes their placements retroactively and
+    awards that rank's points, inside the flush transaction with its ledger line.
+  - Deduplicates the names one claim reaches, because the alias table makes
+    `Obelisk` and `Obelix` easy to type in the same breath.
+  - Never creates a blader (unlike an import, it is filed long after the event)
+    and never creates a team.
+  - Refuses a blader already on the board for that event — the one place that is
+    refused rather than ruled on. The import cannot refuse, because a roster
+    arrives whole; a claim is typed one team at a time by somebody who can see
+    the standing.
 
 - `App\Service\F1Points`
   - What a finishing rank is worth. Read by the import and by a team claim, so

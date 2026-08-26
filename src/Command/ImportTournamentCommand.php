@@ -245,7 +245,7 @@ final class ImportTournamentCommand extends Command
         SymfonyStyle $io,
     ): int {
         try {
-            $result = $this->importService->importTeamEvent(
+            $outcome = $this->importService->importTeamEvent(
                 title: $title,
                 heldOn: $date,
                 seasonSlug: $season->getSlug(),
@@ -261,30 +261,37 @@ final class ImportTournamentCommand extends Command
             return Command::FAILURE;
         }
 
-        $entrants = $this->importService->entrants($teams);
-        $unclaimed = array_filter($entrants, static fn (TeamPlacement $team): bool => $team->isUnclaimed());
-        $placements = array_sum(array_map(
-            static fn (TeamPlacement $team): int => count($team->memberNames),
-            $entrants,
-        ));
-
-        if (TournamentImportResult::Imported === $result && [] !== $unclaimed) {
+        if ([] !== $outcome->unclaimed) {
             $io->note(sprintf(
                 '%d of the %d teams %s unclaimed: %s. %s a rank and no points, and can be claimed with app:team claim.',
-                count($unclaimed),
-                count($entrants),
-                1 === count($unclaimed) ? 'is' : 'are',
-                implode(', ', array_map(static fn (TeamPlacement $team): string => $team->teamName, $unclaimed)),
-                1 === count($unclaimed) ? 'It holds' : 'They hold',
+                count($outcome->unclaimed),
+                $outcome->teams,
+                1 === count($outcome->unclaimed) ? 'is' : 'are',
+                implode(', ', $outcome->unclaimed),
+                1 === count($outcome->unclaimed) ? 'It holds' : 'They hold',
             ));
         }
 
-        return $this->translate($result, $io, $season, sprintf(
+        /*
+         * Loud rather than incidental. Nobody is meant to enter twice, and the
+         * roster keeps both places on record, so the one thing that must not
+         * happen quietly is the decision about which of them was scored.
+         */
+        if ([] !== $outcome->inTwoTeams) {
+            $io->warning(sprintf(
+                '%s in more than one team. Every place is on record, but only the better finish is scored.',
+                1 === count($outcome->inTwoTeams)
+                    ? sprintf('%s is', $outcome->inTwoTeams[0])
+                    : sprintf('%s are', implode(', ', $outcome->inTwoTeams)),
+            ));
+        }
+
+        return $this->translate($outcome->result, $io, $season, sprintf(
             'Successfully imported "%s" into %s as a team event. Logged %d player placements across %d teams.',
             $title,
             $season->getName(),
-            $placements,
-            count($entrants),
+            $outcome->placements,
+            $outcome->teams,
         ));
     }
 
@@ -311,9 +318,14 @@ final class ImportTournamentCommand extends Command
                 sprintf('Season "%s" does not exist.', $season->getSlug()),
             ),
 
-            TournamentImportResult::NoPlacements => $this->showError(
+            /*
+             * The same answer the command's own emptiness check gives, so a
+             * file with nothing in it and a roster of nothing but `bye` do not
+             * come back with two different exit codes for one condition.
+             */
+            TournamentImportResult::NoPlacements => $this->showInvalid(
                 $io,
-                'The placement list is empty.',
+                'There is nothing in that file to import.',
             ),
         };
     }
@@ -446,5 +458,12 @@ final class ImportTournamentCommand extends Command
         $io->error($message);
 
         return Command::FAILURE;
+    }
+
+    private function showInvalid(SymfonyStyle $io, string $message): int
+    {
+        $io->error($message);
+
+        return Command::INVALID;
     }
 }

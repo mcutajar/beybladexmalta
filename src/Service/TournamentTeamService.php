@@ -34,9 +34,12 @@ use Psr\Log\LoggerInterface;
  * 2. **A claim never creates a team.** The entrant is what the bracket
  *    recorded; a spelling that reaches no entrant of that event is a typo, not
  *    a thirteenth team.
- * 3. **A blader finishes once per event.** Somebody already on the board
- *    played for another entrant, and a second placement would score them twice
- *    for one evening.
+ * 3. **A blader already on the board is refused, and this is the only place
+ *    that is true.** They played for another entrant that evening. The import
+ *    cannot refuse — a roster arrives whole, so it records both places and
+ *    scores the better rank — but a claim is typed one team at a time by
+ *    somebody looking at the standing, and moving a placement that already
+ *    exists is their decision to make rather than this one's to make quietly.
  *
  * A team already half known is claimable again — one member costs nothing to
  * allow and awards the known half their points, and the second name arriving
@@ -95,34 +98,6 @@ class TournamentTeamService
     }
 
     /**
-     * Every entrant of one event, in finishing order.
-     *
-     * @return list<TournamentTeam>
-     */
-    public function forTournament(Tournament $tournament): array
-    {
-        return $this->teams->forTournament($tournament);
-    }
-
-    /**
-     * Every team the league has on record, event by event, oldest first.
-     *
-     * @return list<TournamentTeam>
-     */
-    public function all(): array
-    {
-        $teams = [];
-
-        foreach ($this->tournaments->everyEventInOrder() as $event) {
-            foreach ($this->teams->forTournament($event) as $team) {
-                $teams[] = $team;
-            }
-        }
-
-        return $teams;
-    }
-
-    /**
      * @param list<string> $bladerNames
      */
     private function attach(
@@ -160,7 +135,15 @@ class TournamentTeamService
                 );
             }
 
-            if ($team->hasMember($blader)) {
+            if ($team->hasMember($blader) || in_array($blader, $joining, true)) {
+                /*
+                 * Already in the team, or named twice in this one claim — the
+                 * second is a repeated name rather than a collision, and the
+                 * alias table makes it easy to write: `Obelisk` and `Obelix`
+                 * are one person, so a claim can reach them under both. Either
+                 * way there is nothing further to attach, and falling through
+                 * would write them a second placement.
+                 */
                 continue;
             }
 

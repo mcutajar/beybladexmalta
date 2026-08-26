@@ -43,8 +43,19 @@ final readonly class ClaimTeamOutcome
         return new self(ClaimTeamResult::AlreadyRecorded, $team);
     }
 
+    /**
+     * Every outcome that is not one of the two above.
+     *
+     * The enum carries the successes too, so this guards rather than trusts:
+     * a `Claimed` that came through here would report a claim with nobody
+     * attached, and nothing downstream would notice.
+     */
     public static function refused(ClaimTeamResult $result, ?TournamentTeam $team = null, ?string $blader = null): self
     {
+        if (in_array($result, [ClaimTeamResult::Claimed, ClaimTeamResult::AlreadyRecorded], true)) {
+            throw new \LogicException(sprintf('%s is not a refusal.', $result->name));
+        }
+
         return new self($result, $team, $blader);
     }
 }
