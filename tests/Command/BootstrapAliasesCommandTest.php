@@ -197,10 +197,16 @@ final class BootstrapAliasesCommandTest extends ConsoleTestCase
     /**
      * An event that taught it nothing is named. A pass that quietly left one
      * out would look the same whether it had read everything or half of it.
+     *
+     * The uncaptured bracket is an invented slug, like every other slug here.
+     * It used to be a real one, which made this test pass only for as long as
+     * nobody captured that bracket — and capturing it is what #55 does to all
+     * of them. The failure read as a bug in the command rather than as the
+     * corpus moving, which is the worst way for a test to be wrong.
      */
     public function testItSaysWhichEventsItReadNothingOutOf(): void
     {
-        $this->importedEvent('Gamesplus 23-08', 'https://challonge.com/38ztp3w7', ['Giglio']);
+        $this->importedEvent('Gamesplus 23-08', 'https://challonge.com/cccc3333', ['Giglio']);
         $this->importedEvent('An evening with no bracket', null, ['Giglio']);
 
         $tester = $this->bootstrap();
