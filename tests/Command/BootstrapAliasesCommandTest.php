@@ -224,6 +224,77 @@ final class BootstrapAliasesCommandTest extends ConsoleTestCase
         PlayerFactory::assert()->count(1);
     }
 
+    /**
+     * The team-event skip has to survive a bracket whose slug is all digits.
+     *
+     * PHP casts a decimal-integer array key to `int`, and the slugs come back
+     * out of `array_count_values()` as keys — so an id-style link would come
+     * back as an `int`, miss the strict comparison, and be read as an ordinary
+     * event. The whole team event would then be paired rank against line.
+     */
+    public function testItSkipsATeamEventWhoseBracketIsANumericId(): void
+    {
+        $this->event('11 July Gamebreaker 2v2 Player A', '12345678', imported: ['Markulegend', 'JG1'], ranked: ['mark squared', 'JG']);
+        $this->event('11 July Gamebreaker 2v2 Player B', '12345678', imported: ['Markinu', 'JG2'], ranked: ['mark squared', 'JG']);
+
+        $tester = $this->bootstrap(force: true);
+
+        self::assertCommandSaid($tester, 'it is a 2v2 event: the entrants are teams');
+        self::assertCommandSaid($tester, 'Nothing was learned.');
+
+        PlayerAliasFactory::assert()->count(0);
+    }
+
+    /**
+     * Two entrants at one rank means line *n* and rank *n* are not the same
+     * claim, so the event is left alone rather than half-read.
+     *
+     * The tie here is hidden behind a row that names nobody — unjoined, with
+     * no entrant name and no linked account. Such a row stores no name, so a
+     * guard that only watched the names it kept would never see the rank twice
+     * and would pair the surviving entrant with whoever was imported there.
+     */
+    public function testItRefusesAnEventWhereTwoEntrantsShareARank(): void
+    {
+        $this->captureStandings('aaaa1111', [
+            ['rank' => 1, 'name' => 'Giglio'],
+            ['rank' => 2, 'name' => null],
+            ['rank' => 2, 'name' => 'Obelisk'],
+        ]);
+
+        $this->importedEvent('Gamesplus 28-06', 'https://challonge.com/aaaa1111', ['Giglio', 'Obelix']);
+
+        $tester = $this->bootstrap(force: true);
+
+        self::assertCommandSaid($tester, 'two entrants share a rank');
+        self::assertCommandSaid($tester, 'Nothing was learned.');
+
+        PlayerAliasFactory::assert()->count(0);
+    }
+
+    /**
+     * Every alias is its own flush and its own ledger line, in its own
+     * transaction, so a ledger that stops accepting writes part way through
+     * leaves the rows before it committed. The run stops there and says how
+     * many landed — an operator told nothing happened would go looking for the
+     * wrong problem, and an alias with no ledger line does not survive the next
+     * rebuild.
+     */
+    public function testItStopsWhenTheLedgerStopsAcceptingWrites(): void
+    {
+        $this->event('Gamesplus 16-08', 'aaaa1111', imported: ['Lanzjan'], ranked: ['Anzjan']);
+        $this->event('Gamesplus 26-07', 'bbbb2222', imported: ['Belti'], ranked: ['IlBelti']);
+
+        self::blockLedgerWrites();
+
+        $tester = $this->bootstrap(force: true);
+
+        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandSaid($tester, '0 aliases were filed before the recovery ledger stopped accepting writes.');
+
+        PlayerAliasFactory::assert()->count(0);
+    }
+
     private function bootstrap(bool $force = false): CommandTester
     {
         return $this->executeCommand($force ? ['--force' => true] : []);
@@ -266,13 +337,29 @@ final class BootstrapAliasesCommandTest extends ConsoleTestCase
     }
 
     /**
+     * @param list<string> $entrants in finishing order
+     */
+    private function captureBracket(string $slug, array $entrants): void
+    {
+        $this->captureStandings($slug, array_map(
+            static fn (int $position, string $name): array => ['rank' => $position + 1, 'name' => $name],
+            array_keys($entrants),
+            $entrants,
+        ));
+    }
+
+    /**
      * Writes a snapshot the same way `app:fetch-challonge` does, with the
      * standings rows carrying no match history — which is what a one-stage
      * bracket looks like, and what makes the join fall back to the name.
      *
-     * @param list<string> $entrants in finishing order
+     * A row with no name is a row that named nobody: unjoined, with neither an
+     * entrant name nor a linked account, which is the shape `ChallongePlacing`
+     * answers `null` for.
+     *
+     * @param list<array{rank: int, name: ?string}> $rows
      */
-    private function captureBracket(string $slug, array $entrants): void
+    private function captureStandings(string $slug, array $rows): void
     {
         if (in_array($slug, $this->captured, true)) {
             return;
@@ -281,17 +368,19 @@ final class BootstrapAliasesCommandTest extends ConsoleTestCase
         $participants = [];
         $standings = [];
 
-        foreach ($entrants as $position => $name) {
-            $participants[] = new ChallongeParticipant(
-                id: $position + 1,
-                participantId: null,
-                seed: $position + 1,
-                name: $name,
-            );
+        foreach ($rows as $position => $row) {
+            if (null !== $row['name']) {
+                $participants[] = new ChallongeParticipant(
+                    id: $position + 1,
+                    participantId: null,
+                    seed: $position + 1,
+                    name: $row['name'],
+                );
+            }
 
             $standings[] = new ChallongeStanding(
-                rank: $position + 1,
-                name: $name,
+                rank: $row['rank'],
+                name: $row['name'],
                 challongeUser: null,
                 labels: [],
                 matchIds: [],

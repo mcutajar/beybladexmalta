@@ -80,7 +80,7 @@ final class AliasBootstrapPlan
 
     /**
      * Whether anything in here wants a person to look at it, which is the
-     * question the exit code and the closing message turn on.
+     * question the closing message turns on.
      */
     public function needsAPerson(): bool
     {

@@ -19,6 +19,7 @@ use App\Entity\PlayerAliasSource;
 use App\Entity\Tournament;
 use App\Exception\ChallongeSnapshotReadException;
 use App\Exception\InvalidChallongeUrlException;
+use App\Exception\LedgerWriteException;
 use App\Exception\UnsupportedChallongeBracketException;
 use App\Repository\PlayerAliasRepository;
 use App\Repository\TournamentRepository;
@@ -179,7 +180,7 @@ class AliasBootstrapper
                 $normalised = $this->normaliser->normalise($spelling);
 
                 /*
-                 * The bracket already says what we say. 118 of the 160
+                 * The bracket already says what we say. 132 of the 160
                  * placements are this, and an alias for one of them would be a
                  * row the resolver never reads: a spelling that folds onto a
                  * blader's own name resolves without the table.
@@ -220,6 +221,15 @@ class AliasBootstrapper
      * replays the seeding exactly as it replays everything else — and so a row
      * the plan was optimistic about is refused here rather than slipped in
      * behind the others.
+     *
+     * Which is also why a ledger failure ends the run rather than escaping it.
+     * Every alias is its own transaction, so the ones already committed stay
+     * committed; letting the exception past here would report that nothing
+     * happened when a third of the table is seeded. The run stops at the first
+     * failure — a ledger that has stopped accepting writes will not accept the
+     * next one either, and the alias it refused has been rolled back but is
+     * still in Doctrine's identity map, so carrying on would try to insert it
+     * again on the following flush.
      */
     public function apply(AliasBootstrapPlan $plan): AliasBootstrapOutcome
     {
@@ -227,11 +237,15 @@ class AliasBootstrapper
         $refused = [];
 
         foreach ($plan->writable() as $proposal) {
-            $result = $this->aliasService->add(
-                $proposal->bladerName(),
-                $proposal->spelling,
-                PlayerAliasSource::Seeded,
-            );
+            try {
+                $result = $this->aliasService->add(
+                    $proposal->bladerName(),
+                    $proposal->spelling,
+                    PlayerAliasSource::Seeded,
+                );
+            } catch (LedgerWriteException $exception) {
+                return new AliasBootstrapOutcome($written, $refused, $exception->getMessage());
+            }
 
             if (AddAliasResult::Added === $result) {
                 ++$written;
@@ -364,6 +378,13 @@ class AliasBootstrapper
      * line and means a bracket that ever does say so is believed. From #67
      * onwards a team event is declared at import and neither signal is needed.
      *
+     * The slugs come back through `strval()` because they arrive as array
+     * *keys*, and PHP casts a decimal-integer key to `int`. A bracket pasted
+     * as its numeric tournament id would otherwise come out of here as
+     * `12345678` and never match the `in_array(..., true)` above — the team
+     * event would be read as an ordinary one, and `--force` would file the
+     * team names and the phantoms behind them as permanent aliases.
+     *
      * @param array<int, string> $brackets
      *
      * @return list<string>
@@ -372,10 +393,10 @@ class AliasBootstrapper
     {
         $imports = array_count_values($brackets);
 
-        return array_keys(array_filter(
+        return array_map(strval(...), array_keys(array_filter(
             $imports,
             static fn (int $times): bool => $times > 1,
-        ));
+        )));
     }
 
     private function snapshot(string $slug): ?ChallongeSnapshot
@@ -394,11 +415,23 @@ class AliasBootstrapper
     private function rankedEntrants(ChallongeSnapshot $snapshot): ?array
     {
         $ranked = [];
+        $seen = [];
 
+        /*
+         * Having seen a rank and having a name for it are two different
+         * things, and conflating them reopens the hole this guard is here to
+         * close: a row that names nobody stores nothing, so a second row at
+         * the same rank would find the slot empty and take it. The tie would
+         * go unnoticed and the surviving entrant would be paired with whoever
+         * the import recorded at that rank — which is a permanent alias
+         * against possibly the wrong blader.
+         */
         foreach ($this->standings->finishingOrder($snapshot) as $placing) {
-            if (isset($ranked[$placing->rank()])) {
+            if (isset($seen[$placing->rank()])) {
                 return null;
             }
+
+            $seen[$placing->rank()] = true;
 
             $name = $placing->name();
 
