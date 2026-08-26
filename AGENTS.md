@@ -523,13 +523,32 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   disagree about and creates nobody.
 - **A team event teaches the alias pass nothing, and that is the phantom rule.**
   Its entrants are teams, so a name there belongs to two bladers rather than
-  one, and the lists it was imported from name one blader per team slot —
-  padded, where the roster was never known, with `JG1`, `JG2` and the literal
-  `-`, `--` and `---`. Those five are rows in `players` and none of them is a
-  person; `melhina` is the same fact with no placeholder at all, a team that
-  finished eleventh and was never imported. Nothing is to be learned from any of
-  them, nothing merged into them, and nothing resolved onto them. #67 puts an
-  unclaimed team on record and takes the five rows back out.
+  one. The five phantoms this used to produce — `JG1`, `JG2` and the literal
+  `-`, `--` and `---`, padding invented to reach ten lines in the Player A and
+  Player B lists — are gone, because the two 2v2 events are now one tournament
+  each imported from a roster. Nothing is to be learned from a team event,
+  nothing merged into one, and nothing resolved onto one.
+- **A 2v2 event is one tournament, declared at import and expanded through a
+  roster.** `app:import-tournament ... --team` reads a roster file — `team:
+  blader + blader`, one entrant per line in finishing order — and awards the
+  entrant's rank to every blader in it, by the same F1 matrix. No matches, no
+  games, no knockout bonus: a team match records only the aggregate of its
+  individual matchups, so there is no blader-level result to be had. Nothing is
+  lost permanently; the snapshot keeps every match and every set.
+- **An unclaimed team is a record, not a gap, and it is the only place the
+  never-auto-create rule resolves to a row instead of a question.** `JG` and
+  `melhina` finished tenth and eleventh on 11 July and nobody knows who was in
+  either, so `TournamentTeam` holds them with no members: they keep their rank,
+  score nothing, and never stopped the import. `app:team claim` attaches bladers
+  afterwards, writes their placements and awards that rank's points — and it
+  never creates a blader, because unlike an import it is filed long after the
+  evening. A solo entrant nobody recognises in a 1v1 bracket still stops and
+  asks.
+- **`bye` is dropped and nothing renumbers around it.** It is an entrant of
+  `uhxii7az` at rank 12 and the only placeholder entrant in all eighteen
+  brackets. The ranks are Challonge's, so taking a row out never moves the ones
+  below it. That is the line: `bye` goes because it is not an entrant, an
+  unclaimed team stays because it is one.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you
