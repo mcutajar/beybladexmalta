@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Tournament;
+use App\Entity\TournamentMatch;
 use App\Entity\TournamentStage;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -42,6 +43,21 @@ class TournamentStageRepository extends ServiceEntityRepository
         $stage->getTournament()->removeStage($stage);
 
         $this->getEntityManager()->remove($stage);
+    }
+
+    /**
+     * Drops a match the bracket no longer has.
+     *
+     * Explicit rather than a side effect of leaving the stage's collection,
+     * because a match also leaves that collection when it *moves* to another
+     * stage — and orphan removal cannot tell the two apart. `TournamentStage`
+     * records why.
+     */
+    public function discardMatch(TournamentMatch $match): void
+    {
+        $match->getStage()->removeMatch($match);
+
+        $this->getEntityManager()->remove($match);
     }
 
     /**

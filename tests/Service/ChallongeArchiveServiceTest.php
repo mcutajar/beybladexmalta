@@ -27,6 +27,7 @@ use App\Tests\Factory\TournamentResultFactory;
 use App\Tests\Factory\TournamentTeamFactory;
 use App\Tests\Story\SeasonStory;
 use App\Tests\Support\ServiceTestCase;
+use Doctrine\DBAL\Connection;
 use Zenstruck\Foundry\Attribute\ResetDatabase;
 use Zenstruck\Foundry\Attribute\WithStory;
 
@@ -153,6 +154,29 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
         self::assertSame(1, $outcome->matches);
         self::assertSame(1, $outcome->discarded);
         self::assertCount(1, $this->stages($event)[0]->getMatches());
+    }
+
+    /**
+     * A bracket restructured upstream — one stage becomes a group and a cut —
+     * moves matches into a stage that did not exist a moment ago.
+     *
+     * The move is the only way to do it: the Challonge id is half the unique
+     * key, and Doctrine runs its inserts before its deletes, so writing the new
+     * row before dropping the old one is exactly the collision that key exists
+     * to cause.
+     */
+    public function testItMovesAMatchIntoAStageTheBracketHasGained(): void
+    {
+        $event = $this->event();
+
+        $this->archive->archive($event, $this->bracket());
+        $outcome = $this->archive->archive($event, $this->bracket(cut: true));
+
+        self::assertSame(2, $outcome->stages);
+        self::assertSame(2, $outcome->matches);
+        self::assertSame(0, $outcome->discarded);
+
+        self::assertSame([901 => 0, 902 => 1], $this->archivedMatches($event));
     }
 
     /**
@@ -285,6 +309,28 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
     }
 
     /**
+     * The collision the alias table is meant to make loud, and the opposite
+     * problem to a missing alias. `Obelix` is a blader, and `Obelix` is also
+     * filed as an alias of `Obelisk` — so the spelling reaches two people and
+     * no alias can settle it, because `AliasService` refuses to file one onto a
+     * blader's own name. Reporting it as a name nobody is called would send
+     * whoever read it to a refusal.
+     */
+    public function testASpellingTwoBladersAnswerToIsNotAMissingAlias(): void
+    {
+        $event = $this->event();
+        PlayerFactory::createOne(['name' => 'Obelix']);
+        PlayerAliasFactory::createOne(['player' => PlayerFactory::createOne(['name' => 'Obelisk']), 'alias' => 'Obelix']);
+
+        $outcome = $this->archive->archive($event, $this->bracket());
+
+        self::assertCount(1, $outcome->collisions);
+        self::assertStringContainsString('"Obelix" is how more than one blader is already spelled', $outcome->collisions[0]);
+        self::assertNotContains('Obelix', $outcome->unrecognised);
+        self::assertNull($this->entrant($event, 'Obelix')->getPlayer());
+    }
+
+    /**
      * A team match records only the aggregate of its individual matchups, so
      * there is no blader-level row to write and its entrants are teams. The
      * teams are already on record; nothing else is.
@@ -295,6 +341,24 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
         TournamentTeamFactory::createOne(['tournament' => $event, 'name' => 'legion', 'rank' => 1]);
 
         $outcome = $this->archive->archive($event, $this->bracket());
+
+        self::assertSame(ChallongeArchiveResult::TeamEvent, $outcome->result);
+        self::assertSame([], $this->stages($event));
+        self::assertLedgerIsEmpty();
+    }
+
+    /**
+     * The other way round, and the reason the bracket is asked as well as the
+     * event. A team event is declared at import — `is_team` is false in all
+     * eighteen captured brackets — so nothing would normally be learned from
+     * the flag. A bracket that does set it and was imported without `--team`
+     * would otherwise have its team names archived as participants.
+     */
+    public function testABracketThatSaysItIsATeamTournamentArchivesNothing(): void
+    {
+        $event = $this->event();
+
+        $outcome = $this->archive->archive($event, $this->bracket(declaredTeamTournament: true));
 
         self::assertSame(ChallongeArchiveResult::TeamEvent, $outcome->result);
         self::assertSame([], $this->stages($event));
@@ -405,31 +469,58 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
      * Every row the archive wrote, by id, so that "the same rows" can mean the
      * same rows rather than the same number of them.
      *
+     * Read with SQL rather than off the object graph, and that is the whole
+     * point of it. Doctrine hands back the entities it already has in memory,
+     * so a row this test believes it is looking at can have been deleted at the
+     * last flush and still answer every question put to it. Only the database
+     * knows what survived.
+     *
      * @return list<string>
      */
     private function rowIds(Tournament $event): array
     {
-        $ids = [];
-
-        foreach ($this->stages($event) as $stage) {
-            $ids[] = sprintf('stage %d', (int) $stage->getId());
-
-            foreach ($stage->getParticipants() as $entrant) {
-                $ids[] = sprintf('entrant %d', (int) $entrant->getId());
-            }
-
-            foreach ($stage->getMatches() as $match) {
-                $ids[] = sprintf('match %d', (int) $match->getId());
-
-                foreach ($match->getGames() as $game) {
-                    $ids[] = sprintf('game %d', (int) $game->getId());
-                }
-            }
-        }
+        $ids = $this->service(Connection::class)->fetchFirstColumn(
+            <<<'SQL'
+                    SELECT 'stage ' || s.id FROM tournament_stages s
+                     WHERE s.tournament_id = :id
+                 UNION ALL
+                    SELECT 'entrant ' || p.id FROM tournament_participants p
+                      JOIN tournament_stages s ON s.id = p.stage_id
+                     WHERE s.tournament_id = :id
+                 UNION ALL
+                    SELECT 'match ' || m.id FROM tournament_matches m
+                     WHERE m.tournament_id = :id
+                 UNION ALL
+                    SELECT 'game ' || g.id FROM match_games g
+                      JOIN tournament_matches m ON m.id = g.match_id
+                     WHERE m.tournament_id = :id
+                SQL,
+            ['id' => $event->getId()],
+        );
 
         sort($ids);
 
         return $ids;
+    }
+
+    /**
+     * The matches the database holds, by Challonge id, each with the position
+     * of the stage it is filed under.
+     *
+     * @return array<int, int>
+     */
+    private function archivedMatches(Tournament $event): array
+    {
+        return $this->service(Connection::class)->fetchAllKeyValue(
+            <<<'SQL'
+                SELECT m.challonge_id, s.position
+                  FROM tournament_matches m
+                  JOIN tournament_stages s ON s.id = m.stage_id
+                 WHERE m.tournament_id = :id
+                 ORDER BY m.challonge_id
+                SQL,
+            ['id' => $event->getId()],
+        );
     }
 
     /**
@@ -440,6 +531,9 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
      *
      * @param list<int>        $score
      * @param ?list<list<int>> $games
+     * @param bool             $cut   restructures the same bracket into a group stage and a
+     *                                final, moving the second match into the cut — where its
+     *                                entrants get the disjoint id space Challonge gives one
      */
     private function bracket(
         array $score = [7, 4],
@@ -448,6 +542,8 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
         bool $forfeited = false,
         bool $consolation = false,
         string $entrant = 'Obelix',
+        bool $cut = false,
+        bool $declaredTeamTournament = false,
     ): ChallongeSnapshot {
         $played = [
             new ChallongeMatch(
@@ -480,6 +576,76 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
             ),
         ];
 
+        $stages = [
+            new ChallongeStage(
+                kind: ChallongeStageKind::Group,
+                name: 'Group A',
+                format: 'swiss',
+                rounds: [
+                    new ChallongeRound(number: 1, title: 'Round 1'),
+                    new ChallongeRound(number: 2, title: 'Round 2'),
+                ],
+                participants: [
+                    new ChallongeParticipant(id: 1, participantId: 5001, seed: 1, name: 'legion'),
+                    new ChallongeParticipant(id: 2, participantId: 5002, seed: 2, name: $entrant),
+                    new ChallongeParticipant(id: 3, participantId: 5003, seed: 3, name: 'Giglio'),
+                ],
+                matches: array_slice($played, 0, $matches),
+                standings: [
+                    new ChallongeStanding(
+                        rank: 1,
+                        name: null,
+                        challongeUser: 'Sanya0207',
+                        labels: ['Advanced'],
+                        matchIds: [901, 902],
+                        columns: [
+                            'Match W-L-T (wins +1.0, ties +0.5)' => '2 - 0 - 0',
+                            'Score' => '2.0',
+                            'Buchholz' => '3.0',
+                            'TB' => '0',
+                            'Pts Diff' => '+11',
+                            'Byes (+1.0)' => '1',
+                        ],
+                    ),
+                    new ChallongeStanding(
+                        rank: 2,
+                        name: $entrant,
+                        challongeUser: null,
+                        labels: [],
+                        matchIds: [901],
+                        columns: ['Match W-L-T (wins +1.0, ties +0.5)' => '0 - 1 - 0'],
+                    ),
+                    new ChallongeStanding(
+                        rank: 3,
+                        name: 'Giglio',
+                        challongeUser: null,
+                        labels: [],
+                        matchIds: [902],
+                        columns: ['Match W-L-T (wins +1.0, ties +0.5)' => '0 - 1 - 0'],
+                    ),
+                ],
+            ),
+        ];
+
+        if ($cut) {
+            $stages[0] = $this->withoutTheSecondMatch($stages[0]);
+            $stages[] = new ChallongeStage(
+                kind: ChallongeStageKind::Final,
+                name: null,
+                format: 'single elimination',
+                rounds: [new ChallongeRound(number: 1, title: 'Finals')],
+                participants: [
+                    new ChallongeParticipant(id: 5001, participantId: null, seed: 1, name: 'legion'),
+                    new ChallongeParticipant(id: 5003, participantId: null, seed: 2, name: 'Giglio'),
+                ],
+                matches: [$played[1]],
+                standings: [
+                    new ChallongeStanding(rank: 1, name: 'legion', challongeUser: null, labels: [], matchIds: [902], columns: []),
+                    new ChallongeStanding(rank: 2, name: 'Giglio', challongeUser: null, labels: [], matchIds: [902], columns: []),
+                ],
+            );
+        }
+
         return new ChallongeSnapshot(
             slug: self::SLUG,
             sourceUrl: 'https://challonge.com/'.self::SLUG.'/module?show_standings=1',
@@ -487,57 +653,25 @@ final class ChallongeArchiveServiceTest extends ServiceTestCase
             tournamentId: 18113372,
             tournamentType: 'swiss',
             tournamentState: 'complete',
-            isTeamTournament: false,
-            stages: [
-                new ChallongeStage(
-                    kind: ChallongeStageKind::Group,
-                    name: 'Group A',
-                    format: 'swiss',
-                    rounds: [
-                        new ChallongeRound(number: 1, title: 'Round 1'),
-                        new ChallongeRound(number: 2, title: 'Round 2'),
-                    ],
-                    participants: [
-                        new ChallongeParticipant(id: 1, participantId: 5001, seed: 1, name: 'legion'),
-                        new ChallongeParticipant(id: 2, participantId: 5002, seed: 2, name: $entrant),
-                        new ChallongeParticipant(id: 3, participantId: 5003, seed: 3, name: 'Giglio'),
-                    ],
-                    matches: array_slice($played, 0, $matches),
-                    standings: [
-                        new ChallongeStanding(
-                            rank: 1,
-                            name: null,
-                            challongeUser: 'Sanya0207',
-                            labels: ['Advanced'],
-                            matchIds: [901, 902],
-                            columns: [
-                                'Match W-L-T (wins +1.0, ties +0.5)' => '2 - 0 - 0',
-                                'Score' => '2.0',
-                                'Buchholz' => '3.0',
-                                'TB' => '0',
-                                'Pts Diff' => '+11',
-                                'Byes (+1.0)' => '1',
-                            ],
-                        ),
-                        new ChallongeStanding(
-                            rank: 2,
-                            name: $entrant,
-                            challongeUser: null,
-                            labels: [],
-                            matchIds: [901],
-                            columns: ['Match W-L-T (wins +1.0, ties +0.5)' => '0 - 1 - 0'],
-                        ),
-                        new ChallongeStanding(
-                            rank: 3,
-                            name: 'Giglio',
-                            challongeUser: null,
-                            labels: [],
-                            matchIds: [902],
-                            columns: ['Match W-L-T (wins +1.0, ties +0.5)' => '0 - 1 - 0'],
-                        ),
-                    ],
-                ),
-            ],
+            isTeamTournament: $declaredTeamTournament,
+            stages: $stages,
+        );
+    }
+
+    /**
+     * The group stage of the restructured bracket: the same stage, one match
+     * shorter, because the match it lost is now the final.
+     */
+    private function withoutTheSecondMatch(ChallongeStage $stage): ChallongeStage
+    {
+        return new ChallongeStage(
+            kind: $stage->kind,
+            name: $stage->name,
+            format: $stage->format,
+            rounds: $stage->rounds,
+            participants: $stage->participants,
+            matches: [$stage->matches[0]],
+            standings: $stage->standings,
         );
     }
 }

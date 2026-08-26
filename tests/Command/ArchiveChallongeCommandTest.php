@@ -6,6 +6,7 @@ namespace App\Tests\Command;
 
 use App\Entity\Tournament;
 use App\Repository\TournamentStageRepository;
+use App\Tests\Factory\PlayerAliasFactory;
 use App\Tests\Factory\PlayerFactory;
 use App\Tests\Factory\TournamentFactory;
 use App\Tests\Factory\TournamentTeamFactory;
@@ -83,6 +84,26 @@ final class ArchiveChallongeCommandTest extends ConsoleTestCase
     }
 
     /**
+     * A spelling two bladers already answer to is said differently from one
+     * nobody answers to, because `app:alias add` cannot settle it — it refuses
+     * a spelling that folds onto a blader's own name. Sending an operator there
+     * would send them to a refusal.
+     */
+    public function testItSaysWhenMoreThanOneBladerAnswersToAName(): void
+    {
+        $this->event();
+        PlayerFactory::createOne(['name' => 'Obelix']);
+        PlayerAliasFactory::createOne(['player' => PlayerFactory::createOne(['name' => 'Obelisk']), 'alias' => 'Obelix']);
+
+        $tester = $this->archive(self::SLUG);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+        self::assertCommandSaid($tester, 'More than one blader already answers to a name this bracket used');
+        self::assertCommandSaid($tester, '"Obelix" is how more than one blader is already spelled');
+        self::assertCommandSaid($tester, 'Two rows for one person is a merge');
+    }
+
+    /**
      * The snapshot is tracked by git, so this replays offline — which is the
      * difference between it and `app:fetch-challonge`, which writes no line at
      * all.
@@ -136,7 +157,7 @@ final class ArchiveChallongeCommandTest extends ConsoleTestCase
         $tester = $this->archive(self::SLUG);
 
         self::assertCommandExited($tester, Command::SUCCESS);
-        self::assertCommandSaid($tester, 'is a 2v2 event, so its 1 entrants are the archive');
+        self::assertCommandSaid($tester, 'is a 2v2 event, so nothing but its entrants is archived: 1 entrant on record');
         self::assertLedgerIsEmpty();
     }
 

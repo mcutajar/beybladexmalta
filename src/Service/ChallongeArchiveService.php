@@ -141,7 +141,7 @@ class ChallongeArchiveService
         }
 
         foreach ($keptMatches as $stale) {
-            $stale->getStage()->removeMatch($stale);
+            $this->stages->discardMatch($stale);
             ++$tally->discarded;
         }
 
@@ -169,7 +169,19 @@ class ChallongeArchiveService
      */
     private function refuse(Tournament $tournament, ChallongeSnapshot $snapshot): ?ChallongeArchiveResult
     {
-        if ($tournament->isTeamEvent()) {
+        /*
+         * Asked of the event and of the bracket, and either one is enough.
+         *
+         * A team event is declared at import rather than detected — `is_team`
+         * is false in all eighteen captured brackets, the module store not
+         * carrying the flag — so holding teams is the declaration's persisted
+         * trace and is what answers here today. But a bracket that does say so
+         * and was imported without `--team` would otherwise have its team names
+         * archived as participants, which is the category error this whole
+         * branch exists to avoid. Believing the flag when it is set costs
+         * nothing; ignoring it costs that.
+         */
+        if ($tournament->isTeamEvent() || $snapshot->isTeamTournament) {
             return ChallongeArchiveResult::TeamEvent;
         }
 
@@ -324,7 +336,16 @@ class ChallongeArchiveService
     }
 
     /**
-     * Who the entrant is, or nobody.
+     * Who the entrant is, or nobody — and, when it is nobody, which of the two
+     * ways it went wrong.
+     *
+     * A spelling that reaches no blader is a missing alias, and the answer is
+     * `app:alias add`. A spelling that reaches *two* is the league's own
+     * records colliding — two blader rows spelled alike, or a blader whose
+     * name shadows an alias filed before they existed — and no alias can settle
+     * it, because `AliasService` refuses a spelling that folds onto a blader's
+     * own name. Reporting the second as the first would send somebody down a
+     * road that ends at a refusal.
      */
     private function blader(
         AliasIndex $index,
@@ -342,6 +363,12 @@ class ChallongeArchiveService
             ++$tally->bladers;
 
             return $resolution->player;
+        }
+
+        if ($resolution->isAmbiguous()) {
+            $tally->moreThanOneBladerIsCalled($participant->name, $resolution->problem());
+
+            return null;
         }
 
         $tally->nobodyIsCalled($participant->name);
@@ -364,14 +391,20 @@ class ChallongeArchiveService
             'discarded' => $outcome->discarded,
         ]);
 
-        if ([] === $outcome->unrecognised) {
-            return;
+        if ([] !== $outcome->unrecognised) {
+            $this->logger->warning('Bracket entrants nobody is called', [
+                'tournament' => $tournament->getTitle(),
+                'bracket' => $snapshot->slug,
+                'names' => $outcome->unrecognised,
+            ]);
         }
 
-        $this->logger->warning('Bracket entrants nobody is called', [
-            'tournament' => $tournament->getTitle(),
-            'bracket' => $snapshot->slug,
-            'names' => $outcome->unrecognised,
-        ]);
+        if ([] !== $outcome->collisions) {
+            $this->logger->warning('Bracket entrants more than one blader is called', [
+                'tournament' => $tournament->getTitle(),
+                'bracket' => $snapshot->slug,
+                'problems' => $outcome->collisions,
+            ]);
+        }
     }
 }

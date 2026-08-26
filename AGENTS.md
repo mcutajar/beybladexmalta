@@ -652,6 +652,24 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   rewire a service and the cached XML goes stale, after which phpstan-symfony
   silently resolves against the old container. Run
   `make console ARGS="cache:clear --env=dev"` after container changes.
+- **`orphanRemoval` schedules the delete the moment a child leaves the
+  collection**, not at flush. `PersistentCollection::removeElement()` calls
+  `scheduleOrphanRemoval()` there and then, and the only thing that cancels it
+  is `PersistentCollection::add()`. An entity constructed in the same run still
+  holds a plain `ArrayCollection`, which has no such hook — so moving a child
+  from a loaded parent to a brand-new one writes the `UPDATE` and then the
+  `DELETE` in one flush, and the code that did it reports success for a row that
+  is gone. `TournamentStage::$matches` therefore cascades a remove rather than
+  orphan-removing, because a bracket restructured upstream moves matches into a
+  stage built moments earlier; `$participants` keeps orphan removal because an
+  entrant never moves between stages.
+- **A test that reads an entity after a flush may be reading the identity map,
+  not the database.** Doctrine hands back the objects it already has, and a
+  fetch-join does not necessarily repopulate a collection it has already
+  initialised — so a row deleted at the last flush can go on answering every
+  question the test puts to it. Where what matters is what *survived*, assert
+  against SQL: `ChallongeArchiveServiceTest::rowIds()` does, and it is the only
+  reason the orphan-removal bug above was visible at all.
 - Because the Doctrine extension reads the real mapping, **entity property types
   must match the column nullability**. A `NOT NULL` column needs a non-nullable
   property, so new entity fields should not default to `?T ... = null` out of habit.

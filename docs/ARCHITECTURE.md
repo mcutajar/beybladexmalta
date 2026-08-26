@@ -291,10 +291,18 @@ service that owns the domain rules.
   - Refuses three things and writes nothing for any of them: a **team event**
     (whose entrants are teams and whose matches record only an aggregate), an
     event that records no bracket (an archive of it could never be replayed),
-    and an event imported from a different bracket.
+    and an event imported from a different bracket. A team event is recognised
+    by the event holding teams *or* by the bracket setting `is_team` — the
+    second never happens in the corpus, but believing it costs nothing and
+    ignoring it would archive team names as participants.
   - Resolves each entrant through `AliasResolver` and never creates anybody. A
     name that reaches nobody is archived under the spelling the bracket used,
     attached to no blader, and reported so the alias can be filed.
+  - A name that reaches **two** bladers is reported separately, in
+    `AliasResolution`'s own words. It is the opposite problem and has the
+    opposite answer: no alias can settle it, because `AliasService` refuses a
+    spelling that folds onto a blader's own name. Two rows for one person is a
+    merge.
   - Writes its ledger line inside the flush transaction, like every other admin
     action.
 
@@ -402,6 +410,10 @@ service that owns the domain rules.
     kind, format and round count.
   - The root of the archive: entrants and matches cascade from it, so
     `TournamentStageRepository` is the archive's one door.
+  - Matches cascade a remove but are **not** orphan-removed, because a match can
+    move between stages when a bracket is restructured upstream and orphan
+    removal cannot tell a move from a deletion. A match the bracket has really
+    dropped goes through `TournamentStageRepository::discardMatch()`.
   - Keyed by `position`, the order the stages were played. Everything else about
     a stage, its kind included, can be corrected upstream.
 

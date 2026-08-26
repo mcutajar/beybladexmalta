@@ -37,9 +37,23 @@ final class ChallongeArchiveTally
      */
     private array $unrecognised = [];
 
+    /**
+     * The spellings that reach *more than one* blader, against the sentence
+     * that says who — kept apart from the ones that reach nobody, because they
+     * are opposite problems with opposite answers.
+     *
+     * @var array<string, string>
+     */
+    private array $collisions = [];
+
     public function nobodyIsCalled(string $name): void
     {
         $this->unrecognised[$name] = true;
+    }
+
+    public function moreThanOneBladerIsCalled(string $name, string $problem): void
+    {
+        $this->collisions[$name] = $problem;
     }
 
     /**
@@ -54,6 +68,16 @@ final class ChallongeArchiveTally
         return $names;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function collisions(): array
+    {
+        ksort($this->collisions);
+
+        return array_values($this->collisions);
+    }
+
     public function outcome(): ChallongeArchiveOutcome
     {
         return ChallongeArchiveOutcome::archived(
@@ -63,6 +87,7 @@ final class ChallongeArchiveTally
             games: $this->games,
             bladers: $this->bladers,
             unrecognised: $this->unrecognised(),
+            collisions: $this->collisions(),
             discarded: $this->discarded,
         );
     }

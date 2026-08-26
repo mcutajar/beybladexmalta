@@ -119,7 +119,12 @@ class TournamentMatch
      * Reached only when a bracket has been restructured upstream since it was
      * archived. It is a move rather than a delete and an insert because the
      * Challonge id is half the unique key: writing the new row before dropping
-     * the old one is exactly the collision that key exists to cause.
+     * the old one is exactly the collision that key exists to cause — Doctrine
+     * runs its inserts before its deletes.
+     *
+     * Leaving the old stage's collection is safe only because that collection
+     * does not orphan-remove; `TournamentStage::$matches` records why, and the
+     * stage the match is going to may well be one built moments ago.
      */
     public function belongsTo(TournamentStage $stage): void
     {

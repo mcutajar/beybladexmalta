@@ -214,6 +214,20 @@ final class ArchiveChallongeCommand extends Command
             ));
         }
 
+        /*
+         * Said separately from the names nobody answers to, because the answer
+         * is different. An alias cannot settle a spelling two bladers already
+         * share — AliasService refuses to file one onto a blader's own name —
+         * so pointing an operator at app:alias add here would send them to a
+         * refusal.
+         */
+        if ([] !== $outcome->collisions) {
+            $io->warning(sprintf(
+                "More than one blader already answers to a name this bracket used, so those entrants are attached to nobody:\n\n%s\n\nNo alias can settle that. Two rows for one person is a merge; a blader whose name shadows an alias is the alias to remove.",
+                implode("\n", array_map(static fn (string $problem): string => ' - '.$problem, $outcome->collisions)),
+            ));
+        }
+
         return Command::SUCCESS;
     }
 
@@ -224,11 +238,7 @@ final class ArchiveChallongeCommand extends Command
         ChallongeArchiveResult $result,
     ): int {
         return match ($result) {
-            ChallongeArchiveResult::TeamEvent => $this->said($io, sprintf(
-                '"%s" is a 2v2 event, so its %d entrants are the archive. A team match records only the aggregate of its individual matchups, and nothing in it says which half of either team played which.',
-                $tournament->getTitle(),
-                $tournament->getTeams()->count(),
-            )),
+            ChallongeArchiveResult::TeamEvent => $this->said($io, $this->teamEvent($tournament, $snapshot)),
 
             ChallongeArchiveResult::NoBracketRecorded => $this->refuse($io, sprintf(
                 '"%s" does not record which bracket it came from, so an archive of it could never be replayed.',
@@ -243,6 +253,32 @@ final class ArchiveChallongeCommand extends Command
 
             ChallongeArchiveResult::Archived => Command::SUCCESS,
         };
+    }
+
+    /**
+     * Why a team event archives nothing, said either way round.
+     *
+     * Normally the event is what knows: a team event is declared at import and
+     * its teams are that declaration's trace. A bracket that declares itself
+     * one is the other way round, and worth saying differently — the event was
+     * imported without `--team`, so it has no teams and there is nothing to
+     * point at.
+     */
+    private function teamEvent(Tournament $tournament, ChallongeSnapshot $snapshot): string
+    {
+        if (!$tournament->isTeamEvent()) {
+            return sprintf(
+                '"%s" says it is a team tournament, so none of it is archived: its entrants are teams, and a team match records only the aggregate of its individual matchups. "%s" holds no teams, which means it was imported without --team.',
+                $snapshot->slug,
+                $tournament->getTitle(),
+            );
+        }
+
+        return sprintf(
+            '"%s" is a 2v2 event, so nothing but its entrants is archived: %s on record. A team match records only the aggregate of its individual matchups, and nothing in it says which half of either team played which.',
+            $tournament->getTitle(),
+            $this->count($tournament->getTeams()->count(), 'entrant'),
+        );
     }
 
     /**
