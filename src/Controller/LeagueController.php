@@ -8,6 +8,7 @@ use App\Repository\PlayerRepository;
 use App\Repository\SeasonRegistrationRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\TournamentRepository;
+use App\Service\TournamentTeamService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -60,7 +61,7 @@ class LeagueController extends AbstractController
     #[Route('/preseason/tournament/{id}', name: 'tournament_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     #[Route('/season/{slug}/tournament/{id}', name: 'tournament_details', methods: ['GET'])]
     #[Route('/seasons/{slug}/tournament/{id}', name: 'tournament_details_2', methods: ['GET'])]
-    public function tournamentDetails(string $slug, int $id, TournamentRepository $tournamentRepository, SeasonRepository $seasonRepository): Response
+    public function tournamentDetails(string $slug, int $id, TournamentRepository $tournamentRepository, SeasonRepository $seasonRepository, TournamentTeamService $teams): Response
     {
         // 1. Fetch and validate the active season context
         $season = $seasonRepository->findOneBy(['slug' => $slug]);
@@ -77,9 +78,16 @@ class LeagueController extends AbstractController
         // 3. Fetch all placement results for this specific tournament
         $standings = $tournamentRepository->getTournamentStandings($id);
 
+        /*
+         * Empty for every event but the two 2v2s, where it is what the bracket
+         * actually ranked — including the teams nobody has claimed, which have
+         * no placement of their own and would otherwise leave no trace on the
+         * page at all.
+         */
         return $this->render('league/tournament_details.html.twig', [
             'tournament' => $tournament,
             'standings' => $standings,
+            'teams' => $teams->forTournament($tournament),
             'current_season' => $season,
         ]);
     }

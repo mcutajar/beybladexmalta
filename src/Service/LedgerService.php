@@ -43,6 +43,11 @@ class LedgerService
         );
     }
 
+    /**
+     * @param bool $teamEvent a 2v2 event, whose file is a roster rather than a
+     *                        placement list — declared rather than detected, so
+     *                        the replay has to be told the same way
+     */
     public function logTournamentImport(
         string $title,
         string $heldOn,
@@ -50,6 +55,7 @@ class LedgerService
         string $seasonSlug,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
+        bool $teamEvent = false,
     ): void {
         $commandLine = sprintf(
             'php bin/console app:import-tournament %s %s %s --season=%s',
@@ -58,6 +64,10 @@ class LedgerService
             escapeshellarg($sourceFilePath),
             escapeshellarg($seasonSlug),
         );
+
+        if ($teamEvent) {
+            $commandLine .= ' --team';
+        }
 
         if (null !== $challongeUrl && '' !== $challongeUrl) {
             $commandLine .= sprintf(
@@ -103,6 +113,30 @@ class LedgerService
         }
 
         $this->append($commandLine);
+    }
+
+    /**
+     * Claiming a team changes a historical standing — it writes placements
+     * against an event that was imported weeks ago and awards that rank's
+     * points — so it is a replayable line like every other admin action, and
+     * it replays after the import that created the team.
+     *
+     * The bladers are written under the names the database holds rather than
+     * whatever was typed, so a rebuilt league attaches the same people.
+     *
+     * @param list<string> $bladerNames
+     */
+    public function logTeamClaimed(
+        string $tournamentTitle,
+        string $teamName,
+        array $bladerNames,
+    ): void {
+        $this->append(rtrim(sprintf(
+            'php bin/console app:team claim %s %s %s',
+            escapeshellarg($tournamentTitle),
+            escapeshellarg($teamName),
+            implode(' ', array_map(escapeshellarg(...), $bladerNames)),
+        )));
     }
 
     public function logAliasRemoved(string $alias): void

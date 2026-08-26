@@ -68,6 +68,7 @@ trait InteractsWithTheLedger
         string $seasonSlug,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
+        bool $teamEvent = false,
     ): void {
         $commandLine = sprintf(
             'php bin/console app:import-tournament %s %s %s --season=%s',
@@ -76,6 +77,10 @@ trait InteractsWithTheLedger
             escapeshellarg($sourcePath),
             escapeshellarg($seasonSlug),
         );
+
+        if ($teamEvent) {
+            $commandLine .= ' --team';
+        }
 
         if (null !== $challongeUrl) {
             $commandLine .= sprintf(' --challonge=%s', escapeshellarg($challongeUrl));
@@ -104,6 +109,22 @@ trait InteractsWithTheLedger
         }
 
         self::assertLedgerHolds($commandLine);
+    }
+
+    /**
+     * @param list<string> $bladerNames
+     */
+    protected static function assertLedgerRecordsTeamClaim(
+        string $tournamentTitle,
+        string $teamName,
+        array $bladerNames,
+    ): void {
+        self::assertLedgerHolds(rtrim(sprintf(
+            'php bin/console app:team claim %s %s %s',
+            escapeshellarg($tournamentTitle),
+            escapeshellarg($teamName),
+            implode(' ', array_map(escapeshellarg(...), $bladerNames)),
+        )));
     }
 
     protected static function assertLedgerRecordsAliasRemoval(string $alias): void

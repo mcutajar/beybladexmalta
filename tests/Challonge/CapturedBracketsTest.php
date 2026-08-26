@@ -12,6 +12,7 @@ use App\Service\AliasNormaliser;
 use App\Service\ChallongeSnapshotFiles;
 use App\Service\ChallongeSnapshotReader;
 use App\Service\ChallongeStandingsResolver;
+use App\Service\TeamListParser;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -108,11 +109,24 @@ final class CapturedBracketsTest extends TestCase
      * That is settled rather than outstanding. A team event is something the
      * importer is told, not something a bracket is asked — the rosters behind
      * the team names have to be supplied by hand whatever happens, so the same
-     * step declares both. testTheTeamEventsAreTheOnesImportedTwice keeps this
-     * list honest in the meantime: a 2v2 event is the only reason two import
-     * lines ever point at one bracket.
+     * step declares both, and `--team` in `repeat.sh` is where it is said.
+     * testTheTeamEventsAreTheOnesDeclaredAsTeamEvents keeps this list honest.
      */
     private const TEAM_EVENTS = ['uhxii7az', 'ivanixk6'];
+
+    /**
+     * The entrants of those two events, `bye` excluded — it is a slot in a
+     * bracket rather than somebody who turned up.
+     */
+    private const BYE = 'bye';
+
+    private const TEAMS = 18;
+
+    /**
+     * The bladers in them. Two per team for all but `JG` and `melhina`, which
+     * nobody has claimed: sixteen claimed teams, two apiece.
+     */
+    private const TEAM_MEMBERS = 32;
 
     /**
      * Every place a bracket spells a blader differently from the name they were
@@ -463,22 +477,90 @@ final class CapturedBracketsTest extends TestCase
     }
 
     /**
-     * Keeps TEAM_EVENTS honest. A 2v2 event is one bracket that was imported
-     * twice, once for each half of every team, and it is the only reason two
-     * import lines ever point at the same bracket.
+     * Keeps TEAM_EVENTS honest. A team event is declared rather than detected,
+     * so the only record of which events are 2v2 is the `--team` on their
+     * import line, and this is the assertion that the list above and that flag
+     * have not drifted apart.
      */
-    public function testTheTeamEventsAreTheOnesImportedTwice(): void
+    public function testTheTeamEventsAreTheOnesDeclaredAsTeamEvents(): void
     {
-        $imports = [];
+        self::assertSame(self::TEAM_EVENTS, array_values(array_map(
+            static fn (array $event): string => $event['slug'],
+            array_filter(
+                $this->events(),
+                static fn (array $event): bool => $event['team'],
+            ),
+        )));
+    }
+
+    /**
+     * The team events' half of testEveryEventReproducesTheOrderItWasImportedIn.
+     *
+     * The rosters were reconstructed from the paired Player A / Player B files
+     * those two events used to be imported from, and those files are gone —
+     * the whole point of the change is that a 2v2 event is one tournament. So
+     * what is left to check them against is the bracket itself, which is the
+     * durable half anyway: line *n* of the roster is the entrant Challonge
+     * ranked *n*.
+     *
+     * Folded through the normaliser rather than by case alone, because the
+     * bracket writes `legion ()` and `infernal rage (invitation pending)` and
+     * the roster writes the names people used.
+     */
+    public function testEveryTeamEventReproducesTheOrderItsRosterWasTypedIn(): void
+    {
+        $events = 0;
+        $teams = 0;
+        $members = 0;
 
         foreach ($this->events() as $event) {
-            $imports[$event['slug']] = ($imports[$event['slug']] ?? 0) + 1;
+            if (!$event['team']) {
+                continue;
+            }
+
+            ++$events;
+
+            $roster = (new TeamListParser())->parse(
+                (string) file_get_contents($this->projectDir().'/var/data/imports/'.$event['file'].'.txt'),
+            );
+
+            $stage = $this->snapshots[$event['slug']]->rankingStage();
+
+            self::assertNotNull($stage, sprintf('The bracket "%s" ranks nobody.', $event['slug']));
+
+            $ranked = $stage->standings;
+
+            self::assertCount(
+                count($ranked),
+                $roster,
+                sprintf('The roster for "%s" does not list every entrant the bracket ranked.', $event['slug']),
+            );
+
+            foreach ($roster as $position => $team) {
+                self::assertSame(
+                    $position + 1,
+                    $ranked[$position]->rank,
+                    sprintf('Line %d of "%s" is not rank %d of the bracket.', $position + 1, $event['file'], $position + 1),
+                );
+
+                self::assertSame(
+                    $this->normaliser->normalise($ranked[$position]->name ?? ''),
+                    $this->normaliser->normalise($team->teamName),
+                    sprintf('Line %d of "%s" is not the entrant the bracket ranked there.', $position + 1, $event['file']),
+                );
+
+                if (self::BYE === $this->normaliser->normalise($team->teamName)) {
+                    continue;
+                }
+
+                ++$teams;
+                $members += count($team->memberNames);
+            }
         }
 
-        self::assertSame(self::TEAM_EVENTS, array_keys(array_filter(
-            $imports,
-            static fn (int $times): bool => $times > 1,
-        )));
+        self::assertCount($events, self::TEAM_EVENTS);
+        self::assertSame(self::TEAMS, $teams);
+        self::assertSame(self::TEAM_MEMBERS, $members);
     }
 
     /**
@@ -520,7 +602,7 @@ final class CapturedBracketsTest extends TestCase
      * bracket against. Events whose bracket has not been captured yet are left
      * out.
      *
-     * @return list<array{file: string, slug: string, knockout: ?string}>
+     * @return list<array{file: string, slug: string, knockout: ?string, team: bool}>
      */
     private function events(): array
     {
@@ -547,6 +629,7 @@ final class CapturedBracketsTest extends TestCase
                 'file' => $file[1],
                 'slug' => $slug,
                 'knockout' => $knockout[1] ?? null,
+                'team' => str_contains($line, ' --team'),
             ];
         }
 
