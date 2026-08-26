@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Check out the code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -166,7 +166,7 @@ jobs:
       # Unlike the job above this one keeps its credentials: it has a commit to
       # push, and only to a branch that holds a single generated file.
       - name: Check out the badge branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: badges
 
