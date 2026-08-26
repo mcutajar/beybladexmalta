@@ -67,8 +67,29 @@ class TournamentStage
     #[ORM\OneToMany(targetEntity: TournamentParticipant::class, mappedBy: 'stage', cascade: ['persist'], orphanRemoval: true)]
     private Collection $participants;
 
-    /** @var Collection<int, TournamentMatch> */
-    #[ORM\OneToMany(targetEntity: TournamentMatch::class, mappedBy: 'stage', cascade: ['persist'], orphanRemoval: true)]
+    /**
+     * Matches cascade but are **not** orphan-removed, and the difference is
+     * load-bearing.
+     *
+     * `PersistentCollection::removeElement()` schedules the orphan removal
+     * there and then; only `PersistentCollection::add()` cancels it again. A
+     * stage created during this same run holds a plain `ArrayCollection`,
+     * which has no such hook — so a match moved out of an existing stage and
+     * into a new one would be updated and then deleted in the same flush, and
+     * the archive would report success for a row the database no longer has.
+     *
+     * A bracket restructured upstream from one stage into a group and a cut
+     * does exactly that. So the collection persists and cascades a delete of
+     * the stage itself, and a match the bracket has genuinely dropped is
+     * removed by name, through `TournamentStageRepository::discardMatch()`.
+     *
+     * `participants` keeps orphan removal because an entrant never moves: the
+     * group stage and the cut number their entrants in disjoint spaces, so a
+     * blader who played both is two rows and neither one travels.
+     *
+     * @var Collection<int, TournamentMatch>
+     */
+    #[ORM\OneToMany(targetEntity: TournamentMatch::class, mappedBy: 'stage', cascade: ['persist', 'remove'])]
     private Collection $matches;
 
     public function __construct(

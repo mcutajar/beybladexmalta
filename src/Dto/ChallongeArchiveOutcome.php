@@ -27,6 +27,8 @@ final readonly class ChallongeArchiveOutcome
     /**
      * @param int          $bladers      participant rows that reached a blader
      * @param list<string> $unrecognised the spellings that reached nobody, once each
+     * @param list<string> $collisions   what is wrong with each spelling that reached more than
+     *                                   one blader, in `AliasResolution`'s own words
      * @param int          $discarded    rows dropped because the bracket no longer has them
      */
     private function __construct(
@@ -37,12 +39,14 @@ final readonly class ChallongeArchiveOutcome
         public int $games = 0,
         public int $bladers = 0,
         public array $unrecognised = [],
+        public array $collisions = [],
         public int $discarded = 0,
     ) {
     }
 
     /**
      * @param list<string> $unrecognised
+     * @param list<string> $collisions
      */
     public static function archived(
         int $stages,
@@ -51,6 +55,7 @@ final readonly class ChallongeArchiveOutcome
         int $games,
         int $bladers,
         array $unrecognised,
+        array $collisions,
         int $discarded,
     ): self {
         return new self(
@@ -61,6 +66,7 @@ final readonly class ChallongeArchiveOutcome
             $games,
             $bladers,
             $unrecognised,
+            $collisions,
             $discarded,
         );
     }
