@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Dto\AliasBootstrapOutcome;
 use App\Dto\AliasBootstrapPlan;
 use App\Dto\AliasContradiction;
 use App\Dto\AliasProposal;
 use App\Dto\SkippedEvent;
-use App\Exception\LedgerWriteException;
 use App\Service\AliasBootstrapper;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -226,16 +226,10 @@ final class BootstrapAliasesCommand extends Command
             return Command::SUCCESS;
         }
 
-        try {
-            $outcome = $this->bootstrapper->apply($plan);
-        } catch (LedgerWriteException $exception) {
-            $io->error('The alias table was left alone because the recovery ledger could not be updated.');
+        $outcome = $this->bootstrapper->apply($plan);
 
-            if ($io->isVerbose()) {
-                $io->writeln($exception->getMessage());
-            }
-
-            return Command::FAILURE;
+        if (null !== $outcome->ledgerStopped) {
+            return $this->ledgerStopped($io, $outcome);
         }
 
         if (!$outcome->wentThrough()) {
@@ -263,5 +257,29 @@ final class BootstrapAliasesCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * The run that ended part way through.
+     *
+     * An alias is only as permanent as its ledger line — a rebuilt database is
+     * `repeat.sh` replayed from nothing — so the aliases that did land are said
+     * out loud rather than reported as nothing having happened. They are on
+     * file and they are in the ledger; it is the rest that are not there yet,
+     * and a second run after the ledger is writable again picks them up.
+     */
+    private function ledgerStopped(SymfonyStyle $io, AliasBootstrapOutcome $outcome): int
+    {
+        $io->error(sprintf(
+            '%d %s filed before the recovery ledger stopped accepting writes. The rest were not attempted. Fix the ledger and run this again — what is already on file will report itself as such.',
+            $outcome->written,
+            1 === $outcome->written ? 'alias was' : 'aliases were',
+        ));
+
+        if ($io->isVerbose()) {
+            $io->writeln((string) $outcome->ledgerStopped);
+        }
+
+        return Command::FAILURE;
     }
 }
