@@ -30,7 +30,7 @@ jobs:
     steps:
       # Full history, because the ancestry check below needs main.
       - name: Check out the tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -91,7 +91,7 @@ jobs:
       # default depth of 1 there is neither a previous tag nor a commit to
       # read, and it renders an empty changelog rather than failing.
       - name: Check out the tag
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
