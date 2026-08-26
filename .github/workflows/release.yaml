@@ -50,7 +50,7 @@ jobs:
       # ~112 MB that tailwind:build would otherwise download. Same key as ci.yaml
       # so a release reuses whatever the branch runs already warmed.
       - name: Cache the Tailwind binary
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: var/tailwind/*/tailwindcss-*
           key: tailwind-${{ hashFiles('config/packages/symfonycasts_tailwind.yaml') }}
