@@ -59,6 +59,8 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Marks a player as paid for a season.
   - Supports both interactive and single-pass headless execution.
   - Auto-creates missing players when needed.
+  - `--team` declares a 2v2 event, whose file is a roster rather than a placement
+    list. It cannot be combined with `--knockout`: a team event awards no bonus.
   - Writes a replay command to `var/log/command_ledger.sh`.
 
 - `src/Command/CreateSeasonCommand.php`
@@ -104,17 +106,48 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
     contradictions, ranks that paired with nothing, and every event it read
     nothing out of.
 
+- `src/Command/TeamCommand.php`
+  - `app:team list|claim` — the entrants of the 2v2 events, and who was in one.
+  - `list` shows every team, its rank and its members, and counts the unclaimed
+    ones rather than leaving them to be noticed.
+  - `claim` refuses a blader nobody has heard of and an entrant the bracket never
+    recorded; it creates neither. Claiming the same people again reports itself
+    and writes nothing, so `repeat.sh` replays whole.
+  - Writes its replay command inside the flush transaction, naming the bladers
+    under the names the database holds.
+
 ### Application services
 
 Both the web and CLI entry points are thin: they gather input, then hand it to a
 service that owns the domain rules.
 
 - `App\Service\TournamentImportService`
-  - The single source of truth for the F1 points matrix and the knockout bonus.
+  - The single source of truth for the knockout bonus; the points matrix lives in
+    `App\Service\F1Points`, because a team claim awards it too.
   - Resolves or creates players case-insensitively, builds the tournament and its results.
   - Accepts only strict `YYYY-MM-DD` dates, for web and CLI alike.
   - Writes the recovery artifacts inside the flush transaction, so the tournament
     and its ledger entry either both survive or neither does.
+  - `importTeamEvent()` is the 2v2 path: one tournament, each entrant's rank
+    expanded into one `TournamentResult` per blader in it, and no match, game or
+    knockout bonus at all. An entrant with no members is stored and scores
+    nothing. `bye` is dropped and nothing below it renumbers.
+
+- `App\Service\TeamListParser`
+  - Parses a roster file — `team: blader + blader`, one entrant per line in
+    finishing order — into `App\Dto\TeamPlacement` objects. A trailing colon with
+    nothing after it is an unclaimed team.
+
+- `App\Service\TournamentTeamService`
+  - The only thing that claims a team: it attaches bladers to an entrant that is
+    already on record, writes their placements retroactively and awards that
+    rank's points, inside the flush transaction with its ledger line.
+  - Never creates a blader (unlike an import, it is filed long after the event),
+    never creates a team, and never lets a blader finish twice in one event.
+
+- `App\Service\F1Points`
+  - What a finishing rank is worth. Read by the import and by a team claim, so
+    the ten numbers exist once.
 
 - `App\Service\PlacementListParser`
   - Parses an ordered placement list into `App\Dto\TournamentPlacement` objects.
@@ -123,6 +156,8 @@ service that owns the domain rules.
 - `App\Service\ImportFileWriter`
   - Materialises a web-submitted placement list into `var/data/imports/`, so the
     ledger replay command always has a source file to point at.
+  - `writeTeams()` does the same for a roster, in the shape `TeamListParser`
+    reads back.
 
 - `App\Service\ChallongeFetcher`
   - The only class in the app that touches the network. GETs the bracket's module
@@ -233,12 +268,9 @@ service that owns the domain rules.
   - Writes nothing two events disagree about, nothing the normaliser already
     folds, nothing already on file, and nothing that would point one blader's
     name at another. All four are reported instead.
-  - Reads nothing out of a **team event**. Its entrants are teams, and the lists
-    it was imported from name one blader per team slot — padded, where the
-    roster was never known, with `JG1`, `JG2` and the literal `-`, `--`, `---`,
-    which are rows in `players` and are not people. A team event is one bracket
-    imported twice, which is how it is told apart until #67 makes it a
-    declaration.
+  - Reads nothing out of a **team event**. Its entrants are teams, so a name in
+    one belongs to two bladers rather than to one, and there is no pairing to
+    learn. A team event is the one carrying `--team` on its import line.
 
 - `App\Service\PlayerRegistrationService`
   - Marks a player as paid for a season, auto-creating the player when needed.
@@ -263,6 +295,20 @@ service that owns the domain rules.
 - `App\Entity\Tournament`
   - Represents a ranked event associated with a season.
   - Stores optional `challongeUrl` metadata.
+  - Holding teams is what makes it a team event; nothing else marks one.
+
+- `App\Entity\TournamentTeam`
+  - One entrant of a 2v2 event: the name the bracket carried, kept verbatim, the
+    folded form it is looked up by (unique per tournament), and its rank.
+  - A team belongs to the event rather than to the league — Sk3lli was in
+    `legion` on 11 July and `Lopez` on 19 July — so the tournament is part of the
+    key and there is no `Team` entity.
+  - **No members is unclaimed**, which is a record rather than a gap: the team
+    keeps its rank, scores nothing, and can be claimed later.
+
+- `App\Entity\TournamentTeamMember`
+  - One blader in one event's team, and nothing else. Points reach them through
+    a `TournamentResult` written at the team's rank.
 
 - `App\Entity\TournamentResult`
   - Associates a player with a tournament finish.
