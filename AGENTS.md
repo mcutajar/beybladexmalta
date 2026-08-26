@@ -496,6 +496,36 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   to one of our players. Those change, and a tracked file cannot. Turning a
   snapshot into domain objects happens when it is read, where a mistake costs a
   re-parse rather than a re-fetch of a bracket that may be gone.
+- **The archive is additive, and the scoring record is not part of it.**
+  `TournamentStage`, `TournamentParticipant`, `TournamentMatch` and `MatchGame`
+  hold the nine hundred and fifty-one matches the placement lists threw away —
+  and `TournamentResult` keeps the ranks and the points exactly as it did, so
+  `PlayerRepository::getLeagueLeaderboard()` returns the same rows before and
+  after `app:archive-challonge`. A tournament nobody has archived is not a
+  broken one. Everyone is archived, not only the ten who scored: ranks below
+  eleven pay nothing and are half the matches.
+- **Archiving twice writes the same rows, and that is load-bearing.** Every
+  level has a natural key — a stage is its position, an entrant their Challonge
+  id within the stage, a match its Challonge id within the tournament, a game
+  its number within the match — and each is looked up before it is written, so
+  re-archiving a bracket that was corrected upstream repairs the record rather
+  than layering a second copy over it. `app:import-tournament` has no such
+  guard, which is exactly why a second replay of `repeat.sh` doubles every
+  result it holds.
+- **A game row is written only when a match had more than one game.** Every one
+  of the 947 played solo matches in the corpus is a single game, so a row per
+  game would restate its own match's scoreline 947 times; all fifty-one
+  multi-game matches are team matches, and a team event archives its entrants
+  and nothing else. So `match_games` starts empty on purpose, and the rule
+  lives on `TournamentMatch::transcribeGames()` rather than in the archive
+  service — a path added later inherits it instead of having to remember it. A
+  backfill that produced 947 rows is the sign it was bypassed.
+- **A bracket that changed after it was imported is found by asking, not by
+  noticing.** `app:verify-challonge` re-fetches one and diffs it against the
+  snapshot, everything except `fetched_at` — which every fetch rewrites, so a
+  re-fetch of an unchanged bracket produces one line of `git diff` and looking
+  at that is not the same check. It writes nothing either way; capturing a
+  change is still `app:fetch-challonge`, followed by archiving again.
 - **A Challonge display name is never turned into a blader.** Two hundred and
   seven spellings across the captured brackets belong to about seventy-six
   people, and `AliasNormaliser` only folds that to a hundred and twenty-nine —

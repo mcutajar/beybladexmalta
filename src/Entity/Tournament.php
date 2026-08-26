@@ -36,6 +36,21 @@ class Tournament
     private Season $season;
 
     /**
+     * The bracket, archived: its stages, and through them every entrant and
+     * every match. Empty for a tournament imported from a placement list and
+     * never archived, which is every one of them until #55 backfills.
+     *
+     * Additive, and deliberately not load-bearing. Nothing on this side scores
+     * anything — `results` is still the record the leaderboard is built from —
+     * so a tournament with no stages is exactly as correct as it was before
+     * the archive existed.
+     *
+     * @var Collection<int, TournamentStage>
+     */
+    #[ORM\OneToMany(targetEntity: TournamentStage::class, mappedBy: 'tournament', orphanRemoval: true)]
+    private Collection $stages;
+
+    /**
      * The entrants of a 2v2 event, empty for every other kind.
      *
      * Nothing else marks a team event: `is_team` is false in all eighteen
@@ -51,6 +66,7 @@ class Tournament
     public function __construct()
     {
         $this->results = new ArrayCollection();
+        $this->stages = new ArrayCollection();
         $this->teams = new ArrayCollection();
     }
 
@@ -106,6 +122,24 @@ class Tournament
         $this->challongeUrl = $challongeUrl;
 
         return $this;
+    }
+
+    /** @return Collection<int, TournamentStage> */
+    public function getStages(): Collection
+    {
+        return $this->stages;
+    }
+
+    public function addStage(TournamentStage $stage): void
+    {
+        if (!$this->stages->contains($stage)) {
+            $this->stages->add($stage);
+        }
+    }
+
+    public function removeStage(TournamentStage $stage): void
+    {
+        $this->stages->removeElement($stage);
     }
 
     /** @return Collection<int, TournamentTeam> */
