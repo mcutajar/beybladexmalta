@@ -127,6 +127,14 @@ trait InteractsWithTheLedger
         )));
     }
 
+    protected static function assertLedgerRecordsArchive(string $slug): void
+    {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:archive-challonge %s',
+            escapeshellarg($slug),
+        ));
+    }
+
     protected static function assertLedgerRecordsAliasRemoval(string $alias): void
     {
         self::assertLedgerHolds(sprintf(

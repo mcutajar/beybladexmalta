@@ -139,6 +139,29 @@ class LedgerService
         )));
     }
 
+    /**
+     * Archiving a bracket is replayable in a way fetching one is not: it reads
+     * `var/data/challonge/<slug>.json`, which is tracked by git, so a replay
+     * rebuilds every match of every event without ever asking Challonge
+     * whether the bracket still exists.
+     *
+     * It replays after the import that created the tournament, which is what
+     * the line finds the tournament by — the bracket the import recorded.
+     *
+     * A second line for a bracket already archived costs nothing. Unlike an
+     * import, which inserts a fresh set of results every time it runs, an
+     * archive looks every row up by its natural key first.
+     */
+    public function logChallongeArchived(string $slug): void
+    {
+        $this->append(
+            sprintf(
+                'php bin/console app:archive-challonge %s',
+                escapeshellarg($slug),
+            ),
+        );
+    }
+
     public function logAliasRemoved(string $alias): void
     {
         $this->append(

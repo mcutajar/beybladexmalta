@@ -62,6 +62,28 @@ class TournamentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every event that records which bracket it came from.
+     *
+     * A list rather than a lookup by slug, because the same bracket is named
+     * three different ways across `repeat.sh` — `challonge.com/<slug>`, a
+     * subdomain, and the `/vi/<slug>` invite links — and normalising a URL to
+     * its slug is `ChallongeUrl`'s job rather than SQL's. There are twenty
+     * rows.
+     *
+     * @return list<Tournament>
+     */
+    public function everyEventWithABracket(): array
+    {
+        return $this->createQueryBuilder('t')
+            ->where('t.challongeUrl IS NOT NULL')
+            ->andWhere("t.challongeUrl != ''")
+            ->orderBy('t.heldOn', 'ASC')
+            ->addOrderBy('t.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Fetches all player results for a single tournament.
      *
      * The rank is selected rather than counted off the rows, because a team

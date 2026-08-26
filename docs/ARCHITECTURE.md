@@ -85,6 +85,27 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Prints the whole checklist, passes included: the expectations either side of
     a failure are what say how much of the page is still the page we knew.
 
+- `src/Command/ArchiveChallongeCommand.php`
+  - `app:archive-challonge <slug|url>` — writes a captured bracket's stages,
+    entrants, matches and games against the event that was imported from it.
+  - Offline: it reads the tracked snapshot and never Challonge, so unlike
+    `app:fetch-challonge` it **does** write a ledger line and a replay rebuilds
+    every match without asking whether the brackets still exist.
+  - The bracket names the event rather than the other way round, through the
+    `--challonge` URL every import records. Two events naming one bracket is
+    refused rather than guessed at.
+  - A 2v2 event is reported and exits zero: a backfill walks every event, and
+    two of them are team events.
+
+- `src/Command/VerifyChallongeCommand.php`
+  - `app:verify-challonge <slug|url>` — re-fetches a bracket and says what it has
+    changed since it was captured, field by field, everything but `fetched_at`.
+  - Fetches from the URL the snapshot recorded, so a capture made through an
+    invite link or a subdomain is re-read the same way it was read the first time.
+  - Writes nothing — no snapshot, no rows, no ledger line — and exits non-zero
+    when the bracket has changed, so a cron can shout. Refreshing the record is
+    still `app:fetch-challonge`, deliberately.
+
 - `src/Command/AliasCommand.php`
   - `app:alias add|list|remove` — the stored table that says which Challonge
     spelling belongs to which blader.
@@ -239,6 +260,51 @@ service that owns the domain rules.
     match narrows to two people, and the standings table of a one-stage bracket
     carries no match history at all.
 
+- `App\Service\ChallongeRecordReader`
+  - Reads a standings row's columns into typed statistics — W-L-T, byes, score,
+    Buchholz, TB and points differential. The snapshot keeps every cell verbatim
+    under the header Challonge printed, so this is where a string becomes a
+    number, when the file is read rather than when it is written.
+  - Matches a label with its parenthetical stripped, because Challonge writes the
+    scoring rule into the header: the same column is `Match W-L-T` in a round
+    robin and `Match W-L-T (wins +1.0, ties +0.5)` in a Swiss stage.
+  - A column that is absent, and a cell that does not parse, both read as absent.
+    A zero would be a claim the bracket never made, and the standings of a cut
+    carry no columns at all.
+  - `Set Wins`, `Set Ties` and `Pts` are read by nothing and stay in the
+    snapshot. The round robin's `Pts` is a Beyblade-points total and the Swiss
+    `Score` counts match wins; mapping one onto the other would state something
+    no bracket said.
+
+- `App\Service\ChallongeArchiveService`
+  - Writes a captured bracket's stages, entrants, matches and games against the
+    event that was imported from it. **Nothing here scores anything**:
+    `TournamentResult` is untouched, so the leaderboard returns exactly what it
+    returned before.
+  - Archives **everyone**, not just the ten who scored. Ranks below eleven are
+    half the matches and a blader's record is wrong without them.
+  - **Idempotent by construction.** Every level has a natural key — a stage is
+    its position, an entrant their Challonge id within the stage, a match its
+    Challonge id within the tournament, a game its number within the match — and
+    each is looked up before it is written. Rows the bracket no longer has are
+    dropped, so re-archiving an edited bracket repairs rather than layers.
+  - Refuses three things and writes nothing for any of them: a **team event**
+    (whose entrants are teams and whose matches record only an aggregate), an
+    event that records no bracket (an archive of it could never be replayed),
+    and an event imported from a different bracket.
+  - Resolves each entrant through `AliasResolver` and never creates anybody. A
+    name that reaches nobody is archived under the spelling the bracket used,
+    attached to no blader, and reported so the alias can be filed.
+  - Writes its ledger line inside the flush transaction, like every other admin
+    action.
+
+- `App\Service\ChallongeSnapshotDiffer`
+  - Compares a captured bracket against a freshly fetched one, everything except
+    `fetched_at` — which is the field a fetch rewrites, and the reason
+    "re-fetch it and read the git diff" does not answer the question.
+  - A subtree that exists on one side only is reported where it appears rather
+    than descended into, so a stage the bracket has gained is one line.
+
 - `App\Service\ChallongeFields`
   - The type guards both ends of the pipeline read decoded JSON through. Absent and
     null are ordinary; present-and-the-wrong-type refuses, naming the field.
@@ -329,6 +395,38 @@ service that owns the domain rules.
 - `App\Entity\TournamentResult`
   - Associates a player with a tournament finish.
   - Stores rank, `f1Points`, `bonusPoints`, and derived `totalPoints`.
+
+- `App\Entity\TournamentStage`
+  - One stage of an event's bracket — the Swiss rounds everybody played, the cut
+    that followed, or the single stage that was the whole tournament — with its
+    kind, format and round count.
+  - The root of the archive: entrants and matches cascade from it, so
+    `TournamentStageRepository` is the archive's one door.
+  - Keyed by `position`, the order the stages were played. Everything else about
+    a stage, its kind included, can be corrected upstream.
+
+- `App\Entity\TournamentParticipant`
+  - One entrant of one stage: the name the bracket used, the Challonge account
+    rendered in place of it, the seed, and what the standings row said — stage
+    rank, `Advanced`, W-L-T, byes, score, Buchholz, TB and points differential.
+  - `player` is nullable, because resolution never invents anybody. An
+    unrecognised spelling is a missing alias, and re-archiving after it is filed
+    picks the entrant up.
+  - Ids are per stage: Challonge numbers a group stage and its cut in disjoint
+    spaces, so a blader who played both is two rows.
+
+- `App\Entity\TournamentMatch`
+  - One match: stage, round, identifier, both entrants, the scoreline, the
+    winner and the loser, whether it was forfeited and whether it was the
+    third-place playoff.
+  - Unique on `(tournament, challonge_id)` — the idempotency the archive is built
+    around.
+
+- `App\Entity\MatchGame`
+  - One game inside a match, written **only** when a match had more than one.
+    Every played solo match in the corpus is a single game, so the table starts
+    empty on purpose; the rule lives on `TournamentMatch::transcribeGames()` so
+    that a caller cannot forget it.
 
 - `App\Entity\PlayerAlias`
   - One spelling a blader has appeared under, unique on its normalised form, with
