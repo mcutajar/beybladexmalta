@@ -6,8 +6,8 @@ on:
       - main
   pull_request:
 
-# The default for every job. The suite itself needs nothing from the API; the
-# coverage comment does, and asks for it on the one job that posts it.
+# The default for every job. The suite needs nothing from the API; the badge job
+# below asks for what it needs on itself.
 permissions:
   contents: read
 
@@ -25,15 +25,6 @@ jobs:
     outputs:
       coverage: ${{ steps.coverage.outputs.percent }}
       color: ${{ steps.coverage.outputs.color }}
-
-    permissions:
-      contents: read
-      # Only so the coverage table can be posted as a pull request comment. A
-      # run from a fork, or from Dependabot, is handed a read-only token no
-      # matter what this says, which is why the comment step is skipped there
-      # rather than left to fail: the job summary and the artifact still carry
-      # the same numbers.
-      pull-requests: write
 
     steps:
       - name: Check out the code
@@ -80,8 +71,11 @@ jobs:
           hide_complexity: true
           thresholds: '60 80'
 
-      # One file for both readers, so the comment and the summary cannot drift.
-      - name: Title the coverage report
+      # The job summary is the only place the table is published. It used to be
+      # posted as a pull request comment as well, which put a hundred-odd rows
+      # into the review thread on every push; the summary carries the same
+      # numbers without crowding the conversation.
+      - name: Publish the coverage in the job summary
         run: |
           {
             echo '## Test coverage'
@@ -89,24 +83,11 @@ jobs:
             cat code-coverage-results.md
             echo
             echo 'Line-by-line detail is in the `coverage-html` artifact on this run.'
-          } > coverage-comment.md
-          cat coverage-comment.md >> "$GITHUB_STEP_SUMMARY"
-
-      # A single comment per pull request, edited in place on every push rather
-      # than added to, so the thread keeps one current set of numbers.
-      - name: Comment the coverage on the pull request
-        if: >-
-          github.event_name == 'pull_request'
-          && github.event.pull_request.head.repo.full_name == github.repository
-          && github.actor != 'dependabot[bot]'
-        uses: marocchino/sticky-pull-request-comment@v3
-        with:
-          header: coverage
-          path: coverage-comment.md
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # Cobertura states the line rate as a fraction on the root element. The
       # same number the table shows, rounded once, here so the badge and the
-      # comment can never disagree.
+      # summary can never disagree.
       - name: Read the coverage percentage
         id: coverage
         run: |
