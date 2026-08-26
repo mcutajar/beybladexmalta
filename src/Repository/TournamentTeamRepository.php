@@ -49,6 +49,30 @@ class TournamentTeamRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every team the league has on record, event by event, oldest first.
+     *
+     * One query rather than one per event: there are two team events today and
+     * `app:team list` reads all of them at once.
+     *
+     * @return list<TournamentTeam>
+     */
+    public function everyTeam(): array
+    {
+        return $this->createQueryBuilder('t')
+            ->addSelect('e', 'm', 'p')
+            ->join('t.tournament', 'e')
+            ->leftJoin('t.members', 'm')
+            ->leftJoin('m.player', 'p')
+            ->orderBy('e.heldOn', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->addOrderBy('t.rank', 'ASC')
+            ->addOrderBy('t.id', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * The entrant of this event that a spelling reaches, looked up by the
      * folded form so `legion` finds the row the bracket wrote as `legion ()`.
      */

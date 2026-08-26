@@ -328,16 +328,79 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
         );
     }
 
+    /**
+     * `bye` parses as a line and is dropped as an entrant, so this gets past
+     * the command's own emptiness check and is refused by the service. Both
+     * answers are the same condition, so both are INVALID.
+     */
     public function testARosterOfNothingButAByeImportsNobody(): void
     {
         $this->writePlacementFile(['bye']);
 
         $tester = $this->importTournament(['--team' => true]);
 
-        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandExited($tester, Command::INVALID);
+        self::assertCommandSaid($tester, 'There is nothing in that file to import.');
 
         self::assertNothingWasImported();
         self::assertLedgerIsEmpty();
+    }
+
+    /**
+     * Nobody is meant to enter twice and the league does not sanction it, but
+     * the roster is the record of who played with whom — so both places are
+     * kept and only the better rank is scored. Awarding both would pay
+     * somebody 25 + 20 for one evening.
+     */
+    public function testABladerInTwoTeamsKeepsBothPlacesAndScoresTheBetterFinish(): void
+    {
+        PlayerFactory::createOne(['name' => 'Butcher']);
+
+        $this->writePlacementFile([
+            'alpha: Butcher + Obelix',
+            'beta: Privv + Butcher',
+        ]);
+
+        $tester = $this->importTournament(['--team' => true]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+
+        self::assertCommandSaid(
+            $tester,
+            'Butcher is in more than one team. Every place is on record, but only the better finish is scored.',
+        );
+
+        self::assertCommandSaid($tester, 'Logged 3 player placements across 2 teams.');
+
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertTeamAtRank($tournament, rank: 1, name: 'alpha', bladers: ['Butcher', 'Obelix']);
+        self::assertTeamAtRank($tournament, rank: 2, name: 'beta', bladers: ['Privv', 'Butcher']);
+
+        self::assertSame(1, TournamentResultFactory::repository()->count([
+            'tournament' => $tournament,
+            'player' => PlayerFactory::find(['name' => 'Butcher']),
+        ]));
+
+        self::assertResultAtRank($tournament, rank: 1, f1Points: 25);
+    }
+
+    /**
+     * The same blader in two entrants, spelled two ways, and unknown to the
+     * league until this import. Resolving them separately would build two
+     * `Player` rows and die on the unique index rather than say anything.
+     */
+    public function testTwoSpellingsOfOneNewBladerAreOnePerson(): void
+    {
+        $this->writePlacementFile([
+            'alpha: butcher + Obelix',
+            'beta: Privv + BUTCHER',
+        ]);
+
+        self::assertCommandExited($this->importTournament(['--team' => true]), Command::SUCCESS);
+
+        PlayerFactory::assert()->count(3);
+        PlayerFactory::assert()->exists(['name' => 'butcher']);
     }
 
     #[\Override]

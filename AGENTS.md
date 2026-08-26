@@ -544,6 +544,14 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   never creates a blader, because unlike an import it is filed long after the
   evening. A solo entrant nobody recognises in a 1v1 bracket still stops and
   asks.
+- **A blader in two entrants of one event keeps both places and is scored
+  once, at the better rank.** It is not supposed to happen and the league does
+  not sanction it, but the roster is the record of who played with whom, so
+  dropping half of it would lose that and awarding both would pay somebody
+  twice for one evening. The import says whose name it was rather than
+  deciding quietly. A **claim** refuses instead: it is typed one team at a
+  time by somebody looking at the standing, so moving a placement that already
+  exists is their decision rather than the command's.
 - **`bye` is dropped and nothing renumbers around it.** It is an entrant of
   `uhxii7az` at rank 12 and the only placeholder entrant in all eighteen
   brackets. The ranks are Challonge's, so taking a row out never moves the ones

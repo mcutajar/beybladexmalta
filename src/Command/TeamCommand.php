@@ -9,6 +9,7 @@ use App\Entity\Player;
 use App\Entity\TournamentTeam;
 use App\Exception\LedgerWriteException;
 use App\Repository\TournamentRepository;
+use App\Repository\TournamentTeamRepository;
 use App\Service\ClaimTeamResult;
 use App\Service\TournamentTeamService;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -38,7 +39,8 @@ final class TeamCommand extends Command
     private const string LIST = 'list';
 
     public function __construct(
-        private readonly TournamentTeamService $teams,
+        private readonly TournamentTeamService $claims,
+        private readonly TournamentTeamRepository $teams,
         private readonly TournamentRepository $tournaments,
     ) {
         parent::__construct();
@@ -114,7 +116,7 @@ final class TeamCommand extends Command
         [$event, $teamName] = $names;
         $bladers = array_slice($names, 2);
 
-        $outcome = $this->teams->claim($event, $teamName, $bladers);
+        $outcome = $this->claims->claim($event, $teamName, $bladers);
 
         return match ($outcome->result) {
             ClaimTeamResult::Claimed => $this->say($io, sprintf(
@@ -175,7 +177,7 @@ final class TeamCommand extends Command
         }
 
         if ([] === $names) {
-            return $this->show($io, $this->teams->all(), 'No team events have been imported.');
+            return $this->show($io, $this->teams->everyTeam(), 'No team events have been imported.');
         }
 
         $events = $this->tournaments->findByTitle($names[0]);

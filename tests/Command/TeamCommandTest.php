@@ -98,6 +98,31 @@ final class TeamCommandTest extends ConsoleTestCase
     }
 
     /**
+     * The alias table makes this easy to type — `Obelisk` and `Obelix` are one
+     * person, so a claim can reach them under both — and both guards ahead of
+     * the write look at what is already on file rather than at what this claim
+     * has already reached.
+     */
+    public function testNamingOneBladerTwiceInOneClaimAttachesThemOnce(): void
+    {
+        $event = $this->teamEvent();
+        $this->unclaimed($event, 'JG', rank: 10);
+        PlayerAliasFactory::createOne([
+            'player' => PlayerFactory::createOne(['name' => 'Obelix']),
+            'alias' => 'Obelisk',
+        ]);
+
+        $tester = $this->claim([self::EVENT, 'JG', 'Obelisk', 'Obelix']);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+
+        self::assertTeamAtRank($event, rank: 10, name: 'JG', bladers: ['Obelix']);
+
+        self::assertSame(1, TournamentResultFactory::repository()->count(['tournament' => $event]));
+        self::assertLedgerRecordsTeamClaim(self::EVENT, 'JG', ['Obelix']);
+    }
+
+    /**
      * A half-known team is allowed, and the second name arriving later is the
      * same operation run again.
      */
