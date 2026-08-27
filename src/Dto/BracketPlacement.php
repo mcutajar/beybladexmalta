@@ -12,21 +12,18 @@ namespace App\Dto;
  * whole point of the screen is that somebody can see which is which before
  * anything is written. The phone drops the Challonge column, not this one.
  *
- * `row` is which line of the standings table it came from, which is how the
- * screen names the field that moves it. It is not the rank and not the
- * position: it is an identity, and it survives being reordered.
- *
  * `position` is the rank the league will award, and it is the row's place in
  * the list rather than the rank Challonge gave. The two come apart as soon as
  * an entrant is dropped — a `bye` at rank 12 of one captured bracket, an
  * entrant somebody marks as not a person — and it is the league's rank that
- * the F1 matrix pays out on.
+ * the F1 matrix pays out on. Neither is editable: the bracket's finishing
+ * order has been right eighteen times out of eighteen, and a screen that
+ * offered to overrule it would be offering to get it wrong.
  */
 final readonly class BracketPlacement
 {
     public function __construct(
         public int $position,
-        public int $row,
         public int $challongeRank,
         public string $challongeName,
         public ?string $bladerName,
@@ -51,13 +48,5 @@ final readonly class BracketPlacement
     public function totalPoints(): int
     {
         return $this->f1Points + $this->bonusPoints;
-    }
-
-    /**
-     * Whether the two spellings differ, which is what the row flags.
-     */
-    public function wasRenamed(): bool
-    {
-        return null !== $this->bladerName && $this->bladerName !== $this->challongeName;
     }
 }

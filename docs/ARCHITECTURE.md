@@ -29,9 +29,15 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
     the confirm.
   - The snapshot lives in the session between the two (`BracketDraftStore`), so
     the bracket that was approved is the bracket that is imported.
-  - Posts back three things and no facts: the decisions, the finishing order and
-    the knockout winner. Everything else is re-derived from the snapshot, which
-    is why there is nothing to sign.
+  - Posts back one kind of thing and it is not a fact: which blader each
+    unreadable name is. The finishing order and the winner of the cut are read
+    off the bracket, which has been right about both on every captured event.
+    Everything else is re-derived from the snapshot, which is why there is
+    nothing to sign.
+  - Carries an `Update` submit that re-derives the preview from the current
+    answers and writes nothing, because dropping an entrant renumbers and
+    rescores everyone below them and that has to be visible before anyone
+    approves it.
 
 - `src/Controller/LeagueRegistrationController.php`
   - Admin payment registration form.

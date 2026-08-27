@@ -350,30 +350,71 @@ final class BracketImportControllerTest extends AdminPageTestCase
         );
     }
 
-    public function testTheOrderCanBeCorrected(): void
+    /**
+     * The bracket's finishing order is the one thing here that has never been
+     * wrong — eighteen brackets out of eighteen agreed with the placement list
+     * somebody typed on the night — so the screen states it rather than
+     * offering to overrule it.
+     */
+    public function testTheFinishingOrderIsNotEditable(): void
+    {
+        $this->league();
+
+        $crawler = $this->fetchBracket($this->createBrowser());
+
+        self::assertCount(0, $crawler->filter('input[name^="order["]'));
+    }
+
+    /**
+     * The winner of the cut comes off the bracket and is never asked for: it
+     * is the last match of the final stage, which reproduced the hand-typed
+     * `--knockout` argument on every event that had one.
+     */
+    public function testTheKnockoutWinnerIsDetectedRatherThanAsked(): void
+    {
+        $this->league();
+
+        $crawler = $this->fetchBracket($this->createBrowser());
+
+        self::assertCount(0, $crawler->filter('[name="bracket_confirm[knockoutWinner]"]'));
+
+        // Obelix won the fixture's cut, so the table already says so.
+        self::assertSelectorTextContains('tbody tr:first-child', self::KNOWN);
+        self::assertSelectorTextContains('tbody tr:first-child', 'KO');
+    }
+
+    /**
+     * The placements follow the decisions, so the screen has to be able to
+     * show that before anybody approves it — and showing it still writes
+     * nothing and needs no passphrase.
+     */
+    public function testUpdateReDerivesTheTableWithoutWritingAnything(): void
     {
         $this->league();
 
         $client = $this->createBrowser();
         $crawler = $this->fetchBracket($client);
 
-        /*
-         * The bracket has Obelix first and the unknown entrant third. Swapping
-         * the two moves the F1 tiers with them — and the knockout bonus does
-         * not move, because it belongs to whoever won the cut.
-         */
-        $this->confirm($client, $crawler, [
-            ...$this->everyNameAnswered(),
-            'order[0]' => '3',
-            'order[2]' => '1',
+        // Before: the unresolved name is in the table under the bracket's spelling.
+        self::assertSelectorTextContains('body', 'Undecided');
+
+        $form = $crawler->filter('button[name="review"]')->form();
+        $form['bracket_confirm[passphrase]'] = '';
+
+        $client->submit($form, [
+            'decision['.self::MISSPELLED_KEY.']' => 'blader:'.PlayerFactory::find(['name' => 'Giglio'])->getId(),
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        self::assertResponseIsSuccessful();
 
-        $tournament = self::findTournament(self::TITLE);
+        // After: it reads as the blader, with nothing outstanding and no flash.
+        self::assertSelectorTextNotContains('body', 'Undecided');
+        self::assertSelectorTextNotContains('body', 'Authentication failed');
 
-        self::assertResultAtRank($tournament, rank: 1, player: self::UNKNOWN, f1Points: 25, bonusPoints: 0);
-        self::assertResultAtRank($tournament, rank: 3, player: self::KNOWN, f1Points: 15, bonusPoints: 10);
+        self::assertNoEventWasImported();
+        self::assertNobodyWasInvented();
+        self::assertLedgerIsEmpty();
+        self::assertFileDoesNotExist($this->snapshotPath());
     }
 
     public function testAnEntrantWhoIsNotAPersonIsDropped(): void

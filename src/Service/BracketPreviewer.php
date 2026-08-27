@@ -6,7 +6,6 @@ namespace App\Service;
 
 use App\Dto\AliasIndex;
 use App\Dto\BracketAnswers;
-use App\Dto\BracketChoices;
 use App\Dto\BracketDecision;
 use App\Dto\BracketPlacement;
 use App\Dto\BracketPreview;
@@ -73,7 +72,7 @@ class BracketPreviewer
         string $title,
         string $heldOn,
         string $seasonSlug,
-        BracketChoices $choices = new BracketChoices(),
+        BracketAnswers $answers = new BracketAnswers(),
     ): BracketPreview {
         $bracketUrl = trim($challongeUrl);
         $refusal = $this->refuse($snapshot);
@@ -92,7 +91,7 @@ class BracketPreviewer
         $index = $this->aliases->index();
 
         foreach ($entrants as $normalised => $entrant) {
-            [$reading, $decision] = $this->read($index, $normalised, $entrant, $choices->answers);
+            [$reading, $decision] = $this->read($index, $normalised, $entrant, $answers);
 
             $readings[$normalised] = $reading;
 
@@ -101,7 +100,7 @@ class BracketPreviewer
             }
         }
 
-        $placements = $this->placements($snapshot, $order, $readings, $choices);
+        $placements = $this->placements($snapshot, $order, $readings);
         $importPath = $this->importFiles->pathFor($title, $this->heldOn($heldOn));
 
         return BracketPreview::ready(
@@ -134,8 +133,12 @@ class BracketPreviewer
     /**
      * The blader the bracket says won the cut, when the league knows them.
      *
-     * Public because the import service seeds its own knockout argument from
-     * the same answer rather than re-deriving it.
+     * The bracket is the only source. It is the winner of the last match of
+     * the final stage with the third-place playoff excluded, which reproduced
+     * the hand-typed `--knockout` argument on all sixteen events that had a
+     * cut — so there is nothing for a screen to ask and nothing to offer
+     * overruling it with. A bracket with no cut, or one nobody finished, has
+     * no winner and awards no bonus.
      */
     public function detectedKnockoutWinner(ChallongeSnapshot $snapshot): ?string
     {
@@ -349,6 +352,17 @@ class BracketPreviewer
     /**
      * The finishing order the league will award, in the order it will award it.
      *
+     * The bracket's own order, with two things taken out of it: entrants
+     * somebody said are not people, and Challonge's own `bye`. Nothing is
+     * reordered here and nothing on the screen offers to — the standings have
+     * matched the hand-typed placement list eighteen times out of eighteen,
+     * and an editable rank would be an invitation to disagree with the only
+     * part of this that has never been wrong.
+     *
+     * Dropping an entrant *does* move everyone below them, because the league's
+     * rank is a row's place in this list rather than the number Challonge
+     * printed. That is the one way the decisions above change this table.
+     *
      * @param list<ChallongePlacing>                                                          $order
      * @param array<string, array{name: string, blader: ?string, isNew: bool, dropped: bool}> $readings
      *
@@ -358,12 +372,12 @@ class BracketPreviewer
         ChallongeSnapshot $snapshot,
         array $order,
         array $readings,
-        BracketChoices $choices,
     ): array {
-        $knockout = $choices->knockoutWinner ?? $this->detectedKnockoutWinner($snapshot);
-        $rows = [];
+        $knockout = $this->detectedKnockoutWinner($snapshot);
+        $placements = [];
+        $position = 0;
 
-        foreach ($order as $row => $placing) {
+        foreach ($order as $placing) {
             $name = $placing->name();
 
             if (null === $name || '' === trim($name)) {
@@ -376,43 +390,18 @@ class BracketPreviewer
                 continue;
             }
 
-            $rows[] = [
-                'place' => $choices->placeOf($row, $placing->rank()),
-                'row' => $row,
-                'placing' => $placing,
-                'name' => $name,
-                'reading' => $reading,
-            ];
-        }
-
-        /*
-         * Stable on the row it came from, so an order somebody only partly
-         * retyped keeps the bracket's own sequence for everything they left
-         * alone.
-         */
-        usort(
-            $rows,
-            static fn (array $a, array $b): int => [$a['place'], $a['row']] <=> [$b['place'], $b['row']],
-        );
-
-        $placements = [];
-        $position = 0;
-
-        foreach ($rows as $row) {
             ++$position;
-            $blader = $row['reading']['blader'];
+            $blader = $reading['blader'];
             $wonTheKnockout = null !== $blader
                 && null !== $knockout
-                && '' !== trim($knockout)
-                && 0 === strcasecmp($blader, trim($knockout));
+                && 0 === strcasecmp($blader, $knockout);
 
             $placements[] = new BracketPlacement(
                 position: $position,
-                row: $row['row'],
-                challongeRank: $row['placing']->rank(),
-                challongeName: $row['name'],
+                challongeRank: $placing->rank(),
+                challongeName: $name,
                 bladerName: $blader,
-                isNewBlader: $row['reading']['isNew'],
+                isNewBlader: $reading['isNew'],
                 f1Points: $this->f1Points->forRank($position),
                 bonusPoints: $wonTheKnockout ? TournamentImportService::KNOCKOUT_WINNER_BONUS : 0,
                 wonTheKnockout: $wonTheKnockout,

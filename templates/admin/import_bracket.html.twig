@@ -104,12 +104,14 @@
     {% endif %}
 
     {# ── The finishing order, with the matrix already applied ────────── #}
-    <twig:Card>
+    <twig:Card id="placements">
         <div class="mb-4 space-y-1">
             <twig:SectionHeading title="Placements & points" size="sm" />
             <p class="text-xs text-ink-faint">
-                Seeded from the bracket's own standings. The top {{ preview.scoring|length }} score;
-                change a number to move somebody.
+                The bracket's own finishing order &mdash; the top {{ preview.scoring|length }} score.
+                {% if preview.decisions is not empty %}
+                    It follows the decisions above: press <strong class="text-ink-muted">Update</strong> to see them applied.
+                {% endif %}
             </p>
         </div>
 
@@ -184,14 +186,9 @@
     {# ── Confirm ─────────────────────────────────────────────────────── #}
     <twig:Card variant="gradient">
         <div class="space-y-4">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <twig:Field label="Overall knockout winner" hint="Detected from the last match of the cut.">
-                    {{ form_widget(confirm_form.knockoutWinner) }}
-                </twig:Field>
-                <twig:Field label="System access key">
-                    {{ form_widget(confirm_form.passphrase) }}
-                </twig:Field>
-            </div>
+            <twig:Field label="System access key">
+                {{ form_widget(confirm_form.passphrase) }}
+            </twig:Field>
 
             {% if preview.isBlocked %}
                 <twig:Alert tone="flame">
@@ -207,12 +204,25 @@
                 </twig:Alert>
             {% endif %}
 
+            {# `formnovalidate` on both, because neither commits anything and a
+               half-answered screen is exactly when you want to look at the
+               table or walk away. Update posts back to the placements. #}
+            {% set secondary = 'inline-flex w-full cursor-pointer items-center justify-center rounded-field border border-line bg-surface px-5 py-3 text-sm font-black uppercase tracking-wider text-ink-muted transition-colors hover:border-ink-ghost hover:text-ink sm:w-auto' %}
+
             <div class="flex flex-col gap-3 border-t border-line/60 pt-4 sm:flex-row-reverse">
                 <twig:Button tone="flame" class="w-full sm:w-auto">
                     Import {{ preview.scoring|length }} &amp; archive {{ preview.matches }} ✓
                 </twig:Button>
-                <button type="submit" name="cancel" value="1" formnovalidate
-                        class="inline-flex w-full cursor-pointer items-center justify-center rounded-field border border-line bg-surface px-5 py-3 text-sm font-black uppercase tracking-wider text-ink-muted transition-colors hover:border-ink-ghost hover:text-ink sm:w-auto">
+
+                {% if preview.decisions is not empty %}
+                    <button type="submit" name="review" value="1" formnovalidate
+                            formaction="{{ path('admin_bracket_confirm') }}#placements"
+                            class="{{ secondary }}">
+                        Update
+                    </button>
+                {% endif %}
+
+                <button type="submit" name="cancel" value="1" formnovalidate class="{{ secondary }}">
                     Cancel
                 </button>
             </div>

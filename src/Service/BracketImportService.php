@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\BracketAnswers;
-use App\Dto\BracketChoices;
 use App\Dto\BracketDecision;
 use App\Dto\BracketImportOutcome;
 use App\Dto\BracketPreview;
@@ -29,11 +28,11 @@ use Psr\Log\LoggerInterface;
  * before the archive written against it.
  *
  * **It rebuilds the preview rather than trusting one.** The screen posts back
- * three things and none of them is a fact: which blader a name is, what order
- * the entrants finished in, and who won the cut. Everything else — the
- * bracket, the counts, the points, the placements those choices produce — is
- * derived here from the snapshot the server kept. So there is nothing to sign
- * and nothing a tampered field could assert.
+ * exactly one kind of thing and it is not a fact: which blader each unreadable
+ * name is. Everything else — the bracket, the counts, the finishing order, who
+ * won the cut, the points those answers produce — is derived here from the
+ * snapshot the server kept. So there is nothing to sign and nothing a tampered
+ * field could assert.
  *
  * **Nothing is written until every unresolved name is answered.** That is the
  * rule the whole epic turns on, and it is checked against the rebuilt preview
@@ -72,7 +71,7 @@ class BracketImportService
         string $title,
         string $heldOn,
         string $seasonSlug,
-        BracketChoices $choices,
+        BracketAnswers $answers,
     ): BracketImportOutcome {
         $preview = $this->previewer->preview(
             $snapshot,
@@ -80,7 +79,7 @@ class BracketImportService
             $title,
             $heldOn,
             $seasonSlug,
-            $choices,
+            $answers,
         );
 
         $refusal = $this->refuse($preview, $heldOn, $seasonSlug);

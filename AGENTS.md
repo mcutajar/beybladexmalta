@@ -585,7 +585,24 @@ contributor needs in its own body. The link is a convenience for whoever owns it
 - **An unselected button is not tinted.** The suggestion is recommended by being
   placed first and given the widest target, not by being coloured in before it
   is chosen — a shortlist that is wrong one time in four must not look already
-  decided.
+  decided. The same rule kills the amber flag that used to sit on a placement
+  whose Challonge spelling differed from the blader's name: that is the alias
+  table working, and painting the normal case as a warning teaches people to
+  ignore warnings.
+- **The finishing order and the knockout winner are read, never asked.** The
+  bracket's standings matched the hand-typed placement list on all eighteen
+  captured events, and the last match of the cut matched the hand-typed
+  `--knockout` on all sixteen that had one — so the screen states both and
+  offers to overrule neither. The decisions are the only input, which is why
+  `BracketAnswers` is the whole of what a confirm posts.
+- **The placements follow the decisions, and `Update` is how you see that.**
+  Resolving a name changes what the table says, and dropping an entrant as
+  "not a person" moves everyone below them up and rescores them — the league's
+  rank is a row's place in the list, not the number Challonge printed. So the
+  confirm bar carries a second submit that re-derives the preview and writes
+  nothing, needs no passphrase, and posts back to `#placements`. Doing it live
+  in the browser would mean a second copy of the F1 rules in JavaScript, on a
+  site that ships none.
 - **The import screen is the only thing that creates a blader deliberately, and
   it gets a ledger line of its own.** `app:create-blader` exists because
   `var/data/imports/*.txt` stops at ten and most of the bladers this screen

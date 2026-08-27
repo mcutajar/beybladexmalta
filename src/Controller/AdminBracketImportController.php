@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\BracketAnswers;
-use App\Dto\BracketChoices;
 use App\Dto\BracketConfirmData;
 use App\Dto\BracketDraft;
 use App\Dto\BracketImportData;
@@ -145,14 +144,22 @@ final class AdminBracketImportController extends AbstractController
             return $this->refuse('That bracket is no longer in front of you. Nothing was written — paste the URL and fetch it again.');
         }
 
-        $choices = new BracketChoices(
-            answers: $this->answersIn($request),
-            order: $this->placesIn($request),
-        );
-
-        $preview = $this->rebuild($draft, $choices);
+        $answers = $this->answersIn($request);
+        $preview = $this->rebuild($draft, $answers);
         $form = $this->confirmFor($preview);
         $form->handleRequest($request);
+
+        /*
+         * "Update" rather than "commit". The placements are derived from the
+         * decisions — a name resolved to a blader changes what the table says,
+         * and an entrant dropped as not-a-person moves everyone below them up —
+         * so the screen has to be able to show that before anybody is asked to
+         * approve it. Re-deriving is what this whole screen does, and it still
+         * writes nothing, so it needs no passphrase.
+         */
+        if ($request->request->has('review')) {
+            return $this->renderPreview($preview, $form);
+        }
 
         /** @var BracketConfirmData $confirmation */
         $confirmation = $form->getData();
@@ -172,11 +179,7 @@ final class AdminBracketImportController extends AbstractController
                 title: $draft->title,
                 heldOn: $draft->heldOn,
                 seasonSlug: $draft->seasonSlug,
-                choices: new BracketChoices(
-                    answers: $choices->answers,
-                    order: $choices->order,
-                    knockoutWinner: $confirmation->knockoutWinner ?? '',
-                ),
+                answers: $answers,
             );
         } catch (LedgerWriteException|ImportFileWriteException $exception) {
             $this->logger->critical('Bracket import cancelled: recovery artifact write failed', [
@@ -226,7 +229,7 @@ final class AdminBracketImportController extends AbstractController
      * Named apart from the route because the two do different things: the
      * route fetches a bracket, this only re-derives one already in hand.
      */
-    private function rebuild(BracketDraft $draft, BracketChoices $choices): BracketPreview
+    private function rebuild(BracketDraft $draft, BracketAnswers $answers): BracketPreview
     {
         return $this->previewer->preview(
             $draft->snapshot,
@@ -234,36 +237,18 @@ final class AdminBracketImportController extends AbstractController
             $draft->title,
             $draft->heldOn,
             $draft->seasonSlug,
-            $choices,
+            $answers,
         );
     }
 
     /**
-     * The confirm bar, offering the bladers this bracket actually produced.
-     *
-     * Seeded with whoever the preview already has winning the cut — the last
-     * final-stage match on the first render, and whatever was chosen on every
-     * render after it, because the preview was rebuilt with that choice in it.
-     *
      * @return FormInterface<BracketConfirmData>
      */
     private function confirmFor(BracketPreview $preview): FormInterface
     {
-        $winners = [];
-
-        foreach ($preview->placements as $placement) {
-            if (null !== $placement->bladerName) {
-                $winners[$placement->bladerName] = $placement->bladerName;
-            }
-        }
-
         return $this->createForm(
             BracketConfirmType::class,
-            new BracketConfirmData(
-                slug: $preview->slug,
-                knockoutWinner: $preview->knockoutWinner()->bladerName ?? null,
-            ),
-            ['bladers' => $winners],
+            new BracketConfirmData(slug: $preview->slug),
         );
     }
 
@@ -343,25 +328,6 @@ final class AdminBracketImportController extends AbstractController
         }
 
         return $values;
-    }
-
-    /**
-     * Where each standings row was moved to, ignoring anything that is not a
-     * place.
-     *
-     * @return array<int, int>
-     */
-    private function placesIn(Request $request): array
-    {
-        $places = [];
-
-        foreach ($request->request->all('order') as $row => $place) {
-            if (is_numeric($row) && is_numeric($place)) {
-                $places[(int) $row] = (int) $place;
-            }
-        }
-
-        return $places;
     }
 
     private function why(BracketImportOutcome $outcome): string
