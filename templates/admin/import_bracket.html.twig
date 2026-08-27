@@ -1,0 +1,222 @@
+{#
+    The import preview: one page, top to bottom, in the order somebody checks
+    it.
+
+    Nothing here is hidden behind a second click except the entrants who score
+    nothing, and nothing here has been written. The whole page is one form, so
+    the decisions, the finishing order, the knockout winner and the passphrase
+    are one submission — there is no half-applied state to get into.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}MBC Terminal | Review {{ preview.slug }}{% endblock %}
+
+{% block column %}max-w-4xl px-3 py-6 sm:px-4 md:py-12{% endblock %}
+
+{% block body %}
+
+    <twig:BackLink href="{{ path('admin_tournament_import') }}" class="mb-6">Return to the importer</twig:BackLink>
+
+    <twig:PageHeader eyebrow="Administrative import · review" title="Review before importing" size="sm">
+        Nothing has been written. {{ preview.title }} &middot; {{ preview.heldOn }}
+    </twig:PageHeader>
+
+    <twig:Flashes />
+
+    {{ form_start(confirm_form, {'action': path('admin_bracket_confirm'), 'attr': {'class': 'space-y-6'}}) }}
+
+    {{ form_widget(confirm_form.slug) }}
+
+    {# ── Which bracket was fetched, and what came back ───────────────── #}
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-field border border-line bg-canvas px-4 py-3">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-ink-faint">Bracket</span>
+        <a href="{{ preview.bracketUrl }}" target="_blank" rel="noopener noreferrer"
+           class="min-w-0 truncate font-mono text-sm text-brand transition-colors hover:text-brand-bright">{{ preview.bracketUrl }}</a>
+        <twig:Badge tone="positive" size="sm" class="sm:ml-auto">Fetched &middot; {{ preview.shape }}</twig:Badge>
+    </div>
+
+    <twig:KpiRow :tiles="[
+        {value: preview.participants, label: 'entrant rows'},
+        {value: preview.matches, label: 'matches found', highlight: true},
+        {value: preview.pointsScored, label: 'points scored'},
+        {value: preview.decisions|length, label: 'need a decision'},
+    ]" />
+
+    {# ── Every name the league cannot read ───────────────────────────── #}
+    {% if preview.decisions is not empty %}
+        <twig:Card class="border-flame-strong/30">
+            <div class="mb-4 space-y-2">
+                <twig:SectionHeading title="Decisions required" tone="flame" size="sm" />
+                <p class="text-xs text-ink-muted">
+                    {{ preview.participants - preview.decisions|length }} other entrant rows resolved on their own.
+                    <strong class="text-ink-body">Nothing is written until every one of these is answered.</strong>
+                    Creating a blader is a decision, never a fallback &mdash; it is never pre-selected.
+                </p>
+            </div>
+
+            <ul class="space-y-4">
+                {% for decision in preview.decisions %}
+                    <li class="space-y-2 border-t border-line/40 pt-4 first:border-0 first:pt-0">
+                        <div class="flex flex-wrap items-baseline gap-x-2">
+                            <span class="font-mono text-sm font-bold text-ink">{{ decision.name }}</span>
+                            <span class="text-[11px] text-ink-faint">{{ decision.context }}</span>
+                        </div>
+
+                        {% if decision.isCollision %}
+                            <twig:Alert tone="heat">
+                                {{ decision.problem }}
+                                No alias can settle that &mdash; two rows for one person is a merge, and a blader whose name shadows an alias is the alias to remove.
+                            </twig:Alert>
+                        {% else %}
+                            <label class="sr-only" for="decision-{{ decision.key }}">Who {{ decision.name }} is</label>
+                            <select id="decision-{{ decision.key }}" name="decision[{{ decision.key }}]" class="field" required>
+                                <option value="">&mdash; Who is this? &mdash;</option>
+
+                                {% if decision.suggestions is not empty %}
+                                    <optgroup label="Suggested">
+                                        {% for suggestion in decision.suggestions %}
+                                            <option value="blader:{{ suggestion.player.id }}"{{ decision.answer == 'blader:' ~ suggestion.player.id ? ' selected' : '' }}>
+                                                {{ suggestion.player.name }} &mdash; {{ suggestion.because }}
+                                            </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endif %}
+
+                                <optgroup label="Every blader">
+                                    {% for id, name in bladers %}
+                                        <option value="blader:{{ id }}"{{ decision.answer == 'blader:' ~ id ? ' selected' : '' }}>{{ name }}</option>
+                                    {% endfor %}
+                                </optgroup>
+
+                                <optgroup label="Neither">
+                                    <option value="create"{{ decision.answer == 'create' ? ' selected' : '' }}>Somebody new &mdash; create a blader called “{{ decision.name }}”</option>
+                                    <option value="drop"{{ decision.answer == 'drop' ? ' selected' : '' }}>Not a person &mdash; drop this entrant</option>
+                                </optgroup>
+                            </select>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </twig:Card>
+    {% else %}
+        <twig:Alert tone="positive">Every name on this bracket reaches a blader the league already knows.</twig:Alert>
+    {% endif %}
+
+    {# ── The finishing order, with the matrix already applied ────────── #}
+    <twig:Card>
+        <div class="mb-4 space-y-1">
+            <twig:SectionHeading title="Placements & points" size="sm" />
+            <p class="text-xs text-ink-faint">
+                Seeded from the bracket's own standings. The top {{ preview.scoring|length }} score;
+                change a number to move somebody.
+            </p>
+        </div>
+
+        <twig:DataTable bleed>
+            <thead>
+            <tr>
+                <th class="w-16 text-center">#</th>
+                <th>Blader</th>
+                <th class="hidden sm:table-cell">On Challonge</th>
+                <th class="text-center">F1</th>
+                <th class="hidden text-center sm:table-cell">Bonus</th>
+                <th class="pr-4 text-right font-bold text-brand">Total</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for placement in preview.placements|filter(row => row.scores) %}
+                {{ include('admin/_placement_row.html.twig', {placement: placement}) }}
+            {% endfor %}
+            </tbody>
+        </twig:DataTable>
+
+        {% set unscored = preview.placements|filter(row => not row.scores) %}
+
+        {% if unscored is not empty %}
+            <twig:Disclosure summary="{{ unscored|length }} more, archived but unscored" icon="🗄️" class="mt-4">
+                <twig:DataTable bleed>
+                    <thead>
+                    <tr>
+                        <th class="w-16 text-center">#</th>
+                        <th>Blader</th>
+                        <th class="hidden sm:table-cell">On Challonge</th>
+                        <th class="text-center">F1</th>
+                        <th class="hidden text-center sm:table-cell">Bonus</th>
+                        <th class="pr-4 text-right font-bold text-brand">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for placement in unscored %}
+                        {{ include('admin/_placement_row.html.twig', {placement: placement}) }}
+                    {% endfor %}
+                    </tbody>
+                </twig:DataTable>
+            </twig:Disclosure>
+        {% endif %}
+    </twig:Card>
+
+    {# ── What the archive will hold, and what will be written ────────── #}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <twig:Card size="sm">
+            <twig:SectionHeading title="Will be archived" size="sm" tone="neutral" />
+            <twig:TotalsList :rows="preview.archive" />
+        </twig:Card>
+
+        <twig:Card size="sm">
+            <twig:SectionHeading title="Recovery artifacts" size="sm" tone="neutral" />
+            <twig:ArtifactList :artifacts="preview.artifacts" />
+            <p class="mt-3 text-[11px] italic leading-relaxed text-ink-faint">
+                Each write is inside its own flush transaction, so a failed artifact write undoes the change it records.
+            </p>
+        </twig:Card>
+    </div>
+
+    {# ── The lines that will land in repeat.sh ───────────────────────── #}
+    <twig:Card size="sm">
+        <twig:SectionHeading title="Ledger" size="sm" tone="neutral" />
+        <twig:LedgerLine :commands="preview.ledger" />
+        <p class="mt-3 text-[11px] italic leading-relaxed text-ink-faint">
+            Appended in this order, which is the order they replay in. The league is rebuilt by running these against an empty schema.
+        </p>
+    </twig:Card>
+
+    {# ── Confirm ─────────────────────────────────────────────────────── #}
+    <twig:Card variant="gradient">
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <twig:Field label="Overall knockout winner" hint="Detected from the last match of the cut.">
+                    {{ form_widget(confirm_form.knockoutWinner) }}
+                </twig:Field>
+                <twig:Field label="System access key">
+                    {{ form_widget(confirm_form.passphrase) }}
+                </twig:Field>
+            </div>
+
+            {% if preview.isBlocked %}
+                <twig:Alert tone="flame">
+                    {{ preview.outstanding|length }} {{ preview.outstanding|length == 1 ? 'name is' : 'names are' }} still unanswered.
+                    Nothing can be written until every one of them is settled.
+                </twig:Alert>
+            {% elseif preview.bladersToCreate > 0 %}
+                <twig:Alert tone="brand">
+                    This will create {{ preview.bladersToCreate }} new
+                    {{ preview.bladersToCreate == 1 ? 'blader' : 'bladers' }}. This screen is the only thing in the system that does.
+                </twig:Alert>
+            {% endif %}
+
+            <div class="flex flex-col gap-3 border-t border-line/60 pt-4 sm:flex-row-reverse">
+                <twig:Button tone="flame" class="w-full sm:w-auto">
+                    Import {{ preview.scoring|length }} &amp; archive {{ preview.matches }} ✓
+                </twig:Button>
+                <button type="submit" name="cancel" value="1" formnovalidate
+                        class="inline-flex w-full cursor-pointer items-center justify-center rounded-field border border-line bg-surface px-5 py-3 text-sm font-black uppercase tracking-wider text-ink-muted transition-colors hover:border-ink-ghost hover:text-ink sm:w-auto">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </twig:Card>
+
+    {# render_rest: false keeps Symfony from injecting the widgets already placed above. #}
+    {{ form_end(confirm_form, {'render_rest': false}) }}
+
+{% endblock %}

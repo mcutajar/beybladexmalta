@@ -151,6 +151,80 @@ final class ChallongeSnapshot
     }
 
     /**
+     * Entrants across every stage.
+     *
+     * A blader who played the Swiss and the cut is counted twice, because the
+     * two stages give them unrelated ids and this is a count of rows rather
+     * than of people. That is what the archive writes.
+     */
+    public function participantCount(): int
+    {
+        return array_sum(array_map(
+            static fn (ChallongeStage $stage): int => count($stage->participants),
+            $this->stages,
+        ));
+    }
+
+    public function standingsCount(): int
+    {
+        return array_sum(array_map(
+            static fn (ChallongeStage $stage): int => count($stage->standings),
+            $this->stages,
+        ));
+    }
+
+    /**
+     * Every beyblade point scored in the bracket.
+     */
+    public function pointsScored(): int
+    {
+        return array_sum(array_map(
+            static fn (ChallongeStage $stage): int => array_sum(array_map(
+                static fn (ChallongeMatch $match): int => $match->pointsScored(),
+                $stage->matches,
+            )),
+            $this->stages,
+        ));
+    }
+
+    public function forfeitedMatchCount(): int
+    {
+        return array_sum(array_map(
+            static fn (ChallongeStage $stage): int => count(array_filter(
+                $stage->matches,
+                static fn (ChallongeMatch $match): bool => $match->forfeited,
+            )),
+            $this->stages,
+        ));
+    }
+
+    /**
+     * How many byes the bracket handed out.
+     *
+     * Challonge adds a `Byes` column to the standings of a Swiss bracket that
+     * had any, and it is the only place the number is stated — a bye is not a
+     * match, so nothing in `matches` carries one. The header carries its
+     * scoring weight (`Byes (+1.0)`), so the column is found by prefix rather
+     * than by an exact label.
+     */
+    public function byeCount(): int
+    {
+        $byes = 0;
+
+        foreach ($this->stages as $stage) {
+            foreach ($stage->standings as $standing) {
+                foreach ($standing->columns as $label => $value) {
+                    if (str_starts_with(mb_strtolower($label), 'byes')) {
+                        $byes += (int) $value;
+                    }
+                }
+            }
+        }
+
+        return $byes;
+    }
+
+    /**
      * A bracket renders no standings at all unless `show_standings=1` was
      * sent, so an empty table is worth saying out loud rather than storing.
      */

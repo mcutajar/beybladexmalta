@@ -1,0 +1,24 @@
+{#
+    Label on the left, number on the right. For figures that are read rather
+    than compared — which is what makes it a list and not a table.
+
+    <twig:TotalsList :rows="[
+        {label: 'Group stage', note: 'swiss · 5 rounds', value: '55 matches'},
+        {label: 'Standings rows', value: '30'},
+    ]" />
+#}
+{% props rows = [] %}
+
+<dl {{ attributes.defaults({class: 'divide-y divide-line/40'}) }}>
+    {% for row in rows %}
+        <div class="flex items-baseline justify-between gap-3 py-2 first:pt-0 last:pb-0">
+            <dt class="min-w-0 text-xs text-ink-body">
+                {{ row.label }}
+                {% if row.note is defined and row.note %}
+                    <span class="block text-[10px] italic text-ink-faint">{{ row.note }}</span>
+                {% endif %}
+            </dt>
+            <dd class="shrink-0 font-mono text-xs font-bold tabular-nums text-ink">{{ row.value }}</dd>
+        </div>
+    {% endfor %}
+</dl>

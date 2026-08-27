@@ -1,0 +1,43 @@
+{#
+    One line of the proposed finishing order.
+
+    Included twice — once for the places that score, once inside the
+    disclosure that holds everyone else — so the two tables cannot drift apart.
+
+    The order field is a number rather than a drag handle. There is no
+    JavaScript framework here and a drag handle without one is a drag handle
+    that does not work on a phone; a number input is thumb-sized, keyboard
+    reachable, and says what it does.
+#}
+<tr class="{{ placement.bladerName is null ? 'bg-heat-strong/5' }}">
+    <td class="text-center">
+        <label class="sr-only" for="order-{{ placement.row }}">Finishing place for {{ placement.challongeName }}</label>
+        <input
+            id="order-{{ placement.row }}"
+            type="number"
+            name="order[{{ placement.row }}]"
+            value="{{ placement.position }}"
+            min="1"
+            inputmode="numeric"
+            class="w-12 rounded-control border border-line bg-canvas px-1.5 py-1 text-center font-mono text-xs tabular-nums text-ink-bright outline-none focus:border-brand-strong"
+        >
+    </td>
+    <td class="font-bold {{ placement.bladerName is null ? 'text-heat' : (placement.wonTheKnockout ? 'text-flame' : 'text-ink') }}">
+        {{ placement.bladerName ?? placement.challongeName }}
+        {% if placement.bladerName is null %}
+            <twig:Badge tone="heat" size="sm">Undecided</twig:Badge>
+        {% elseif placement.isNewBlader %}
+            <twig:Badge tone="brand" size="sm">New</twig:Badge>
+        {% elseif placement.wonTheKnockout %}
+            <twig:Badge tone="positive" size="sm">KO</twig:Badge>
+        {% endif %}
+    </td>
+    <td class="hidden font-mono text-xs sm:table-cell {{ placement.wasRenamed ? 'text-flame' : 'text-ink-faint' }}">
+        {{ placement.challongeName }}{{ placement.wasRenamed ? ' ⚠' }}
+    </td>
+    <td class="text-center tabular-nums {{ placement.f1Points > 0 ? 'text-ink-body' : 'text-ink-ghost' }}">{{ placement.f1Points }}</td>
+    <td class="hidden text-center sm:table-cell">
+        <twig:BonusPoints :value="placement.bonusPoints" />
+    </td>
+    <td class="pr-4 text-right font-black tabular-nums {{ placement.scores ? 'text-ink' : 'text-ink-ghost' }}">{{ placement.totalPoints }}</td>
+</tr>

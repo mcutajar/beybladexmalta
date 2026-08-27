@@ -23,6 +23,8 @@
             'form-controls': 'Form controls', 'data-table': 'Data table',
             'feature-tiles': 'Feature tiles', 'link-cards': 'Link cards',
             'disclosure': 'Disclosure', 'empty-state': 'Empty state',
+            'kpi-row': 'KPI row', 'totals-list': 'Totals list',
+            'artifacts': 'Artifacts & ledger',
         } %}
             <a href="#{{ anchor }}" class="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink">{{ label }}</a>
         {% endfor %}
@@ -230,6 +232,46 @@
                         '8 points', '6 points', '4 points', '2 points', '1 points',
                     ]" />
                 </twig:Disclosure>
+            </div>
+        </twig:Card>
+
+        <twig:Card id="kpi-row">
+            <twig:SectionHeading title="KPI row" rule />
+            <twig:KpiRow :tiles="[
+                {value: 22, label: 'participants'},
+                {value: 63, label: 'matches found', highlight: true},
+                {value: 668, label: 'points scored'},
+                {value: 2, label: 'need a decision'},
+            ]" />
+        </twig:Card>
+
+        <twig:Card id="totals-list">
+            <twig:SectionHeading title="Totals list" rule />
+            <twig:TotalsList :rows="[
+                {label: 'Group stage', note: 'Group A · swiss · 5 rounds · 22 entrants', value: '55 matches'},
+                {label: 'Top cut', note: 'single elimination · 3 rounds · 8 entrants', value: '8 matches'},
+                {label: 'Standings rows', value: '30'},
+                {label: 'Byes and forfeits', note: 'kept, rendered nowhere yet', value: '0 · 0'},
+            ]" />
+        </twig:Card>
+
+        {# The commands carry single quotes of their own, so they are built
+           here rather than inline in a component attribute, where Twig parses
+           the nested quoting as markup. #}
+        {% set ledgerDemo = [
+            "php bin/console app:create-blader 'Sk3lli'",
+            "php bin/console app:archive-challonge 'nppk0890'",
+        ] %}
+
+        <twig:Card id="artifacts">
+            <twig:SectionHeading title="Artifacts & ledger" rule />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <twig:ArtifactList :artifacts="[
+                    {verb: 'write', path: 'var/data/challonge/nppk0890.json'},
+                    {verb: 'replace', path: 'var/data/imports/2026-08-16-gamesplus-16-08.txt'},
+                    {verb: 'append', path: 'var/log/command_ledger.sh'},
+                ]" />
+                <twig:LedgerLine :commands="ledgerDemo" />
             </div>
         </twig:Card>
 

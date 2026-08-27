@@ -1,3 +1,12 @@
+{#
+    Two ways into the same import.
+
+    The bracket comes first because it is the one to reach for: everything
+    below it can be derived from the URL, and the names are matched by the
+    alias table rather than by eye. The textarea is not a fallback in the
+    apologetic sense — it is what you use when a bracket will not parse on an
+    event night, and it stays exactly as it was.
+#}
 {% extends 'base.html.twig' %}
 
 {% block title %}MBC Terminal | Tournament Import{% endblock %}
@@ -9,13 +18,54 @@
     <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-8">Return to hub</twig:BackLink>
 
     <twig:PageHeader eyebrow="Ranked data loader" eyebrowTone="flame" title="Import tournament standings" size="sm">
-        Input tournament brackets below. The calculator requires exactly 10 bladers to apply the F1 point tiers correctly.
+        Paste a Challonge bracket and review what it says, or type the finishing order by hand.
     </twig:PageHeader>
 
     <twig:Flashes />
 
+    <twig:Card variant="gradient" class="mb-6">
+        {{ form_start(bracket_form, {'action': path('admin_bracket_preview'), 'attr': {'class': 'space-y-4'}}) }}
+
+        <div class="space-y-1">
+            <twig:SectionHeading title="From a Challonge bracket" size="sm" />
+            <p class="text-xs text-ink-faint">
+                Fetches the bracket and shows you everything it holds. Nothing is written until you confirm on the next screen.
+            </p>
+        </div>
+
+        <twig:Field label="Bracket URL" hint="Any shape Challonge hands out — a plain link, a subdomain, or a /vi/ invite.">
+            {{ form_widget(bracket_form.challongeUrl) }}
+        </twig:Field>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <twig:Field label="Tournament title">
+                {{ form_widget(bracket_form.title) }}
+            </twig:Field>
+            <twig:Field label="Date held on">
+                {{ form_widget(bracket_form.date) }}
+            </twig:Field>
+        </div>
+
+        <twig:Field label="Target season context">
+            {{ form_widget(bracket_form.season) }}
+        </twig:Field>
+
+        <div class="border-t border-line/60 pt-4">
+            <twig:Button class="w-full">Fetch &amp; review →</twig:Button>
+        </div>
+
+        {{ form_end(bracket_form, {'render_rest': false}) }}
+    </twig:Card>
+
     <twig:Card variant="gradient">
         {{ form_start(import_form, {'attr': {'class': 'space-y-4'}}) }}
+
+        <div class="space-y-1">
+            <twig:SectionHeading title="By hand" size="sm" tone="neutral" />
+            <p class="text-xs text-ink-faint">
+                The finishing order, one blader per line. Scores every place it has and stops at the tenth.
+            </p>
+        </div>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <twig:Field label="Tournament title">
@@ -40,7 +90,7 @@
         </twig:Field>
 
         <twig:Field
-            label="Ordered placements (exactly 10 lines)"
+            label="Ordered placements"
             hint="Enter one blader name per line in finishing order (1st down to 10th). Do not include extra numbers or commas."
         >
             {{ form_widget(import_form.playerList) }}
