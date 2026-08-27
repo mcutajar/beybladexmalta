@@ -96,7 +96,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
         self::assertSelectorTextContains('body', '90');
 
         // Both readable names resolved; both unreadable ones are questions.
-        self::assertCount(2, $crawler->filter('select[name^="decision["]'));
+        self::assertCount(2, $crawler->filter('fieldset'));
         self::assertSelectorTextContains('body', self::UNKNOWN);
         self::assertSelectorTextContains('body', self::MISSPELLED);
 
@@ -111,7 +111,49 @@ final class BracketImportControllerTest extends AdminPageTestCase
         self::assertFileDoesNotExist($this->importPath());
     }
 
-    public function testAnUnansweredNameStopsTheImport(): void
+    /**
+     * The safe way round. An unnecessary blader is a duplicate row you can see
+     * and merge; an unnecessary alias welds two people together and cannot be
+     * undone. So the screen answers the first kind and never the second.
+     */
+    public function testANameWithNothingCloseArrivesAnsweredAsSomebodyNew(): void
+    {
+        $this->league();
+
+        $this->fetchBracket($this->createBrowser());
+
+        self::assertSelectorExists(sprintf(
+            'input[name="decision[%s]"][value="create"][checked]',
+            self::UNKNOWN_KEY,
+        ));
+
+        // And it is folded away, because it is not asking anything.
+        self::assertSelectorTextContains('body', '1 answered by default');
+    }
+
+    public function testANameWithASuggestionIsNeverAnsweredForYou(): void
+    {
+        $this->league();
+
+        $crawler = $this->fetchBracket($this->createBrowser());
+
+        $group = $crawler->filter(sprintf('input[name="decision[%s]"]', self::MISSPELLED_KEY));
+
+        self::assertGreaterThan(1, $group->count(), 'The suggestion, new blader and not-a-person.');
+        self::assertCount(0, $group->filter('[checked]'), 'Nothing is pre-selected.');
+
+        // The browser refuses to submit until it is answered.
+        self::assertSelectorExists(sprintf('input[name="decision[%s]"][required]', self::MISSPELLED_KEY));
+
+        // The suggestion is offered first, and says why.
+        self::assertSelectorTextContains('body', 'Giglio');
+        self::assertSelectorTextContains('body', 'edits from');
+    }
+
+    /**
+     * The point of seeding: only the names with a suggestion cost anything.
+     */
+    public function testOnlyTheSuggestedNameHasToBeAnswered(): void
     {
         $this->league();
 
@@ -119,8 +161,30 @@ final class BracketImportControllerTest extends AdminPageTestCase
         $crawler = $this->fetchBracket($client);
 
         $this->confirm($client, $crawler, [
-            'decision['.self::UNKNOWN_KEY.']' => 'create',
+            'decision['.self::MISSPELLED_KEY.']' => 'blader:'.PlayerFactory::find(['name' => 'Giglio'])->getId(),
         ]);
+
+        self::assertResponseRedirects(self::PAGE);
+
+        // The seeded row still created its blader, and the flash says so.
+        PlayerFactory::assert()->exists(['name' => self::UNKNOWN]);
+
+        $this->assertFlashSays($client, '1 blader created (1 by default)');
+    }
+
+    public function testAnUnansweredNameStopsTheImport(): void
+    {
+        $this->league();
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        /*
+         * Submitted exactly as rendered. The seeded row carries its default,
+         * the row with a suggestion carries nothing, and that is the state a
+         * confirm has to refuse.
+         */
+        $this->confirm($client, $crawler, []);
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('body', 'Nothing was written');

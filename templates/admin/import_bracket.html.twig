@@ -43,60 +43,60 @@
     ]" />
 
     {# ── Every name the league cannot read ───────────────────────────── #}
+    {% set outstanding = preview.outstanding %}
+    {% set settled = preview.settled %}
+
     {% if preview.decisions is not empty %}
-        <twig:Card class="border-flame-strong/30">
+        <twig:Card class="{{ outstanding is empty ? 'border-line' : 'border-flame-strong/30' }}">
             <div class="mb-4 space-y-2">
-                <twig:SectionHeading title="Decisions required" tone="flame" size="sm" />
+                <twig:SectionHeading
+                    title="{{ outstanding is empty ? 'Nothing left to decide' : 'Decisions required' }}"
+                    tone="{{ outstanding is empty ? 'positive' : 'flame' }}"
+                    size="sm"
+                />
                 <p class="text-xs text-ink-muted">
-                    {{ preview.participants - preview.decisions|length }} other entrant rows resolved on their own.
-                    <strong class="text-ink-body">Nothing is written until every one of these is answered.</strong>
-                    Creating a blader is a decision, never a fallback &mdash; it is never pre-selected.
+                    {% if outstanding is not empty %}
+                        <strong class="text-ink-body">{{ outstanding|length }}
+                        {{ outstanding|length == 1 ? 'name needs' : 'names need' }} you.</strong>
+                        Each one is a blader the league already knows, somebody new, or not a person at all.
+                        The suggestion is offered first and is still a tap &mdash; on the 23 August bracket one
+                        suggestion in four was two different people.
+                    {% else %}
+                        Every name is answered. Check the defaults below before you commit.
+                    {% endif %}
                 </p>
             </div>
 
-            <ul class="space-y-4">
-                {% for decision in preview.decisions %}
-                    <li class="space-y-2 border-t border-line/40 pt-4 first:border-0 first:pt-0">
-                        <div class="flex flex-wrap items-baseline gap-x-2">
-                            <span class="font-mono text-sm font-bold text-ink">{{ decision.name }}</span>
-                            <span class="text-[11px] text-ink-faint">{{ decision.context }}</span>
-                        </div>
+            {% if outstanding is not empty %}
+                <ul>
+                    {% for decision in outstanding %}
+                        {{ include('admin/_decision_row.html.twig', {decision: decision, bladers: bladers}) }}
+                    {% endfor %}
+                </ul>
+            {% endif %}
 
-                        {% if decision.isCollision %}
-                            <twig:Alert tone="heat">
-                                {{ decision.problem }}
-                                No alias can settle that &mdash; two rows for one person is a merge, and a blader whose name shadows an alias is the alias to remove.
-                            </twig:Alert>
-                        {% else %}
-                            <label class="sr-only" for="decision-{{ decision.key }}">Who {{ decision.name }} is</label>
-                            <select id="decision-{{ decision.key }}" name="decision[{{ decision.key }}]" class="field" required>
-                                <option value="">&mdash; Who is this? &mdash;</option>
+            {% if settled is not empty %}
+                <twig:Disclosure
+                    summary="{{ settled|length }} answered by default — review"
+                    icon="✓"
+                    class="{{ outstanding is empty ? '' : 'mt-5' }}"
+                >
+                    <p class="mb-4 text-xs leading-relaxed text-ink-faint">
+                        Nothing in the league came close to these, so each is taken to be somebody new.
+                        That is the safe way round: an unnecessary blader is a duplicate row you can see and merge,
+                        while an unnecessary alias welds two people together and cannot be undone.
+                        <strong class="text-ink-muted">It is still wrong sometimes</strong> &mdash; a spelling more than
+                        two edits from a blader's name is offered nothing at all &mdash; so use
+                        <em>Someone else</em> on any row you recognise.
+                    </p>
 
-                                {% if decision.suggestions is not empty %}
-                                    <optgroup label="Suggested">
-                                        {% for suggestion in decision.suggestions %}
-                                            <option value="blader:{{ suggestion.player.id }}"{{ decision.answer == 'blader:' ~ suggestion.player.id ? ' selected' : '' }}>
-                                                {{ suggestion.player.name }} &mdash; {{ suggestion.because }}
-                                            </option>
-                                        {% endfor %}
-                                    </optgroup>
-                                {% endif %}
-
-                                <optgroup label="Every blader">
-                                    {% for id, name in bladers %}
-                                        <option value="blader:{{ id }}"{{ decision.answer == 'blader:' ~ id ? ' selected' : '' }}>{{ name }}</option>
-                                    {% endfor %}
-                                </optgroup>
-
-                                <optgroup label="Neither">
-                                    <option value="create"{{ decision.answer == 'create' ? ' selected' : '' }}>Somebody new &mdash; create a blader called “{{ decision.name }}”</option>
-                                    <option value="drop"{{ decision.answer == 'drop' ? ' selected' : '' }}>Not a person &mdash; drop this entrant</option>
-                                </optgroup>
-                            </select>
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
+                    <ul>
+                        {% for decision in settled %}
+                            {{ include('admin/_decision_row.html.twig', {decision: decision, bladers: bladers}) }}
+                        {% endfor %}
+                    </ul>
+                </twig:Disclosure>
+            {% endif %}
         </twig:Card>
     {% else %}
         <twig:Alert tone="positive">Every name on this bracket reaches a blader the league already knows.</twig:Alert>
@@ -194,13 +194,15 @@
 
             {% if preview.isBlocked %}
                 <twig:Alert tone="flame">
-                    {{ preview.outstanding|length }} {{ preview.outstanding|length == 1 ? 'name is' : 'names are' }} still unanswered.
+                    {{ outstanding|length }} {{ outstanding|length == 1 ? 'name is' : 'names are' }} still unanswered.
                     Nothing can be written until every one of them is settled.
                 </twig:Alert>
             {% elseif preview.bladersToCreate > 0 %}
                 <twig:Alert tone="brand">
                     This will create {{ preview.bladersToCreate }} new
-                    {{ preview.bladersToCreate == 1 ? 'blader' : 'bladers' }}. This screen is the only thing in the system that does.
+                    {{ preview.bladersToCreate == 1 ? 'blader' : 'bladers' }}{% if preview.seeded > 0 %},
+                    {{ preview.seeded }} of {{ preview.bladersToCreate == preview.seeded ? 'them' : 'those' }} by default{% endif %}.
+                    This screen is the only thing in the system that creates one.
                 </twig:Alert>
             {% endif %}
 

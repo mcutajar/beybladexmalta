@@ -117,6 +117,7 @@ class BracketImportService
             preview: $preview,
             scored: count($placements),
             created: $created,
+            seeded: $preview->seeded(),
             aliased: count($this->linked($preview)),
             archive: $this->archiveAgainstTheEvent($snapshot),
         );
@@ -186,9 +187,26 @@ class BracketImportService
                 continue;
             }
 
-            if (CreateBladerResult::Created === $this->bladers->create($decision->name)) {
-                ++$created;
+            if (CreateBladerResult::Created !== $this->bladers->create($decision->name)) {
+                continue;
             }
+
+            ++$created;
+
+            /*
+             * Whether anybody looked. A blader created because nothing in the
+             * league came close is the right answer nine times in ten and a
+             * duplicate the tenth — `Orteborn` is three edits from `Otrebor`,
+             * which is past the suggestion threshold, so the screen offers
+             * nothing and the default stands unless somebody recognises it.
+             * When that duplicate turns up three brackets later, this line is
+             * how you find out that the row was never examined.
+             */
+            $this->logger->info('Blader created from an import preview', [
+                'name' => $decision->name,
+                'answer' => $decision->wasSeeded() ? 'taken as the default' : 'chosen',
+                'bracket' => $preview->slug,
+            ]);
         }
 
         return $created;

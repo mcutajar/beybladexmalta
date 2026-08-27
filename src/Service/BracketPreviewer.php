@@ -275,7 +275,23 @@ class BracketPreviewer
          * AliasService will not file one onto a blader's own name, and picking
          * a side would split somebody's career across two rows in silence.
          */
-        $answer = $resolution->isAmbiguous() ? '' : $answers->for($normalised);
+        $decision = new BracketDecision(
+            key: $normalised,
+            name: $name,
+            isCollision: $resolution->isAmbiguous(),
+            problem: $resolution->problem(),
+            suggestions: $resolution->suggestions,
+            rank: $entrant['rank'],
+            matches: $entrant['matches'],
+            answer: $resolution->isAmbiguous() ? '' : $answers->for($normalised),
+        );
+
+        /*
+         * The decision's answer rather than the posted one, because a question
+         * with nothing close to it arrives already answered — the placement it
+         * produces has to agree with the row the screen renders.
+         */
+        $answer = $decision->answer;
         $blader = $this->bladerNamed($answer);
 
         $reading = match (true) {
@@ -285,19 +301,7 @@ class BracketPreviewer
             default => ['name' => $name, 'blader' => null, 'isNew' => false, 'dropped' => false],
         };
 
-        return [
-            $reading,
-            new BracketDecision(
-                key: $normalised,
-                name: $name,
-                isCollision: $resolution->isAmbiguous(),
-                problem: $resolution->problem(),
-                suggestions: $resolution->suggestions,
-                rank: $entrant['rank'],
-                matches: $entrant['matches'],
-                answer: $answer,
-            ),
-        ];
+        return [$reading, $decision];
     }
 
     /**

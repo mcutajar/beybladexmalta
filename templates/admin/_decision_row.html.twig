@@ -1,0 +1,131 @@
+{#
+    One name the league cannot read, and the three answers it has.
+
+    Buttons rather than a dropdown, because the whole cost of this screen is the
+    number of names on it and a dropdown is two interactions for what is usually
+    one. They are radio inputs wearing button clothes: there is no JavaScript
+    framework here, and each row has to hold an independent answer while one
+    submit at the bottom commits the lot.
+
+    **Everything that can answer this row is one radio group**, the "someone
+    else" list included. A `<select>` sharing the name would post alongside the
+    radios and, being later in the document, would quietly win — blanking a
+    button somebody had already pressed. Radios are exclusive by construction,
+    so there is no precedence rule to get wrong on the server.
+
+    At 375px the suggestion is full-width and the other two share the row under
+    it, so the answer that is right three times in four is also the biggest
+    target. All three sit in a row once there is room.
+
+    A row with a suggestion carries `required`, so the browser refuses to submit
+    until it is answered. A seeded row never does — it arrives with an answer,
+    and a required control inside the closed disclosure below would be one the
+    browser cannot focus, blocking the form with nothing on screen to fix.
+
+    The cost of one radio group per row is that the whole blader list is
+    repeated once per question: 700 inputs and ~330 KB of markup on the 23
+    August bracket, which the server compresses to a few tens of kilobytes
+    because it is the same forty-eight names over and over. Worth it for an
+    admin screen where the alternative is a control that can silently overwrite
+    an answer.
+#}
+{% set base = 'flex min-h-11 cursor-pointer items-center justify-center rounded-field border px-3 py-2 text-center text-xs font-black uppercase tracking-wider transition-colors' %}
+{% set idle = ' border-line bg-canvas text-ink-muted hover:border-ink-ghost hover:text-ink' %}
+{# The suggestion is the primary action, so it reads as one before it is
+   pressed rather than only after. It is still unselected: the tint says
+   "start here", not "this is decided". #}
+{% set proposed = ' border-brand-strong/40 bg-brand-strong/5 text-brand-bright hover:border-brand-strong hover:bg-brand-strong/10' %}
+{% set best = decision.isCollision ? null : decision.best %}
+{% set others = decision.isCollision ? [] : decision.otherCandidates %}
+{% set offered = decision.suggestions|map(candidate => candidate.player.id) %}
+
+<li class="space-y-2.5 border-t border-line/40 pt-4 first:border-0 first:pt-0">
+    <div class="flex flex-wrap items-baseline gap-x-2">
+        <span class="font-mono text-sm font-bold text-ink">{{ decision.name }}</span>
+        <span class="text-[11px] text-ink-faint">{{ decision.context }}</span>
+    </div>
+
+    {% if decision.isCollision %}
+        <twig:Alert tone="heat">
+            {{ decision.problem }}
+            No alias can settle that &mdash; two rows for one person is a merge, and a blader whose name shadows an alias is the alias to remove.
+        </twig:Alert>
+    {% else %}
+        <fieldset>
+            <legend class="sr-only">Who {{ decision.name }} is</legend>
+
+            <div class="grid grid-cols-2 gap-2{{ best ? ' sm:grid-cols-3' : '' }}">
+                {% if best %}
+                    <div class="col-span-2 sm:col-span-1">
+                        <input type="radio" class="peer sr-only" required
+                               id="d-{{ decision.key }}-link"
+                               name="decision[{{ decision.key }}]"
+                               value="blader:{{ best.player.id }}"
+                               {{ decision.answer == 'blader:' ~ best.player.id ? 'checked' : '' }}>
+                        <label for="d-{{ decision.key }}-link"
+                               class="{{ base }}{{ proposed }} peer-checked:border-brand-strong peer-checked:bg-brand-strong/15 peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand-strong">
+                            <span class="truncate">{{ best.player.name }}</span>
+                        </label>
+                        <p class="mt-1 text-[10px] italic text-ink-faint">{{ best.because }}</p>
+                    </div>
+                {% endif %}
+
+                <div>
+                    <input type="radio" class="peer sr-only" {{ best ? 'required' : '' }}
+                           id="d-{{ decision.key }}-new"
+                           name="decision[{{ decision.key }}]"
+                           value="create"
+                           {{ decision.answer == 'create' ? 'checked' : '' }}>
+                    <label for="d-{{ decision.key }}-new"
+                           class="{{ base }}{{ idle }} peer-checked:border-positive-strong peer-checked:bg-positive-strong/15 peer-checked:text-positive peer-focus-visible:ring-2 peer-focus-visible:ring-positive-strong">
+                        New blader
+                    </label>
+                </div>
+
+                <div>
+                    <input type="radio" class="peer sr-only" {{ best ? 'required' : '' }}
+                           id="d-{{ decision.key }}-drop"
+                           name="decision[{{ decision.key }}]"
+                           value="drop"
+                           {{ decision.answer == 'drop' ? 'checked' : '' }}>
+                    <label for="d-{{ decision.key }}-drop"
+                           class="{{ base }}{{ idle }} peer-checked:border-heat-strong peer-checked:bg-heat-strong/15 peer-checked:text-heat peer-focus-visible:ring-2 peer-focus-visible:ring-heat-strong">
+                        Not a person
+                    </label>
+                </div>
+            </div>
+
+            {# The quieter way to the rest of the league, and the one that
+               matters most on a seeded row: `Orteborn` is three edits from
+               `Otrebor`, which is past the threshold, so nothing is suggested
+               and the default is a duplicate blader unless somebody looks.
+
+               Opens by itself when the answer is somebody it holds, so a
+               re-render never hides the choice that was made. #}
+            <details class="mt-2"{{ decision.reachesPastTheShortlist ? ' open' : '' }}>
+                <summary class="inline-flex min-h-11 cursor-pointer list-none items-center text-[11px] font-semibold text-ink-faint transition-colors hover:text-brand sm:min-h-0">
+                    Someone else&hellip;
+                </summary>
+
+                <div class="mt-2 max-h-64 space-y-1 overflow-y-auto rounded-field border border-line/60 bg-canvas p-3">
+                    {% for candidate in others %}
+                        <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-control px-2 text-xs hover:bg-surface/60 sm:min-h-9">
+                            <input type="radio" name="decision[{{ decision.key }}]" value="blader:{{ candidate.player.id }}"
+                                   {{ decision.answer == 'blader:' ~ candidate.player.id ? 'checked' : '' }}>
+                            <span class="font-semibold text-ink">{{ candidate.player.name }}</span>
+                            <span class="text-[10px] italic text-ink-faint">{{ candidate.because }}</span>
+                        </label>
+                    {% endfor %}
+
+                    {% for id, name in bladers|filter((name, id) => id not in offered) %}
+                        <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-control px-2 text-xs hover:bg-surface/60 sm:min-h-9">
+                            <input type="radio" name="decision[{{ decision.key }}]" value="blader:{{ id }}"
+                                   {{ decision.answer == 'blader:' ~ id ? 'checked' : '' }}>
+                            <span class="font-semibold text-ink">{{ name }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </details>
+        </fieldset>
+    {% endif %}
+</li>
