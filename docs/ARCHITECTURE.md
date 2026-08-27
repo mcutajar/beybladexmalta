@@ -16,9 +16,22 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Versioned static proposal pages (`/`, `/v1`, `/v2`, `/v0`).
 
 - `src/Controller/AdminTournamentImportController.php`
-  - Admin form for importing a 10-player ranked tournament list.
+  - Admin form for importing a ranked tournament list typed by hand.
   - Uses `TOURNAMENTS_ADMIN_PASSPHRASE` for form-based admin gating.
-  - Enforces the exactly-ten-placements rule, then delegates to `TournamentImportService`.
+  - Requires at least one placement — the F1 matrix pays nothing below tenth
+    rather than refusing to be asked — then delegates to `TournamentImportService`.
+
+- `src/Controller/AdminBracketImportController.php`
+  - The second way into `/admin/import`: paste a Challonge URL, review what the
+    bracket says, confirm.
+  - Three requests and only the last one writes. The fetch is unauthenticated
+    because reading a public page writes nothing; the passphrase is checked on
+    the confirm.
+  - The snapshot lives in the session between the two (`BracketDraftStore`), so
+    the bracket that was approved is the bracket that is imported.
+  - Posts back three things and no facts: the decisions, the finishing order and
+    the knockout winner. Everything else is re-derived from the snapshot, which
+    is why there is nothing to sign.
 
 - `src/Controller/LeagueRegistrationController.php`
   - Admin payment registration form.
@@ -41,13 +54,22 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
 - `templates/components/` and `src/Twig/Components/`
   - Twig components (`symfony/ux-twig-component`) for the recurring pieces:
     badges, cards, buttons, alerts, the results table shell, form fields, the
-    landing pages' link cards and points matrix.
+    landing pages' link cards and points matrix, the four-up figure strip
+    (`KpiRow`), the label-and-number list (`TotalsList`), and the two blocks
+    that say what an action will write (`ArtifactList`, `LedgerLine`).
   - `/_styleguide` renders all of them in every variant, in dev and test only.
 
 - `templates/form/theme.html.twig`
   - Puts `.field` on every widget so form types hold no presentation.
 
 ### CLI support
+
+- `src/Command/CreateBladerCommand.php`
+  - Puts a blader on record and nothing else.
+  - Exists for the replay: `var/data/imports/*.txt` stops at ten, and most of the
+    bladers the import screen creates finished eleventh or worse, so they are
+    named nowhere else in `repeat.sh`.
+  - Running it twice is a no-op.
 
 - `src/Command/ImportTournamentCommand.php`
   - Imports tournament results from a text or CSV file.
@@ -305,6 +327,52 @@ service that owns the domain rules.
     merge.
   - Writes its ledger line inside the flush transaction, like every other admin
     action.
+
+- `App\Service\BracketPreviewer`
+  - Turns a captured bracket into the screen somebody approves, and writes
+    nothing. Counts, decisions, the finishing order with the F1 matrix applied,
+    what the archive will hold, and the exact lines a confirm appends.
+  - Rebuilt from the snapshot on every request, answers included, so the render
+    that refuses a confirm is the render that offers one.
+  - **The ledger line is borrowed, not composed.** `LedgerService` owns the
+    command strings and hands them back unappended, so the screen shows what
+    will actually be written.
+  - Refuses three brackets outright, each by name: a **team event** (its
+    entrants are teams, and nothing in it says who was in one), one an event
+    **already names** (`app:import-tournament` has no guard of its own and a
+    second import doubles the event), and one with **no standings** (it states
+    no finishing order).
+
+- `App\Service\BracketImportService`
+  - Everything a confirmed preview writes, in the order a replay would: bladers,
+    aliases, the snapshot, the tournament with its ten scoring results, then the
+    archive.
+  - Rebuilds the preview rather than trusting one. The screen posts back
+    decisions, an order and a knockout winner; every consequence of those is
+    derived here from the snapshot the server kept.
+  - **Nothing is written until every unresolved name is answered**, checked
+    against the rebuilt preview. The date and the season are checked before the
+    first write, so a refusal never leaves an invented blader behind.
+  - Scores the top ten only. Writing results below eleventh would put rows in
+    `tournament_results` that `getLeagueLeaderboard()` counts against each
+    blader's best fourteen.
+
+- `App\Service\BladerService`
+  - The one place a blader is created deliberately, and the reason
+    `app:create-blader` exists. Never files an alias; that is the other half of
+    the same answer.
+
+- `App\Service\BracketDraftStore`
+  - Holds the fetched bracket in the session between the preview and the
+    confirm. `var/data/challonge/` is the record, so a bracket nobody has
+    approved does not go there — and re-fetching on confirm would mean
+    approving one bracket and importing whatever was being served a minute
+    later.
+
+- `App\Service\ChallongeEventFinder`
+  - Which event, if any, came from a given bracket. Asked three times — by the
+    archive command, by the preview's already-imported guard, and by the import
+    that has to find the tournament it just created — so it lives in one place.
 
 - `App\Service\ChallongeSnapshotDiffer`
   - Compares a captured bracket against a freshly fetched one, everything except
