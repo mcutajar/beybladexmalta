@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Dto\ChallongeSnapshot;
+use App\Dto\ChallongeUrl;
 use App\Dto\TeamPlacement;
 use App\Dto\TournamentPlacement;
 use App\Entity\Season;
 use App\Exception\ImportFileWriteException;
 use App\Exception\LedgerWriteException;
 use App\Repository\SeasonRepository;
-use App\Service\FlusherInterface;
+use App\Service\ChallongeFetcher;
+use App\Service\ChallongeSnapshotFiles;
+use App\Service\ChallongeSnapshotReader;
 use App\Service\PlacementListParser;
+use App\Service\ReplayTournamentImportService;
 use App\Service\TeamListParser;
 use App\Service\TournamentImportResult;
 use App\Service\TournamentImportService;
@@ -34,7 +39,10 @@ final class ImportTournamentCommand extends Command
         private readonly PlacementListParser $placementListParser,
         private readonly TeamListParser $teamListParser,
         private readonly SeasonRepository $seasonRepository,
-        private readonly FlusherInterface $flusher,
+        private readonly ChallongeFetcher $challongeFetcher,
+        private readonly ChallongeSnapshotReader $snapshotReader,
+        private readonly ChallongeSnapshotFiles $snapshotFiles,
+        private readonly ReplayTournamentImportService $replayImportService,
     ) {
         parent::__construct();
     }
@@ -68,6 +76,12 @@ final class ImportTournamentCommand extends Command
                 's',
                 InputOption::VALUE_REQUIRED,
                 'The target season slug this tournament belongs to',
+            )
+            ->addOption(
+                'snapshot',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Path to the captured Challonge snapshot to replay',
             )
             ->addOption(
                 'knockout',
@@ -116,6 +130,7 @@ final class ImportTournamentCommand extends Command
         $date = (string) $input->getArgument('date');
         $filePath = (string) $input->getArgument('file');
         $challongeUrl = $input->getOption('challonge');
+        $snapshotPath = $input->getOption('snapshot');
         $knockoutWinner = $input->getOption('knockout');
 
         $teamEvent = (bool) $input->getOption('team');
@@ -124,6 +139,12 @@ final class ImportTournamentCommand extends Command
             $io->error(
                 'A team event awards no knockout bonus, so --team and --knockout cannot be used together.',
             );
+
+            return Command::INVALID;
+        }
+
+        if (null !== $snapshotPath && null === $challongeUrl) {
+            $io->error('--snapshot requires --challonge so the replay can verify which bracket it belongs to.');
 
             return Command::INVALID;
         }
@@ -147,27 +168,32 @@ final class ImportTournamentCommand extends Command
             return Command::INVALID;
         }
 
-        $seasonSlug = $this->resolveSeasonSlug(
-            $input->getOption('season'),
-            $io,
-        );
+        $seasonSlug = trim((string) $input->getOption('season'));
 
-        if (null === $seasonSlug) {
-            return Command::FAILURE;
-        }
-
-        $season = $this->seasonRepository->findBySlug($seasonSlug)
-            ?? $this->createSeason($seasonSlug, $io);
-
-        if (null === $season) {
-            $io->warning(
-                'Tournament import cancelled by user due to missing season context.',
-            );
+        if ('' === $seasonSlug) {
+            $io->error('The --season option is required.');
 
             return Command::INVALID;
         }
 
+        $season = $this->seasonRepository->findBySlug($seasonSlug);
+
+        if (null === $season) {
+            $io->error(sprintf('Season "%s" does not exist.', $seasonSlug));
+
+            return Command::FAILURE;
+        }
+
         $challongeUrl = null !== $challongeUrl ? (string) $challongeUrl : null;
+        $snapshot = $this->resolveSnapshot($challongeUrl, null !== $snapshotPath ? (string) $snapshotPath : null, $io);
+
+        if (false === $snapshot) {
+            return Command::FAILURE;
+        }
+
+        $resolvedSnapshotPath = $snapshot instanceof ChallongeSnapshot
+            ? ($snapshotPath ?? $this->snapshotFiles->pathFor($snapshot->slug))
+            : null;
 
         return $teamEvent
             ? $this->importTeamEvent(
@@ -178,6 +204,8 @@ final class ImportTournamentCommand extends Command
                 filePath: $filePath,
                 challongeUrl: $challongeUrl,
                 io: $io,
+                snapshot: $snapshot instanceof ChallongeSnapshot ? $snapshot : null,
+                snapshotPath: $resolvedSnapshotPath,
             )
             : $this->import(
                 title: $title,
@@ -188,6 +216,8 @@ final class ImportTournamentCommand extends Command
                 challongeUrl: $challongeUrl,
                 knockoutWinner: null !== $knockoutWinner ? (string) $knockoutWinner : null,
                 io: $io,
+                snapshot: $snapshot instanceof ChallongeSnapshot ? $snapshot : null,
+                snapshotPath: $resolvedSnapshotPath,
             );
     }
 
@@ -203,17 +233,31 @@ final class ImportTournamentCommand extends Command
         ?string $challongeUrl,
         ?string $knockoutWinner,
         SymfonyStyle $io,
+        ?ChallongeSnapshot $snapshot,
+        ?string $snapshotPath,
     ): int {
         try {
-            $result = $this->importService->import(
-                title: $title,
-                heldOn: $date,
-                seasonSlug: $season->getSlug(),
-                placements: $placements,
-                challongeUrl: $challongeUrl,
-                knockoutWinner: $knockoutWinner,
-                sourceFilePath: $filePath,
-            );
+            $result = null !== $snapshot && null !== $snapshotPath && null !== $challongeUrl
+                ? $this->replayImportService->import(
+                    title: $title,
+                    heldOn: $date,
+                    seasonSlug: $season->getSlug(),
+                    placements: $placements,
+                    sourceFilePath: $filePath,
+                    snapshot: $snapshot,
+                    snapshotPath: $snapshotPath,
+                    challongeUrl: $challongeUrl,
+                    knockoutWinner: $knockoutWinner,
+                )
+                : $this->importService->import(
+                    title: $title,
+                    heldOn: $date,
+                    seasonSlug: $season->getSlug(),
+                    placements: $placements,
+                    challongeUrl: $challongeUrl,
+                    knockoutWinner: $knockoutWinner,
+                    sourceFilePath: $filePath,
+                );
         } catch (LedgerWriteException|ImportFileWriteException $exception) {
             return $this->showLedgerFailure($io, $exception);
         } catch (\Throwable $exception) {
@@ -243,16 +287,29 @@ final class ImportTournamentCommand extends Command
         string $filePath,
         ?string $challongeUrl,
         SymfonyStyle $io,
+        ?ChallongeSnapshot $snapshot,
+        ?string $snapshotPath,
     ): int {
         try {
-            $outcome = $this->importService->importTeamEvent(
-                title: $title,
-                heldOn: $date,
-                seasonSlug: $season->getSlug(),
-                teams: $teams,
-                challongeUrl: $challongeUrl,
-                sourceFilePath: $filePath,
-            );
+            $outcome = null !== $snapshot && null !== $snapshotPath && null !== $challongeUrl
+                ? $this->replayImportService->importTeamEvent(
+                    title: $title,
+                    heldOn: $date,
+                    seasonSlug: $season->getSlug(),
+                    teams: $teams,
+                    sourceFilePath: $filePath,
+                    snapshot: $snapshot,
+                    snapshotPath: $snapshotPath,
+                    challongeUrl: $challongeUrl,
+                )
+                : $this->importService->importTeamEvent(
+                    title: $title,
+                    heldOn: $date,
+                    seasonSlug: $season->getSlug(),
+                    teams: $teams,
+                    challongeUrl: $challongeUrl,
+                    sourceFilePath: $filePath,
+                );
         } catch (LedgerWriteException|ImportFileWriteException $exception) {
             return $this->showLedgerFailure($io, $exception);
         } catch (\Throwable $exception) {
@@ -357,80 +414,33 @@ final class ImportTournamentCommand extends Command
         return $contents;
     }
 
-    /**
-     * Falls back to an interactive pick when no slug was supplied.
-     */
-    private function resolveSeasonSlug(
-        mixed $seasonSlug,
-        SymfonyStyle $io,
-    ): ?string {
-        if (null !== $seasonSlug && '' !== trim((string) $seasonSlug)) {
-            return trim((string) $seasonSlug);
-        }
-
-        $seasons = $this->seasonRepository->findAll();
-
-        if ([] === $seasons) {
-            $io->error(
-                'No seasons found in the database. Please specify a new season via the --season flag to auto-create it.',
-            );
-
-            return null;
-        }
-
-        /*
-         * The choice question returns the displayed name, so map each
-         * displayed season name back to its slug.
-         *
-         * @var array<string, string> $choices
-         */
-        $choices = [];
-
-        foreach ($seasons as $season) {
-            $choices[$season->getName()] = $season->getSlug();
-        }
-
-        $io->section('Season Selection Context');
-
-        $selectedName = $io->choice(
-            'This tournament must belong to a season. Please select from the available options:',
-            array_keys($choices),
-        );
-
-        return $choices[$selectedName];
-    }
-
-    /**
-     * @return ?Season null when the operator declines the creation
-     */
-    private function createSeason(string $seasonSlug, SymfonyStyle $io): ?Season
+    private function resolveSnapshot(?string $challongeUrl, ?string $snapshotPath, SymfonyStyle $io): ChallongeSnapshot|false|null
     {
-        $inferredName = ucwords(str_replace(['-', '_'], ' ', $seasonSlug));
-
-        $io->section(sprintf('New Season Generation: "%s"', $seasonSlug));
-
-        $confirmed = $io->confirm(
-            sprintf(
-                'The season context "%s" does not exist. Would you like to create it automatically now?',
-                $inferredName,
-            ),
-            true,
-        );
-
-        if (!$confirmed) {
+        if (null === $challongeUrl) {
             return null;
         }
 
-        $season = new Season();
-        $season->setSlug($seasonSlug);
-        $season->setName($inferredName);
+        try {
+            $url = ChallongeUrl::fromString($challongeUrl);
+            $path = $snapshotPath ?? $this->snapshotFiles->pathFor($url->slug);
+            $snapshot = is_file($path)
+                ? $this->snapshotReader->readFile($path)
+                : $this->challongeFetcher->fetch($url);
 
-        $this->seasonRepository->save($season);
-        $this->flusher->flush();
+            if ($snapshot->slug !== $url->slug) {
+                throw new \RuntimeException(sprintf('Snapshot "%s" belongs to "%s", not "%s".', $path, $snapshot->slug, $url->slug));
+            }
 
-        $io->info(sprintf('Created new seasonal registry: %s', $inferredName));
+            return $snapshot;
+        } catch (\Throwable $exception) {
+            $io->error('The Challonge bracket could not be prepared: '.$exception->getMessage());
 
-        return $season;
+            if ($io->isVerbose()) {
+                $io->writeln($exception->getTraceAsString());
+            }
+
+            return false;
+        }
     }
 
     private function showImported(SymfonyStyle $io, string $message): int

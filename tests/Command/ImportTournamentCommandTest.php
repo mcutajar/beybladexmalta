@@ -114,7 +114,7 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
         $this->writePlacementFile(['Giglio', 'Obelix']);
 
         $tester = $this->importTournament([
-            '--challonge' => 'https://challonge.com/abcd1234',
+            '--challonge' => 'https://worldbeyblade.challonge.com/co5nncw8',
         ]);
 
         self::assertCommandExited($tester, Command::SUCCESS);
@@ -124,7 +124,13 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
             heldOn: self::DATE,
             sourcePath: $this->placementFilePath,
             seasonSlug: self::SEASON,
-            challongeUrl: 'https://challonge.com/abcd1234',
+            challongeUrl: 'https://worldbeyblade.challonge.com/co5nncw8',
+            snapshotPath: self::projectDir().'/var/data/challonge/co5nncw8.json',
+        );
+
+        self::assertNotEmpty(
+            self::findTournament(self::TITLE)->getStages(),
+            'The archive staged by the replay workflow was not flushed with the tournament.',
         );
     }
 
@@ -160,35 +166,16 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
         self::assertLedgerIsEmpty();
     }
 
-    public function testItCreatesAMissingSeasonOnConfirmation(): void
+    public function testItRejectsAMissingSeasonWithoutPrompting(): void
     {
         $this->writePlacementFile(['Giglio']);
 
         $tester = $this->importTournament(
             ['--season' => 'brand-new-season'],
-            answers: ['yes'],
         );
 
-        self::assertCommandExited($tester, Command::SUCCESS);
-
-        SeasonFactory::assert()->exists([
-            'slug' => 'brand-new-season',
-            'name' => 'Brand New Season',
-        ]);
-
-        TournamentFactory::assert()->count(1);
-    }
-
-    public function testItAbortsWhenSeasonCreationIsDeclined(): void
-    {
-        $this->writePlacementFile(['Giglio']);
-
-        $tester = $this->importTournament(
-            ['--season' => 'brand-new-season'],
-            answers: ['no'],
-        );
-
-        self::assertCommandExited($tester, Command::INVALID);
+        self::assertCommandExited($tester, Command::FAILURE);
+        self::assertCommandSaid($tester, 'Season "brand-new-season" does not exist.');
 
         SeasonFactory::assert()->notExists(['slug' => 'brand-new-season']);
 
@@ -325,6 +312,7 @@ final class ImportTournamentCommandTest extends ConsoleTestCase
             seasonSlug: self::SEASON,
             challongeUrl: 'https://challonge.com/uhxii7az',
             teamEvent: true,
+            snapshotPath: self::projectDir().'/var/data/challonge/uhxii7az.json',
         );
     }
 

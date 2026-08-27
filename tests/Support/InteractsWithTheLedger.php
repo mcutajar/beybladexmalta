@@ -69,6 +69,7 @@ trait InteractsWithTheLedger
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
+        ?string $snapshotPath = null,
     ): void {
         $commandLine = sprintf(
             'php bin/console app:import-tournament %s %s %s --season=%s',
@@ -84,6 +85,10 @@ trait InteractsWithTheLedger
 
         if (null !== $challongeUrl) {
             $commandLine .= sprintf(' --challonge=%s', escapeshellarg($challongeUrl));
+        }
+
+        if (null !== $snapshotPath) {
+            $commandLine .= sprintf(' --snapshot=%s', escapeshellarg($snapshotPath));
         }
 
         if (null !== $knockoutWinner) {
