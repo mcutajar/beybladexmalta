@@ -56,6 +56,7 @@ class LedgerService
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
+        ?string $snapshotPath = null,
     ): void {
         $this->append($this->tournamentImportCommand(
             title: $title,
@@ -65,6 +66,7 @@ class LedgerService
             challongeUrl: $challongeUrl,
             knockoutWinner: $knockoutWinner,
             teamEvent: $teamEvent,
+            snapshotPath: $snapshotPath,
         ));
     }
 
@@ -85,6 +87,7 @@ class LedgerService
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
+        ?string $snapshotPath = null,
     ): string {
         $commandLine = sprintf(
             'php bin/console app:import-tournament %s %s %s --season=%s',
@@ -103,6 +106,10 @@ class LedgerService
                 ' --challonge=%s',
                 escapeshellarg($challongeUrl),
             );
+        }
+
+        if (null !== $snapshotPath && '' !== $snapshotPath) {
+            $commandLine .= sprintf(' --snapshot=%s', escapeshellarg($snapshotPath));
         }
 
         if (null !== $knockoutWinner && '' !== $knockoutWinner) {

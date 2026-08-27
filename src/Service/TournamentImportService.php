@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\PreparedTeamImport;
 use App\Dto\TeamImportOutcome;
 use App\Dto\TeamPlacement;
 use App\Dto\TournamentPlacement;
@@ -70,6 +71,43 @@ class TournamentImportService
         ?string $knockoutWinner = null,
         ?string $sourceFilePath = null,
     ): TournamentImportResult {
+        $opened = $this->prepare($title, $heldOn, $seasonSlug, $placements, $challongeUrl, $knockoutWinner);
+
+        if ($opened instanceof TournamentImportResult) {
+            return $opened;
+        }
+
+        $title = trim($title);
+        $seasonSlug = trim($seasonSlug);
+
+        $this->flusher->flushThen(
+            fn () => $this->writeRecoveryArtifacts(
+                title: $title,
+                heldOn: $opened->getHeldOn(),
+                seasonSlug: $seasonSlug,
+                placements: $placements,
+                challongeUrl: $challongeUrl,
+                knockoutWinner: $knockoutWinner,
+                sourceFilePath: $sourceFilePath,
+            ),
+        );
+
+        return TournamentImportResult::Imported;
+    }
+
+    /**
+     * Stages a solo tournament and its scoring rows without flushing.
+     *
+     * @param list<TournamentPlacement> $placements
+     */
+    public function prepare(
+        string $title,
+        string $heldOn,
+        string $seasonSlug,
+        array $placements,
+        ?string $challongeUrl = null,
+        ?string $knockoutWinner = null,
+    ): Tournament|TournamentImportResult {
         $title = trim($title);
         $seasonSlug = trim($seasonSlug);
 
@@ -94,25 +132,7 @@ class TournamentImportService
             ++$rank;
         }
 
-        /*
-         * The recovery artifacts are written inside the same transaction as
-         * the flush. A failed artifact write cancels the import, and a failed
-         * import can never leave a replay command behind for a tournament
-         * that was not stored.
-         */
-        $this->flusher->flushThen(
-            fn () => $this->writeRecoveryArtifacts(
-                title: $title,
-                heldOn: $opened->getHeldOn(),
-                seasonSlug: $seasonSlug,
-                placements: $placements,
-                challongeUrl: $challongeUrl,
-                knockoutWinner: $knockoutWinner,
-                sourceFilePath: $sourceFilePath,
-            ),
-        );
-
-        return TournamentImportResult::Imported;
+        return $opened;
     }
 
     /**
@@ -148,6 +168,41 @@ class TournamentImportService
         ?string $challongeUrl = null,
         ?string $sourceFilePath = null,
     ): TeamImportOutcome {
+        $prepared = $this->prepareTeamEvent($title, $heldOn, $seasonSlug, $teams, $challongeUrl);
+
+        if (!$prepared instanceof PreparedTeamImport) {
+            return TeamImportOutcome::refused($prepared);
+        }
+
+        $title = trim($title);
+        $seasonSlug = trim($seasonSlug);
+
+        $this->flusher->flushThen(
+            fn () => $this->writeTeamRecoveryArtifacts(
+                title: $title,
+                heldOn: $prepared->tournament->getHeldOn(),
+                seasonSlug: $seasonSlug,
+                teams: $teams,
+                challongeUrl: $challongeUrl,
+                sourceFilePath: $sourceFilePath,
+            ),
+        );
+
+        return $prepared->outcome;
+    }
+
+    /**
+     * Stages a team tournament, roster and scoring rows without flushing.
+     *
+     * @param list<TeamPlacement> $teams
+     */
+    public function prepareTeamEvent(
+        string $title,
+        string $heldOn,
+        string $seasonSlug,
+        array $teams,
+        ?string $challongeUrl = null,
+    ): PreparedTeamImport|TournamentImportResult {
         $title = trim($title);
         $seasonSlug = trim($seasonSlug);
 
@@ -156,7 +211,7 @@ class TournamentImportService
         $opened = $this->open($title, $heldOn, $seasonSlug, $challongeUrl, [] === $entrants);
 
         if ($opened instanceof TournamentImportResult) {
-            return TeamImportOutcome::refused($opened);
+            return $opened;
         }
 
         /**
@@ -219,30 +274,17 @@ class TournamentImportService
             $this->results->save($this->scoreFor($opened, $scored['blader'], $scored['rank']));
         }
 
-        /*
-         * The roster written out is the one that was read, `bye` included, so
-         * a replay drops it again rather than inheriting a file somebody has
-         * already tidied.
-         */
-        $this->flusher->flushThen(
-            fn () => $this->writeTeamRecoveryArtifacts(
-                title: $title,
-                heldOn: $opened->getHeldOn(),
-                seasonSlug: $seasonSlug,
-                teams: $teams,
-                challongeUrl: $challongeUrl,
-                sourceFilePath: $sourceFilePath,
+        return new PreparedTeamImport(
+            tournament: $opened,
+            outcome: TeamImportOutcome::imported(
+                teams: count($entrants),
+                placements: count($scoring),
+                unclaimed: array_values(array_map(
+                    static fn (TeamPlacement $team): string => $team->teamName,
+                    array_filter($entrants, static fn (TeamPlacement $team): bool => $team->isUnclaimed()),
+                )),
+                inTwoTeams: array_values(array_unique($inTwoTeams)),
             ),
-        );
-
-        return TeamImportOutcome::imported(
-            teams: count($entrants),
-            placements: count($scoring),
-            unclaimed: array_values(array_map(
-                static fn (TeamPlacement $team): string => $team->teamName,
-                array_filter($entrants, static fn (TeamPlacement $team): bool => $team->isUnclaimed()),
-            )),
-            inTwoTeams: array_values(array_unique($inTwoTeams)),
         );
     }
 

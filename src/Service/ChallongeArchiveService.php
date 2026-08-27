@@ -87,6 +87,33 @@ class ChallongeArchiveService
 
     public function archive(Tournament $tournament, ChallongeSnapshot $snapshot): ChallongeArchiveOutcome
     {
+        $outcome = $this->transcribe($tournament, $snapshot);
+
+        if (!$outcome->wasArchived()) {
+            return $outcome;
+        }
+
+        /*
+         * The standalone archive owns its transaction and ledger line. A
+         * workflow that composes the archive with another write calls
+         * transcribe() instead and lets that workflow own the one flush.
+         */
+        $this->flusher->flushThen(
+            fn () => $this->ledgerService->logChallongeArchived($snapshot->slug),
+        );
+
+        return $outcome;
+    }
+
+    /**
+     * Stages the archive rows without flushing or writing a ledger entry.
+     *
+     * This is the composable half of archive(): tournament replay imports the
+     * bracket inside their existing transaction and record that whole action
+     * as one app:import-tournament command.
+     */
+    public function transcribe(Tournament $tournament, ChallongeSnapshot $snapshot): ChallongeArchiveOutcome
+    {
         $refusal = $this->refuse($tournament, $snapshot);
 
         if (null !== $refusal) {
@@ -99,7 +126,11 @@ class ChallongeArchiveService
         $keptStages = [];
         $keptMatches = [];
 
-        foreach ($this->stages->forTournament($tournament) as $stage) {
+        $existingStages = null === $tournament->getId()
+            ? []
+            : $this->stages->forTournament($tournament);
+
+        foreach ($existingStages as $stage) {
             $keptStages[$stage->getPosition()] = $stage;
 
             foreach ($stage->getMatches() as $match) {
@@ -148,17 +179,6 @@ class ChallongeArchiveService
         $outcome = $tally->outcome();
 
         $this->report($tournament, $snapshot, $outcome);
-
-        /*
-         * The ledger line goes inside the flush, like every other admin
-         * action: the archive must never be replayable for a write the
-         * database rejected. A second line for a bracket already archived is
-         * harmless rather than a doubling — which is the one property this
-         * whole service is built around.
-         */
-        $this->flusher->flushThen(
-            fn () => $this->ledgerService->logChallongeArchived($snapshot->slug),
-        );
 
         return $outcome;
     }
