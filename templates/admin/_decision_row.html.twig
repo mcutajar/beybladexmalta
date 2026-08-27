@@ -1,28 +1,27 @@
 {#
-    One name the league cannot read, in one of two shapes.
+    One name the league cannot read, and the answers it has.
 
-    **A live question gets buttons.** The whole cost of this screen is the
-    number of names on it, and a dropdown is two interactions for what is
-    usually one: the suggestion is right about three times in four, so it is one
-    tap. They are radio inputs wearing button clothes — there is no JavaScript
-    framework here, and each row has to hold an independent answer while one
-    submit at the bottom commits the lot.
+    Buttons rather than a dropdown for the answers that are usually right,
+    because the whole cost of this screen is the number of names on it and a
+    dropdown is two interactions for what should be one. They are radio inputs
+    wearing button clothes: there is no JavaScript on this site, and each row
+    has to hold an independent answer while one submit at the bottom commits the
+    lot.
 
-    **A settled question gets a select.** Nothing came close to it, so it
-    arrives answered and the only thing left to do is disagree — and disagreeing
-    means finding one blader among forty-eight. `Orteborn` is three edits from
-    `Otrebor`, past `AliasResolver::CLOSE_ENOUGH`, so it is offered nothing and
-    defaults to a duplicate unless somebody recognises the name. A native picker
-    is what that job wants; forty-eight radios in a scroll box is what it does
-    not.
+    Behind them, on every row, the same collapsed control: **someone else**.
+    The buttons only reach the shortlist, and the shortlist misses — `Orteborn`
+    is three edits from `Otrebor`, past `AliasResolver::CLOSE_ENOUGH`, so it is
+    offered nothing and would default to a duplicate blader. A row with a
+    confident suggestion needs it just as much, because a confident suggestion
+    can be the wrong person: `Steve V.` is one edit from `Steve`.
 
-    The split also settles a hazard. Everything that can answer a row has to be
-    **one control or one radio group**: a `<select>` sharing the field name with
-    radios posts alongside them and, being later in the document, quietly wins —
-    blanking a button somebody had already pressed. One shape per row and the
-    question never arises. It costs a lot of markup too: the whole league
-    repeated per row was 700 inputs on the 23 August bracket, and it is now four
-    short candidate lists and ten selects.
+    **The dropdown is a separate field, and the radio beside it hands over.**
+    A `<select>` sharing the field name with the radios posts alongside them and,
+    being later in the document, quietly wins — blanking a button somebody had
+    already pressed. Document order cannot express "whichever was touched last",
+    so this does not try to make it: picking a blader and saying "this one" are
+    two controls, and `AdminBracketImportController::answersIn()` folds them
+    back into a single answer.
 
     At 375px the suggestion is full-width with the other two beneath it, so the
     answer that is usually right is also the biggest target. All three sit in a
@@ -34,11 +33,10 @@
     focus, blocking the form with nothing on screen to fix.
 #}
 {% set base = 'flex min-h-11 cursor-pointer items-center justify-center rounded-field border px-3 py-2 text-center text-xs font-black uppercase tracking-wider transition-colors' %}
+{# Unselected is unselected. The suggestion is recommended by being placed
+   first and given the widest target; tinting it before it is chosen would make
+   a shortlist that is wrong one time in four look already decided. #}
 {% set idle = ' border-line bg-canvas text-ink-muted hover:border-ink-ghost hover:text-ink' %}
-{# The suggestion is the primary action, so it reads as one before it is
-   pressed rather than only after. It is still unselected: the tint says
-   "start here", not "this is decided". #}
-{% set proposed = ' border-brand-strong/40 bg-brand-strong/5 text-brand-bright hover:border-brand-strong hover:bg-brand-strong/10' %}
 {% set best = decision.isCollision ? null : decision.best %}
 {% set others = decision.isCollision ? [] : decision.otherCandidates %}
 
@@ -53,19 +51,6 @@
             {{ decision.problem }}
             No alias can settle that &mdash; two rows for one person is a merge, and a blader whose name shadows an alias is the alias to remove.
         </twig:Alert>
-
-    {% elseif decision.hasNothingClose %}
-        <label class="sr-only" for="d-{{ decision.key }}">Who {{ decision.name }} is</label>
-        <select id="d-{{ decision.key }}" name="decision[{{ decision.key }}]" class="field">
-            <option value="create"{{ decision.answer == 'create' ? ' selected' : '' }}>Somebody new</option>
-            <option value="drop"{{ decision.answer == 'drop' ? ' selected' : '' }}>Not a person</option>
-            <optgroup label="No &mdash; this is">
-                {% for id, name in bladers %}
-                    <option value="blader:{{ id }}"{{ decision.answer == 'blader:' ~ id ? ' selected' : '' }}>{{ name }}</option>
-                {% endfor %}
-            </optgroup>
-        </select>
-
     {% else %}
         <fieldset>
             <legend class="sr-only">Who {{ decision.name }} is</legend>
@@ -79,7 +64,7 @@
                                value="blader:{{ best.player.id }}"
                                {{ decision.answer == 'blader:' ~ best.player.id ? 'checked' : '' }}>
                         <label for="d-{{ decision.key }}-link"
-                               class="{{ base }}{{ proposed }} peer-checked:border-brand-strong peer-checked:bg-brand-strong/15 peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand-strong">
+                               class="{{ base }}{{ idle }} peer-checked:border-brand-strong peer-checked:bg-brand-strong/15 peer-checked:text-brand peer-focus-visible:ring-2 peer-focus-visible:ring-brand-strong">
                             <span class="truncate">{{ best.player.name }}</span>
                         </label>
                         <p class="mt-1 text-[10px] italic text-ink-faint">{{ best.because }}</p>
@@ -94,7 +79,7 @@
                            {{ decision.answer == 'create' ? 'checked' : '' }}>
                     <label for="d-{{ decision.key }}-new"
                            class="{{ base }}{{ idle }} peer-checked:border-positive-strong peer-checked:bg-positive-strong/15 peer-checked:text-positive peer-focus-visible:ring-2 peer-focus-visible:ring-positive-strong">
-                        New blader
+                        Somebody new
                     </label>
                 </div>
 
@@ -111,28 +96,38 @@
                 </div>
             </div>
 
-            {# The rest of the shortlist, and only ever that — radios, because
-               they share the group above, and short because it is candidates
-               rather than the league. Opens by itself when the answer is one of
-               them, so a re-render never hides the choice that was made. #}
-            {% if others is not empty %}
-                <details class="mt-2"{{ decision.reachesPastTheShortlist ? ' open' : '' }}>
-                    <summary class="inline-flex min-h-11 cursor-pointer list-none items-center text-[11px] font-semibold text-ink-faint transition-colors hover:text-brand sm:min-h-0">
-                        {{ others|length }} other {{ others|length == 1 ? 'candidate' : 'candidates' }}&hellip;
-                    </summary>
+            {# Opens by itself when the answer is a blader none of the buttons
+               can show, so a re-render never hides the choice that was made. #}
+            <details class="mt-2"{{ decision.reachesPastTheShortlist ? ' open' : '' }}>
+                <summary class="inline-flex min-h-11 cursor-pointer list-none items-center text-[11px] font-semibold text-ink-faint transition-colors hover:text-brand sm:min-h-0">
+                    Someone else&hellip;
+                </summary>
 
-                    <div class="mt-2 space-y-1 rounded-field border border-line/60 bg-canvas p-3">
-                        {% for candidate in others %}
-                            <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-control px-2 text-xs hover:bg-surface/60 sm:min-h-9">
-                                <input type="radio" name="decision[{{ decision.key }}]" value="blader:{{ candidate.player.id }}"
-                                       {{ decision.answer == 'blader:' ~ candidate.player.id ? 'checked' : '' }}>
-                                <span class="font-semibold text-ink">{{ candidate.player.name }}</span>
-                                <span class="text-[10px] italic text-ink-faint">{{ candidate.because }}</span>
-                            </label>
+                <div class="mt-2 space-y-2 rounded-field border border-line/60 bg-canvas p-3">
+                    {% for candidate in others %}
+                        <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-control px-2 text-xs hover:bg-surface/60 sm:min-h-9">
+                            <input type="radio" name="decision[{{ decision.key }}]" value="blader:{{ candidate.player.id }}"
+                                   {{ decision.answer == 'blader:' ~ candidate.player.id ? 'checked' : '' }}>
+                            <span class="font-semibold text-ink">{{ candidate.player.name }}</span>
+                            <span class="text-[10px] italic text-ink-faint">{{ candidate.because }}</span>
+                        </label>
+                    {% endfor %}
+
+                    <label class="sr-only" for="d-{{ decision.key }}-pick">Which blader {{ decision.name }} is</label>
+                    <select id="d-{{ decision.key }}-pick" name="elsewhere[{{ decision.key }}]" class="field">
+                        <option value="">&mdash; pick a blader &mdash;</option>
+                        {% for id, name in bladers %}
+                            <option value="blader:{{ id }}"{{ decision.reachesPastTheShortlist and decision.answer == 'blader:' ~ id ? ' selected' : '' }}>{{ name }}</option>
                         {% endfor %}
-                    </div>
-                </details>
-            {% endif %}
+                    </select>
+
+                    <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-control px-2 text-xs hover:bg-surface/60">
+                        <input type="radio" name="decision[{{ decision.key }}]" value="{{ elsewhere }}"
+                               {{ decision.reachesPastTheShortlist ? 'checked' : '' }}>
+                        <span class="font-bold uppercase tracking-wider text-ink-muted">Use the blader picked above</span>
+                    </label>
+                </div>
+            </details>
         </fieldset>
     {% endif %}
 </li>

@@ -70,7 +70,7 @@
             {% if outstanding is not empty %}
                 <ul>
                     {% for decision in outstanding %}
-                        {{ include('admin/_decision_row.html.twig', {decision: decision, bladers: bladers}) }}
+                        {{ include('admin/_decision_row.html.twig', {decision: decision, bladers: bladers, elsewhere: elsewhere}) }}
                     {% endfor %}
                 </ul>
             {% endif %}
@@ -87,13 +87,13 @@
                         That is the safe way round: an unnecessary blader is a duplicate row you can see and merge,
                         while an unnecessary alias welds two people together and cannot be undone.
                         <strong class="text-ink-muted">It is still wrong sometimes</strong> &mdash; a spelling more than
-                        two edits from a blader's name is offered nothing at all &mdash; so pick the blader
-                        on any row you recognise.
+                        two edits from a blader's name is offered nothing at all &mdash; so use
+                        <em>Someone else</em> on any row you recognise.
                     </p>
 
                     <ul>
                         {% for decision in settled %}
-                            {{ include('admin/_decision_row.html.twig', {decision: decision, bladers: bladers}) }}
+                            {{ include('admin/_decision_row.html.twig', {decision: decision, bladers: bladers, elsewhere: elsewhere}) }}
                         {% endfor %}
                     </ul>
                 </twig:Disclosure>

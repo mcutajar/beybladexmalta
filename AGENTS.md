@@ -568,16 +568,24 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   default and it was not changed — and it is logged per blader created, because
   a duplicate that turns up three brackets later is one you want to be able to
   trace to an unexamined row.
-- **A decision row is buttons or a select, never both.** Whatever can answer a
-  row has to be one control or one radio group: a `<select>` sharing the field
-  name posts alongside radios and, being later in the document, wins — blanking
-  a button somebody already pressed. So the shape follows the job. A live
-  question gets three buttons, because the suggestion is usually right and
-  should be one tap. A settled one gets a native picker, because the only thing
-  left to do with it is disagree, and disagreeing means finding one blader among
-  forty-eight — which is the `Orteborn` case exactly. The shape is chosen by
-  `hasNothingClose()` rather than by the current answer, so a settled row
-  somebody changes does not flip shape and hide the choice they just made.
+- **Every decision row is buttons, with the same dropdown collapsed behind
+  them.** The buttons carry the answers that are usually right, so those cost
+  one tap. The dropdown reaches the rest of the league, and every row has it —
+  a seeded row because the shortlist missed (`Orteborn` is three edits from
+  `Otrebor`, past the threshold, and would default to a duplicate), and a
+  suggested row because a confident suggestion can be the wrong person.
+- **The dropdown is a separate field from the buttons, and a radio hands over
+  to it.** A `<select>` sharing the field name posts alongside the radios and,
+  being later in the document, wins — blanking a button somebody already
+  pressed. Document order cannot express "whichever was touched last" and there
+  is no JavaScript on this site to ask, so the two are separate controls and
+  `AdminBracketImportController::answersIn()` folds them back into one answer.
+  It costs a second tap on the path that is taken rarely, which is the trade
+  chosen deliberately over a control that can silently overwrite an answer.
+- **An unselected button is not tinted.** The suggestion is recommended by being
+  placed first and given the widest target, not by being coloured in before it
+  is chosen — a shortlist that is wrong one time in four must not look already
+  decided.
 - **The import screen is the only thing that creates a blader deliberately, and
   it gets a ledger line of its own.** `app:create-blader` exists because
   `var/data/imports/*.txt` stops at ten and most of the bladers this screen
