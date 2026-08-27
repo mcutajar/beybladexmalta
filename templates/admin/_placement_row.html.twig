@@ -1,26 +1,28 @@
 {#
     One line of the proposed finishing order.
 
-    Included twice — once for the places that score, once inside the
-    disclosure that holds everyone else — so the two tables cannot drift apart.
+    Included twice — once for the places that score, once inside the disclosure
+    that holds everyone else — so the two tables cannot drift apart.
 
-    The order field is a number rather than a drag handle. There is no
-    JavaScript framework here and a drag handle without one is a drag handle
-    that does not work on a phone; a number input is thumb-sized, keyboard
-    reachable, and says what it does.
+    Nothing here is editable. The finishing order is the bracket's, and the
+    bracket has been right about it eighteen times out of eighteen; the rank is
+    shown rather than offered. What *does* change these rows is the decisions
+    above, because a name resolved to a different blader changes the name here
+    and an entrant dropped as "not a person" moves everyone below them up.
+
+    The Challonge column is stated, not flagged. It differing from the blader
+    column is the alias table working — `Sanya0207` is the Challonge account
+    the bracket rendered in place of `Sanya` — and painting the normal case in
+    warning colours teaches people to ignore the colour. The one row worth
+    noticing is the one with no answer yet, and that is in red.
 #}
 <tr class="{{ placement.bladerName is null ? 'bg-heat-strong/5' }}">
     <td class="text-center">
-        <label class="sr-only" for="order-{{ placement.row }}">Finishing place for {{ placement.challongeName }}</label>
-        <input
-            id="order-{{ placement.row }}"
-            type="number"
-            name="order[{{ placement.row }}]"
-            value="{{ placement.position }}"
-            min="1"
-            inputmode="numeric"
-            class="w-12 rounded-control border border-line bg-canvas px-1.5 py-1 text-center font-mono text-xs tabular-nums text-ink-bright outline-none focus:border-brand-strong"
-        >
+        {% if placement.scores %}
+            <twig:RankMedal :rank="placement.position" />
+        {% else %}
+            <span class="text-xs text-ink-ghost">{{ placement.position }}</span>
+        {% endif %}
     </td>
     <td class="font-bold {{ placement.bladerName is null ? 'text-heat' : (placement.wonTheKnockout ? 'text-flame' : 'text-ink') }}">
         {{ placement.bladerName ?? placement.challongeName }}
@@ -32,9 +34,7 @@
             <twig:Badge tone="positive" size="sm">KO</twig:Badge>
         {% endif %}
     </td>
-    <td class="hidden font-mono text-xs sm:table-cell {{ placement.wasRenamed ? 'text-flame' : 'text-ink-faint' }}">
-        {{ placement.challongeName }}{{ placement.wasRenamed ? ' ⚠' }}
-    </td>
+    <td class="hidden font-mono text-xs text-ink-faint sm:table-cell">{{ placement.challongeName }}</td>
     <td class="text-center tabular-nums {{ placement.f1Points > 0 ? 'text-ink-body' : 'text-ink-ghost' }}">{{ placement.f1Points }}</td>
     <td class="hidden text-center sm:table-cell">
         <twig:BonusPoints :value="placement.bonusPoints" />
