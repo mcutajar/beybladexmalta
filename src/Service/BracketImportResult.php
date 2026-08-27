@@ -42,4 +42,10 @@ enum BracketImportResult
      * Every entrant was dropped, so there is no finishing order left to score.
      */
     case NoPlacements;
+
+    /**
+     * More than one scoring row resolves to the same blader. Importing it
+     * would violate the one-result-per-blader rule for a tournament.
+     */
+    case DuplicatePlacements;
 }

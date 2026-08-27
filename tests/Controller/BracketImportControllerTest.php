@@ -4,6 +4,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Controller;
 
+use App\Dto\BracketAnswers;
+use App\Dto\ChallongeUrl;
+use App\Repository\PlayerRepository;
+use App\Repository\SeasonRepository;
+use App\Service\AliasService;
+use App\Service\BladerService;
+use App\Service\BracketImportService;
+use App\Service\BracketPreviewer;
+use App\Service\ChallongeArchiveService;
+use App\Service\ChallongeEventFinder;
+use App\Service\ChallongeFetcher;
+use App\Service\ChallongeSnapshotWriter;
+use App\Service\TournamentImportService;
 use App\Tests\Factory\PlayerAliasFactory;
 use App\Tests\Factory\PlayerFactory;
 use App\Tests\Factory\TournamentFactory;
@@ -383,6 +396,118 @@ final class BracketImportControllerTest extends AdminPageTestCase
         self::assertSelectorTextContains('tbody tr:first-child', 'KO');
     }
 
+    public function testAnUnresolvedKnockoutWinnerCanBeLinkedBeforeImport(): void
+    {
+        $this->leagueWithoutWinner();
+        $winner = PlayerFactory::createOne(['name' => 'The actual winner']);
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        $this->confirm($client, $crawler, [
+            'decision[obelix]' => 'else',
+            'elsewhere[obelix]' => 'blader:'.$winner->getId(),
+            ...$this->everyNameAnswered(),
+        ]);
+
+        self::assertResponseRedirects(self::PAGE);
+        self::assertResultAtRank(
+            self::findTournament(self::TITLE),
+            rank: 1,
+            player: 'The actual winner',
+            bonusPoints: 10,
+        );
+    }
+
+    public function testAnUnresolvedKnockoutWinnerCanBeCreatedBeforeImport(): void
+    {
+        $this->leagueWithoutWinner();
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        $this->confirm($client, $crawler, [
+            'decision[obelix]' => 'create',
+            ...$this->everyNameAnswered(),
+        ]);
+
+        self::assertResponseRedirects(self::PAGE);
+        self::assertResultAtRank(
+            self::findTournament(self::TITLE),
+            rank: 1,
+            player: self::KNOWN,
+            bonusPoints: 10,
+        );
+    }
+
+    public function testDuplicateResolvedPlacementsAreRefusedBeforeAliasesAreWritten(): void
+    {
+        $this->league();
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        $this->confirm($client, $crawler, [
+            'decision['.self::UNKNOWN_KEY.']' => 'else',
+            'elsewhere['.self::UNKNOWN_KEY.']' => 'blader:'.PlayerFactory::find(['name' => self::KNOWN])->getId(),
+            'decision['.self::MISSPELLED_KEY.']' => 'blader:'.PlayerFactory::find(['name' => 'Giglio'])->getId(),
+        ]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('body', 'More than one scoring place resolves to the same blader');
+        PlayerAliasFactory::assert()->notExists(['alias' => self::UNKNOWN]);
+        self::assertNoEventWasImported();
+        self::assertLedgerIsEmpty();
+    }
+
+    public function testAnArchiveFailureStillReportsTheCommittedImportAsSuccessful(): void
+    {
+        $this->league();
+
+        $archive = $this->createMock(ChallongeArchiveService::class);
+        $archive->expects(self::once())
+            ->method('archive')
+            ->willThrowException(new \RuntimeException('The archive ledger failed.'));
+
+        $container = self::getContainer();
+        $imports = new BracketImportService(
+            $container->get(BracketPreviewer::class),
+            $container->get(TournamentImportService::class),
+            $archive,
+            $container->get(ChallongeSnapshotWriter::class),
+            $container->get(ChallongeEventFinder::class),
+            $container->get(AliasService::class),
+            $container->get(BladerService::class),
+            $container->get(PlayerRepository::class),
+            $container->get(SeasonRepository::class),
+            $container->get('logger'),
+        );
+        $snapshot = $container->get(ChallongeFetcher::class)->fetch(
+            ChallongeUrl::fromString('challonge.com/'.FakeChallonge::SLUG),
+        );
+
+        $outcome = $imports->apply(
+            $snapshot,
+            'challonge.com/'.FakeChallonge::SLUG,
+            self::TITLE,
+            self::DATE,
+            self::SEASON,
+            new BracketAnswers([
+                self::UNKNOWN_KEY => BracketAnswers::CREATE,
+                self::MISSPELLED_KEY => 'blader:'.PlayerFactory::find(['name' => 'Giglio'])->getId(),
+            ]),
+        );
+
+        self::assertTrue($outcome->wasImported());
+        self::assertNull($outcome->archive);
+        self::assertPlacementsScoredInOrder(self::findTournament(self::TITLE), [
+            self::KNOWN,
+            self::ALIASED,
+            self::UNKNOWN,
+            'Giglio',
+        ]);
+    }
+
     /**
      * The placements follow the decisions, so the screen has to be able to
      * show that before anybody approves it — and showing it still writes
@@ -561,6 +686,16 @@ final class BracketImportControllerTest extends AdminPageTestCase
     private function league(): void
     {
         PlayerFactory::createOne(['name' => self::KNOWN]);
+        PlayerFactory::createOne(['name' => 'Giglio']);
+
+        PlayerAliasFactory::createOne([
+            'player' => PlayerFactory::createOne(['name' => self::ALIASED]),
+            'alias' => self::ALIAS,
+        ]);
+    }
+
+    private function leagueWithoutWinner(): void
+    {
         PlayerFactory::createOne(['name' => 'Giglio']);
 
         PlayerAliasFactory::createOne([
