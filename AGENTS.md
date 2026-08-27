@@ -395,7 +395,8 @@ vocabulary worth typing or something to derive — `Badge`, `Card`, `Button`,
 `Alert`, `RankMedal`, `BonusPoints`, `PointsMatrix`, `Flashes`. It is an
 anonymous template with `{% props %}` when it is only markup — `PageHeader`,
 `DataTable`, `Field`, `LinkCard`, `FeatureTile`, `Disclosure`, `EmptyState`,
-`SectionHeading`, `BackLink`.
+`SectionHeading`, `BackLink`, `KpiRow`, `TotalsList`, `ArtifactList`,
+`LedgerLine`.
 
 **Tailwind class strings belong in the component's template, never in its PHP
 class.** Tailwind scans `templates/` and not `src/`, so a class named in PHP is
@@ -526,6 +527,44 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   re-fetch of an unchanged bracket produces one line of `git diff` and looking
   at that is not the same check. It writes nothing either way; capturing a
   change is still `app:fetch-challonge`, followed by archiving again.
+- **A bracket is imported through a preview, and the preview writes nothing.**
+  `/admin/import` has two ways in. The textarea is unchanged and stays — it is
+  what you use when a bracket will not parse on an event night. The other pastes
+  a URL, fetches, and renders a screen that proves which bracket came back,
+  turns every name the league cannot read into a required decision, seeds the
+  finishing order from the standings with the F1 matrix already applied, and
+  shows the files and the exact `repeat.sh` lines a confirm will write. The
+  snapshot is held in the session between the two requests, so the bracket that
+  was approved is the bracket that is imported; the passphrase is checked on the
+  confirm, because fetching a public page writes nothing. **Nothing is written
+  until every unresolved name is answered**, and that is checked against a
+  preview rebuilt on the server rather than against what the browser posted —
+  which is why the confirm carries only choices and needs no signature.
+- **Three brackets are refused outright, each by name.** A 2v2 event, whose
+  entrants are teams and which is imported from a roster instead; one an event
+  already names, because `app:import-tournament` has no guard and a second
+  import doubles the evening; and one with no standings, which states no
+  finishing order.
+- **The import screen is the only thing that creates a blader deliberately, and
+  it gets a ledger line of its own.** `app:create-blader` exists because
+  `var/data/imports/*.txt` stops at ten and most of the bladers this screen
+  creates finished eleventh or worse — archived, unscored, named nowhere else in
+  `repeat.sh`. Without the line they would exist until the next schema rebuild
+  and then stop existing, taking every match attached to them with them. It
+  replays before the aliases that spell its blader and the import that scores
+  them, and running it twice is a no-op. Creating a blader is offered alongside
+  the suggestions and never pre-selected; the count about to be created is shown
+  before the button.
+- **A spelling more than one blader answers to gets no answer on that screen.**
+  It is the collision `AliasResolver` refuses to break, so the decision list
+  states the problem and the import stays blocked. No alias can settle it: two
+  rows for one person is a merge, and a blader whose name shadows an alias is
+  the alias to remove.
+- **The web import scores at least one place, not exactly ten.** The rule used
+  to be exactly ten, which would have rejected the seven-entrant round robin
+  already in the data. The matrix pays nothing below tenth rather than refusing
+  to be asked, so a short list scores every place it has and a bracket import
+  scores its top ten and archives the rest.
 - **A Challonge display name is never turned into a blader.** Two hundred and
   seven spellings across the captured brackets belong to about seventy-six
   people, and `AliasNormaliser` only folds that to a hundred and twenty-nine —
@@ -587,12 +626,23 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   brackets. The ranks are Challonge's, so taking a row out never moves the ones
   below it. That is the line: `bye` goes because it is not an entrant, an
   unclaimed team stays because it is one.
+- **`LedgerService` builds every command string, and hands them back
+  unappended when asked.** The import preview shows what will land in
+  `repeat.sh` before anything is written, and a screen that composed its own
+  approximation would drift from the real line the moment either changed.
 - Compare admin passphrases with `hash_equals()`.
 
 ## Things that will surprise you
 
 - `symfony/validator` is **not** installed. `$form->isValid()` is effectively always
   true after submission, so validation is hand-rolled in the controller.
+- An untouched text control comes back from Symfony as **null**, not `''`, and
+  the form DTOs type those properties as `string` — so an empty title or an
+  empty placement list used to 500 in the property accessor before any
+  hand-rolled validation ran. Every non-nullable field carries
+  `'empty_data' => ''`. A `ChoiceType` with a placeholder is the exception: its
+  "nothing chosen" really is null, however hard `empty_data` is leaned on, so
+  `BracketConfirmData::$knockoutWinner` is nullable.
 - Admin routes are gated by an environment passphrase submitted in the form, not by
   a Symfony security firewall. There is no user entity and no login.
 - `KernelTestCase` ships a **static** `runCommand()` in Symfony 8.1. Declaring an
