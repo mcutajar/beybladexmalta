@@ -1,0 +1,16 @@
+{#
+    The exact commands an action will append to `var/log/command_ledger.sh`.
+
+    <twig:LedgerLine :commands="preview.ledger" />
+
+    Shown verbatim rather than summarised, because the ledger doubles as
+    `repeat.sh` and this is the line somebody will one day replay into an empty
+    schema. A wrapped command is a command you cannot read, so it scrolls.
+#}
+{% props commands = [] %}
+
+<div {{ attributes.defaults({class: 'overflow-x-auto rounded-field border border-line/60 bg-canvas p-3'}) }}>
+    {% for command in commands %}
+        <pre class="font-mono text-[11px] leading-relaxed text-ink-muted"><code>{{ command }}</code></pre>
+    {% endfor %}
+</div>

@@ -12,9 +12,9 @@ use App\Exception\ChallongeSnapshotReadException;
 use App\Exception\InvalidChallongeSlugException;
 use App\Exception\InvalidChallongeUrlException;
 use App\Exception\LedgerWriteException;
-use App\Repository\TournamentRepository;
 use App\Service\ChallongeArchiveResult;
 use App\Service\ChallongeArchiveService;
+use App\Service\ChallongeEventFinder;
 use App\Service\ChallongeSnapshotReader;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -51,7 +51,7 @@ final class ArchiveChallongeCommand extends Command
     public function __construct(
         private readonly ChallongeSnapshotReader $snapshots,
         private readonly ChallongeArchiveService $archive,
-        private readonly TournamentRepository $tournaments,
+        private readonly ChallongeEventFinder $events,
     ) {
         parent::__construct();
     }
@@ -97,7 +97,7 @@ final class ArchiveChallongeCommand extends Command
             return Command::INVALID;
         }
 
-        $events = $this->eventsFrom($snapshot);
+        $events = $this->events->forSlug($snapshot->slug);
 
         if (1 !== count($events)) {
             return $this->cannotName($io, $snapshot, $events);
@@ -131,30 +131,6 @@ final class ArchiveChallongeCommand extends Command
         return ChallongeUrl::isSlug($bracket)
             ? $bracket
             : ChallongeUrl::fromString($bracket)->slug;
-    }
-
-    /**
-     * The events imported from this bracket.
-     *
-     * @return list<Tournament>
-     */
-    private function eventsFrom(ChallongeSnapshot $snapshot): array
-    {
-        $events = [];
-
-        foreach ($this->tournaments->everyEventWithABracket() as $tournament) {
-            try {
-                $slug = ChallongeUrl::fromString((string) $tournament->getChallongeUrl())->slug;
-            } catch (InvalidChallongeUrlException) {
-                continue;
-            }
-
-            if ($slug === $snapshot->slug) {
-                $events[] = $tournament;
-            }
-        }
-
-        return $events;
     }
 
     /**

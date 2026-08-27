@@ -20,7 +20,12 @@ use Psr\Log\LoggerInterface;
 
 class TournamentImportService
 {
-    private const int KNOCKOUT_WINNER_BONUS = 10;
+    /**
+     * Public because the import preview shows the bonus applied before
+     * anything is written, and two copies of the number are two chances for
+     * the screen and the import to disagree about what an event paid out.
+     */
+    public const int KNOCKOUT_WINNER_BONUS = 10;
 
     /**
      * Challonge's own filler entrant. It is a slot in a bracket rather than

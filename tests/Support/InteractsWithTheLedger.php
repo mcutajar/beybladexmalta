@@ -127,6 +127,14 @@ trait InteractsWithTheLedger
         )));
     }
 
+    protected static function assertLedgerRecordsBladerCreation(string $name): void
+    {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:create-blader %s',
+            escapeshellarg($name),
+        ));
+    }
+
     protected static function assertLedgerRecordsArchive(string $slug): void
     {
         self::assertLedgerHolds(sprintf(

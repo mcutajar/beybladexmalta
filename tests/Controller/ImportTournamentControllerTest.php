@@ -89,6 +89,30 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
         );
     }
 
+    /**
+     * The web form used to insist on exactly ten. The F1 matrix pays nothing
+     * below tenth rather than refusing to be asked, and the league has held a
+     * seven-entrant round robin, so a short list scores every place it has.
+     */
+    public function testAShortListScoresEveryPlaceItHas(): void
+    {
+        $client = $this->createBrowser();
+
+        $shortlist = array_slice(self::PLACEMENTS, 0, 7);
+
+        $this->submitImport($client, placements: $shortlist);
+
+        self::assertResponseRedirects(self::PAGE);
+
+        TournamentResultFactory::assert()->count(7);
+        self::assertPlacementsScoredInOrder(self::findTournament(self::TITLE), $shortlist);
+
+        $this->assertFlashSays(
+            $client,
+            'Successfully imported "Controller Test Cup" with 7 player ranks.',
+        );
+    }
+
     public function testKnockoutWinnerReceivesTheBonus(): void
     {
         $client = $this->createBrowser();
@@ -184,9 +208,9 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
      */
     public static function rejectedSubmissions(): iterable
     {
-        yield 'fewer than ten placements' => [
-            ['placements' => array_slice(self::PLACEMENTS, 0, 9)],
-            'You provided 9.',
+        yield 'a list naming nobody' => [
+            ['placements' => []],
+            'The player list must name at least one blader',
         ];
 
         yield 'loosely formatted date' => [

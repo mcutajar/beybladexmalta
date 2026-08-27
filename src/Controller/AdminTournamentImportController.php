@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Dto\ImportTournamentData;
 use App\Exception\ImportFileWriteException;
 use App\Exception\LedgerWriteException;
+use App\Form\BracketImportType;
 use App\Form\ImportTournamentType;
 use App\Service\AdminPassphraseVerifier;
 use App\Service\PlacementListParser;
@@ -22,9 +23,15 @@ use Symfony\Component\Routing\Attribute\Route;
 final class AdminTournamentImportController extends AbstractController
 {
     /**
-     * The web form mirrors the F1 points table, which only scores a top ten.
+     * One name is a tournament; nought is a mistake.
+     *
+     * This used to insist on exactly ten, on the grounds that the F1 matrix
+     * scores a top ten — but the matrix pays nothing below tenth rather than
+     * refusing to be asked, and the league has already held a seven-entrant
+     * round robin that this rule would have rejected. A short list scores
+     * every place it has and stops.
      */
-    private const int REQUIRED_PLACEMENT_COUNT = 10;
+    private const int FEWEST_PLACEMENTS = 1;
 
     public function __construct(
         private readonly TournamentImportService $importService,
@@ -50,6 +57,7 @@ final class AdminTournamentImportController extends AbstractController
         if (!$form->isSubmitted() || !$form->isValid()) {
             return $this->render('admin/import_tournament.html.twig', [
                 'import_form' => $form,
+                'bracket_form' => $this->createForm(BracketImportType::class),
             ]);
         }
 
@@ -73,9 +81,9 @@ final class AdminTournamentImportController extends AbstractController
         $placements = $this->placementListParser->parse($data->playerList);
         $placementCount = count($placements);
 
-        if (self::REQUIRED_PLACEMENT_COUNT !== $placementCount) {
+        if ($placementCount < self::FEWEST_PLACEMENTS) {
             $this->logger->warning(
-                'Import rejected: List must contain exactly 10 players.',
+                'Import rejected: the placement list names nobody.',
                 [
                     'count_provided' => $placementCount,
                 ],
@@ -83,10 +91,7 @@ final class AdminTournamentImportController extends AbstractController
 
             $this->addFlash(
                 'error',
-                sprintf(
-                    'Validation Error: The player list must contain exactly 10 players matching the F1 points system structure. You provided %d.',
-                    $placementCount,
-                ),
+                'Validation Error: The player list must name at least one blader, in finishing order.',
             );
 
             return $this->redirectToRoute('admin_tournament_import');
@@ -102,7 +107,7 @@ final class AdminTournamentImportController extends AbstractController
                 knockoutWinner: $data->knockoutWinner,
             );
 
-            $this->addResultFlash($result, $data->title);
+            $this->addResultFlash($result, $data->title, $placementCount);
         } catch (LedgerWriteException|ImportFileWriteException $exception) {
             $this->logger->critical(
                 'Tournament import cancelled: recovery artifact write failed',
@@ -139,6 +144,7 @@ final class AdminTournamentImportController extends AbstractController
     private function addResultFlash(
         TournamentImportResult $result,
         string $title,
+        int $placementCount,
     ): void {
         [$type, $message] = match ($result) {
             TournamentImportResult::Imported => [
@@ -146,7 +152,7 @@ final class AdminTournamentImportController extends AbstractController
                 sprintf(
                     'Successfully imported "%s" with %d player ranks.',
                     $title,
-                    self::REQUIRED_PLACEMENT_COUNT,
+                    $placementCount,
                 ),
             ],
             TournamentImportResult::InvalidDate => [

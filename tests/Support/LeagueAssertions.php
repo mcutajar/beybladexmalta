@@ -57,10 +57,23 @@ trait LeagueAssertions
 
     protected static function assertNothingWasImported(): void
     {
+        self::assertNoEventWasImported();
+
+        PlayerFactory::assert()->empty();
+    }
+
+    /**
+     * No event, and no result or entrant belonging to one.
+     *
+     * Said apart from the bladers because a bracket import runs against a
+     * league that already has some: the question there is whether the event
+     * was written, and separately whether anybody was invented.
+     */
+    protected static function assertNoEventWasImported(): void
+    {
         TournamentFactory::assert()->empty();
         TournamentResultFactory::assert()->empty();
         TournamentTeamFactory::assert()->empty();
-        PlayerFactory::assert()->empty();
     }
 
     /**

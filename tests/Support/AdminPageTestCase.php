@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Component\DomCrawler\Crawler;
 
 /**
  * Base for tests that drive an admin page through the browser.
@@ -22,6 +23,11 @@ abstract class AdminPageTestCase extends PageTestCase
     /**
      * Requesting the page first provides the real form and its CSRF token.
      *
+     * The form is found by the name its fields are under rather than by being
+     * the first one on the page, because `/admin/import` now carries two: a
+     * bracket URL and the textarea. Picking by position would mean the order
+     * of two cards decided which test passed.
+     *
      * @param array<string, string> $fields
      */
     protected function submitFormAt(
@@ -33,9 +39,20 @@ abstract class AdminPageTestCase extends PageTestCase
 
         self::assertResponseIsSuccessful();
 
-        $client->submit(
-            $crawler->filter('form')->first()->form($fields),
-        );
+        $client->submit($this->formCarrying($crawler, $fields)->form($fields));
+    }
+
+    /**
+     * The form on the page whose fields these are.
+     *
+     * @param array<string, string> $fields
+     */
+    private function formCarrying(Crawler $crawler, array $fields): Crawler
+    {
+        $name = (string) strtok((string) array_key_first($fields), '[');
+        $named = $crawler->filter(sprintf('form[name="%s"]', $name));
+
+        return $named->count() > 0 ? $named->first() : $crawler->filter('form')->first();
     }
 
     /**

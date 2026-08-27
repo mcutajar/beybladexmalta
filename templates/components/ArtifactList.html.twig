@@ -1,0 +1,28 @@
+{#
+    The files an action is about to touch, each under the verb that will touch
+    it.
+
+    <twig:ArtifactList :artifacts="[
+        {verb: 'write', path: 'var/data/challonge/nppk0890.json'},
+        {verb: 'append', path: 'var/log/command_ledger.sh'},
+    ]" />
+
+    Paths do not wrap — a broken path is worse than a scrolled one — so the
+    list scrolls sideways inside its own box rather than widening the page.
+#}
+{% props artifacts = [] %}
+
+{% set verbs = {
+    write:   'text-positive',
+    append:  'text-brand',
+    replace: 'text-flame',
+} %}
+
+<ul {{ attributes.defaults({class: 'overflow-x-auto font-mono text-[11px] leading-relaxed'}) }}>
+    {% for artifact in artifacts %}
+        <li class="whitespace-nowrap text-ink-muted">
+            <span class="font-bold {{ verbs[artifact.verb]|default('text-ink-faint') }}">{{ artifact.verb }}</span>
+            {{ artifact.path }}
+        </li>
+    {% endfor %}
+</ul>

@@ -71,23 +71,40 @@ class ImportFileWriter
         return $this->put($title, $heldOn, $contents);
     }
 
+    /**
+     * Where an event's placement list will be written.
+     *
+     * Public because the import preview says which files a confirm is about
+     * to write, and a screen that guessed the name would be a second copy of
+     * this rule waiting to disagree with it.
+     */
+    public function pathFor(string $title, \DateTimeImmutable $heldOn): string
+    {
+        return sprintf(
+            '%s/%s-%s.txt',
+            $this->directory(),
+            $heldOn->format('Y-m-d'),
+            $this->slugify($title),
+        );
+    }
+
+    private function directory(): string
+    {
+        return $this->kernel->getProjectDir().'/var/data/imports';
+    }
+
     private function put(
         string $title,
         \DateTimeImmutable $heldOn,
         string $contents,
     ): string {
-        $directory = $this->kernel->getProjectDir().'/var/data/imports';
+        $directory = $this->directory();
 
         if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
             throw new ImportFileWriteException(sprintf('Failed to create the import directory "%s".', $directory));
         }
 
-        $filePath = sprintf(
-            '%s/%s-%s.txt',
-            $directory,
-            $heldOn->format('Y-m-d'),
-            $this->slugify($title),
-        );
+        $filePath = $this->pathFor($title, $heldOn);
 
         $written = @file_put_contents($filePath, $contents, LOCK_EX);
 

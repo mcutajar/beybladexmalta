@@ -57,6 +57,35 @@ class LedgerService
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
     ): void {
+        $this->append($this->tournamentImportCommand(
+            title: $title,
+            heldOn: $heldOn,
+            sourceFilePath: $sourceFilePath,
+            seasonSlug: $seasonSlug,
+            challongeUrl: $challongeUrl,
+            knockoutWinner: $knockoutWinner,
+            teamEvent: $teamEvent,
+        ));
+    }
+
+    /**
+     * The same line, built and handed back rather than appended.
+     *
+     * The import preview shows the operator exactly what is about to land in
+     * `repeat.sh` before they confirm it, and a screen that composed its own
+     * approximation of the command would drift from the one that is written
+     * the moment either changed. So the construction stays here — this class
+     * owns it — and the preview borrows it.
+     */
+    public function tournamentImportCommand(
+        string $title,
+        string $heldOn,
+        string $sourceFilePath,
+        string $seasonSlug,
+        ?string $challongeUrl = null,
+        ?string $knockoutWinner = null,
+        bool $teamEvent = false,
+    ): string {
         $commandLine = sprintf(
             'php bin/console app:import-tournament %s %s %s --season=%s',
             escapeshellarg($title),
@@ -83,7 +112,7 @@ class LedgerService
             );
         }
 
-        $this->append($commandLine);
+        return $commandLine;
     }
 
     /**
@@ -102,17 +131,7 @@ class LedgerService
         string $alias,
         PlayerAliasSource $source = PlayerAliasSource::Manual,
     ): void {
-        $commandLine = sprintf(
-            'php bin/console app:alias add %s %s',
-            escapeshellarg($bladerName),
-            escapeshellarg($alias),
-        );
-
-        if (PlayerAliasSource::Manual !== $source) {
-            $commandLine .= sprintf(' --source=%s', escapeshellarg($source->value));
-        }
-
-        $this->append($commandLine);
+        $this->append($this->aliasAddedCommand($bladerName, $alias, $source));
     }
 
     /**
@@ -154,12 +173,66 @@ class LedgerService
      */
     public function logChallongeArchived(string $slug): void
     {
-        $this->append(
-            sprintf(
-                'php bin/console app:archive-challonge %s',
-                escapeshellarg($slug),
-            ),
+        $this->append($this->challongeArchiveCommand($slug));
+    }
+
+    /**
+     * The archive line, handed back rather than appended, for the preview.
+     */
+    public function challongeArchiveCommand(string $slug): string
+    {
+        return sprintf(
+            'php bin/console app:archive-challonge %s',
+            escapeshellarg($slug),
         );
+    }
+
+    /**
+     * A blader who was never on a placement list.
+     *
+     * The import screen is the only thing that creates one deliberately, and
+     * the ones it creates are usually the reason it had to: fifty-two
+     * spellings across the captured brackets reach nobody and every one of
+     * them finished eleventh or worse, so they are archived rather than
+     * scored and never appear in a `var/data/imports/*.txt`. Without a line of
+     * their own they would exist until the next schema rebuild and then
+     * quietly stop existing, taking every match attached to them with them.
+     *
+     * It replays before the import and the aliases that point at it, which is
+     * the order the screen writes them in.
+     */
+    public function logBladerCreated(string $name): void
+    {
+        $this->append($this->createBladerCommand($name));
+    }
+
+    public function createBladerCommand(string $name): string
+    {
+        return sprintf(
+            'php bin/console app:create-blader %s',
+            escapeshellarg($name),
+        );
+    }
+
+    /**
+     * The alias line, handed back rather than appended, for the preview.
+     */
+    public function aliasAddedCommand(
+        string $bladerName,
+        string $alias,
+        PlayerAliasSource $source = PlayerAliasSource::Manual,
+    ): string {
+        $commandLine = sprintf(
+            'php bin/console app:alias add %s %s',
+            escapeshellarg($bladerName),
+            escapeshellarg($alias),
+        );
+
+        if (PlayerAliasSource::Manual !== $source) {
+            $commandLine .= sprintf(' --source=%s', escapeshellarg($source->value));
+        }
+
+        return $commandLine;
     }
 
     public function logAliasRemoved(string $alias): void

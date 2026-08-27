@@ -51,6 +51,21 @@ final class ChallongeMatch
     }
 
     /**
+     * Every beyblade point either side scored in it.
+     *
+     * The games are the source, because `score` is games won rather than
+     * points in a best-of-three. A match with no games recorded falls back to
+     * the scoreline Challonge showed, which for the single-game matches that
+     * are all of the solo corpus is the same two numbers.
+     */
+    public function pointsScored(): int
+    {
+        $games = [] === $this->games ? [$this->score] : $this->games;
+
+        return array_sum(array_map(array_sum(...), $games));
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

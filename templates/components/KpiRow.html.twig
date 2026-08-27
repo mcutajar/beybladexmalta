@@ -1,0 +1,23 @@
+{#
+    Four big numbers that answer a page's obvious question without reading.
+
+    <twig:KpiRow :tiles="[
+        {value: 22, label: 'participants'},
+        {value: 63, label: 'matches found', highlight: true},
+    ]" />
+
+    Two columns on a phone and four with room, because at 375px four figures
+    across leaves nothing for the label under each one.
+#}
+{% props tiles = [] %}
+
+<dl {{ attributes.defaults({class: 'grid grid-cols-2 gap-3 sm:grid-cols-4'}) }}>
+    {% for tile in tiles %}
+        <div class="rounded-card border p-4 {{ tile.highlight|default(false)
+            ? 'border-flame-strong/30 bg-flame-strong/5'
+            : 'border-line bg-surface' }}">
+            <dd class="font-mono text-2xl font-black tabular-nums {{ tile.highlight|default(false) ? 'text-flame' : 'text-ink' }}">{{ tile.value }}</dd>
+            <dt class="mt-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{{ tile.label }}</dt>
+        </div>
+    {% endfor %}
+</dl>

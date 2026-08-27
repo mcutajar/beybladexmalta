@@ -16,6 +16,15 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
+ * The textarea path, unchanged since the league's first import.
+ *
+ * `empty_data` is on every non-nullable field on purpose. Symfony hands an
+ * untouched text control back as null, and the DTO types these as `string` —
+ * so an empty title or an empty placement list used to reach the property
+ * accessor as null and 500 before any of the controller's own validation ran.
+ * Since the list may now be short rather than exactly ten, the message that
+ * says it names nobody has to be reachable.
+ *
  * @extends AbstractType<ImportTournamentData>
  */
 final class ImportTournamentType extends AbstractType
@@ -25,11 +34,13 @@ final class ImportTournamentType extends AbstractType
         array $options,
     ): void {
         $builder->add('title', TextType::class, [
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'e.g., Stage 1 Ranked',
             ],
         ])
         ->add('date', TextType::class, [
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'YYYY-MM-DD',
             ],
@@ -54,6 +65,7 @@ final class ImportTournamentType extends AbstractType
             ],
         ])
         ->add('playerList', TextareaType::class, [
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => "Blader1\nBlader2\nBlader3\nBlader4\nBlader5\nBlader6\nBlader7\nBlader8\nBlader9\nBlader10",
                 'rows' => 11,
@@ -61,6 +73,7 @@ final class ImportTournamentType extends AbstractType
             ],
         ])
         ->add('passphrase', PasswordType::class, [
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Enter Admin Passphrase',
             ],
