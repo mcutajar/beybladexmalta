@@ -151,6 +151,10 @@ class BracketImportService
             return BracketImportResult::NoPlacements;
         }
 
+        if ($this->hasDuplicateScoringPlacements($preview)) {
+            return BracketImportResult::DuplicatePlacements;
+        }
+
         return null;
     }
 
@@ -332,6 +336,28 @@ class BracketImportService
     }
 
     /**
+     * This runs before creating bladers or filing aliases. In particular, two
+     * different bracket spellings may both have been linked to one blader;
+     * letting either alias persist would make every retry fail the same way.
+     */
+    private function hasDuplicateScoringPlacements(BracketPreview $preview): bool
+    {
+        $seen = [];
+
+        foreach ($this->scoringPlacements($preview) as $placement) {
+            $name = mb_strtolower(trim($placement->playerName));
+
+            if (isset($seen[$name])) {
+                return true;
+            }
+
+            $seen[$name] = true;
+        }
+
+        return false;
+    }
+
+    /**
      * The archive, written against the event the import just created.
      *
      * Found by the bracket rather than carried out of the import, which is the
@@ -352,7 +378,16 @@ class BracketImportService
             return null;
         }
 
-        return $this->archive->archive($events[0], $snapshot);
+        try {
+            return $this->archive->archive($events[0], $snapshot);
+        } catch (\Throwable $exception) {
+            $this->logger->error('The tournament was imported, but its bracket could not be archived.', [
+                'slug' => $snapshot->slug,
+                'exception' => $exception,
+            ]);
+
+            return null;
+        }
     }
 
     private function mapped(TournamentImportResult $result): BracketImportResult

@@ -373,7 +373,10 @@ class BracketPreviewer
         array $order,
         array $readings,
     ): array {
-        $knockout = $this->detectedKnockoutWinner($snapshot);
+        $winner = $snapshot->knockoutWinner();
+        $knockout = null === $winner
+            ? null
+            : ($readings[$this->normaliser->normalise($winner->name)]['blader'] ?? null);
         $placements = [];
         $position = 0;
 

@@ -350,6 +350,8 @@ final class AdminBracketImportController extends AbstractController
             BracketImportResult::SeasonNotFound => 'Target season context variant not found.',
 
             BracketImportResult::NoPlacements => 'Validation Error: Every entrant was dropped, so there is no finishing order left to score.',
+
+            BracketImportResult::DuplicatePlacements => 'Nothing was written. More than one scoring place resolves to the same blader.',
         };
     }
 
