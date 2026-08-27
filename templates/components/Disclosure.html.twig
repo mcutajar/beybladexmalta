@@ -1,12 +1,28 @@
 {#
-    A collapsed panel. <twig:Disclosure summary="View the matrix" icon="📊">…</twig:Disclosure>
+    A collapsed panel.
+
+    <twig:Disclosure summary="View the matrix" icon="📊">…</twig:Disclosure>
+    <twig:Disclosure summary="10 answered by default" tone="neutral">…</twig:Disclosure>
+
+    The tone is what the panel is asking for. Brand cyan is the site's
+    interactive accent — navigation, links, the primary call to action — so it
+    belongs on a disclosure that is offering something. A panel that only holds
+    what has already been settled takes `neutral`, because painting it in the
+    colour of a call to action says "act on me" about a section whose whole
+    point is that there is nothing to do.
 #}
-{% props summary, icon = null %}
+{% props summary, icon = null, tone = 'brand' %}
+
+{% set accents = {
+    brand:   {ring: 'open:ring-brand-strong/30', text: 'text-brand hover:text-brand-bright'},
+    neutral: {ring: 'open:ring-line', text: 'text-ink-muted hover:text-ink'},
+} %}
+{% set accent = accents[tone] %}
 
 <details {{ attributes.defaults({
-    class: 'group cursor-pointer rounded-field border border-line/80 bg-canvas transition-all duration-200 open:ring-1 open:ring-brand-strong/30',
+    class: 'group cursor-pointer rounded-field border border-line/80 bg-canvas transition-all duration-200 open:ring-1 ' ~ accent.ring,
 }) }}>
-    <summary class="flex list-none select-none items-center justify-between rounded-field p-4 text-xs font-bold uppercase tracking-wider text-brand transition-colors hover:bg-surface/40 hover:text-brand-bright group-open:rounded-b-none group-open:border-b group-open:border-line sm:p-5">
+    <summary class="flex list-none select-none items-center justify-between rounded-field p-4 text-xs font-bold uppercase tracking-wider transition-colors hover:bg-surface/40 group-open:rounded-b-none group-open:border-b group-open:border-line sm:p-5 {{ accent.text }}">
         <div class="flex items-center gap-2">
             {% if icon %}<span aria-hidden="true">{{ icon }}</span>{% endif %}
             <span>{{ summary }}</span>

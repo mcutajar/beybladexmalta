@@ -62,7 +62,7 @@ final readonly class BracketDecision
         public int $matches,
         string $answer = '',
     ) {
-        $this->answer = '' === $answer && $this->canBeSeeded()
+        $this->answer = '' === $answer && $this->hasNothingClose()
             ? BracketAnswers::CREATE
             : $answer;
     }
@@ -81,7 +81,7 @@ final readonly class BracketDecision
      */
     public function wasSeeded(): bool
     {
-        return $this->canBeSeeded() && BracketAnswers::CREATE === $this->answer;
+        return $this->hasNothingClose() && BracketAnswers::CREATE === $this->answer;
     }
 
     /**
@@ -152,10 +152,17 @@ final readonly class BracketDecision
     }
 
     /**
-     * A question nobody has to answer is one with nothing close and nothing
-     * wrong with it. A collision is never seeded — it has no answer to seed.
+     * Whether the league offered nothing for this spelling at all.
+     *
+     * The question that arrives answered, and — separately from what the
+     * answer currently is — the one the screen renders as a picker rather than
+     * as buttons. Those have to be the same test: a settled row somebody
+     * changes to a blader is still a settled row, and flipping its shape on
+     * re-render would hide the choice they had just made.
+     *
+     * A collision is never seeded and never settled; it has no answer to give.
      */
-    private function canBeSeeded(): bool
+    public function hasNothingClose(): bool
     {
         return !$this->isCollision && [] === $this->suggestions;
     }

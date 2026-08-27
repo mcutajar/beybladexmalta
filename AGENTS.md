@@ -568,11 +568,16 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   default and it was not changed — and it is logged per blader created, because
   a duplicate that turns up three brackets later is one you want to be able to
   trace to an unexamined row.
-- **Every control that can answer a decision is one radio group.** A `<select>`
-  sharing the field name posts alongside the radios and, being later in the
-  document, wins — blanking a button somebody already pressed. Radios are
-  exclusive by construction, so there is no precedence rule on the server. The
-  cost is the blader list repeated once per question; the server compresses it.
+- **A decision row is buttons or a select, never both.** Whatever can answer a
+  row has to be one control or one radio group: a `<select>` sharing the field
+  name posts alongside radios and, being later in the document, wins — blanking
+  a button somebody already pressed. So the shape follows the job. A live
+  question gets three buttons, because the suggestion is usually right and
+  should be one tap. A settled one gets a native picker, because the only thing
+  left to do with it is disagree, and disagreeing means finding one blader among
+  forty-eight — which is the `Orteborn` case exactly. The shape is chosen by
+  `hasNothingClose()` rather than by the current answer, so a settled row
+  somebody changes does not flip shape and hide the choice they just made.
 - **The import screen is the only thing that creates a blader deliberately, and
   it gets a ledger line of its own.** `app:create-blader` exists because
   `var/data/imports/*.txt` stops at ten and most of the bladers this screen
