@@ -28,6 +28,20 @@ final readonly class BracketAnswers
 
     public const string DROP = 'drop';
 
+    /**
+     * "The blader picked in the dropdown below", which is what the buttons
+     * cannot say on their own.
+     *
+     * A row's answer has to be one control or one radio group: a `<select>`
+     * sharing the field name posts alongside the radios and, being later in
+     * the document, quietly wins — blanking a button somebody pressed. Order
+     * cannot express "whichever was touched last", so the dropdown is a
+     * separate field and this is the radio that hands over to it. The
+     * controller folds the two together before anything here sees them, so an
+     * answer is still one string.
+     */
+    public const string ELSEWHERE = 'else';
+
     private const string BLADER = 'blader:';
 
     /**

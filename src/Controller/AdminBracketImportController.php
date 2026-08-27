@@ -146,7 +146,7 @@ final class AdminBracketImportController extends AbstractController
         }
 
         $choices = new BracketChoices(
-            answers: new BracketAnswers($this->stringsIn($request, 'decision')),
+            answers: $this->answersIn($request),
             order: $this->placesIn($request),
         );
 
@@ -280,6 +280,7 @@ final class AdminBracketImportController extends AbstractController
             'preview' => $preview,
             'confirm_form' => $confirm,
             'bladers' => $this->everyBlader(),
+            'elsewhere' => BracketAnswers::ELSEWHERE,
         ]);
     }
 
@@ -303,6 +304,29 @@ final class AdminBracketImportController extends AbstractController
         asort($bladers, \SORT_NATURAL | \SORT_FLAG_CASE);
 
         return $bladers;
+    }
+
+    /**
+     * What was said about each unreadable name, with the dropdown folded in.
+     *
+     * A row answers with buttons or with the dropdown behind "someone else",
+     * and the two cannot share a field name — a `<select>` posts alongside the
+     * radios and, being later in the document, would blank a button somebody
+     * had pressed. So the dropdown is its own field and the button that hands
+     * over to it says so; here is where the two become one answer again.
+     */
+    private function answersIn(Request $request): BracketAnswers
+    {
+        $answers = $this->stringsIn($request, 'decision');
+        $elsewhere = $this->stringsIn($request, 'elsewhere');
+
+        foreach ($answers as $key => $answer) {
+            if (BracketAnswers::ELSEWHERE === $answer) {
+                $answers[$key] = $elsewhere[$key] ?? '';
+            }
+        }
+
+        return new BracketAnswers($answers);
     }
 
     /**

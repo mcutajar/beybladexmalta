@@ -350,6 +350,10 @@ service that owns the domain rules.
     duplicate row #56 can merge, a wrong alias is a merge nobody can undo.
   - `wasSeeded()` is that rule read backwards, derived rather than posted, so a
     browser cannot claim a row was examined.
+  - Rendered as buttons for the shortlist plus one collapsed dropdown reaching
+    the rest of the league. The dropdown is its own field with a radio that
+    hands over to it, because a `<select>` sharing the field name would post
+    alongside the radios and overwrite them.
 
 - `App\Service\BracketImportService`
   - Everything a confirmed preview writes, in the order a replay would: bladers,

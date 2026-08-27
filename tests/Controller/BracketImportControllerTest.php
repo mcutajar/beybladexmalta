@@ -96,8 +96,10 @@ final class BracketImportControllerTest extends AdminPageTestCase
         self::assertSelectorTextContains('body', '90');
 
         // Both readable names resolved; both unreadable ones are questions.
-        self::assertCount(1, $crawler->filter('fieldset'), 'One live question.');
-        self::assertCount(1, $crawler->filter('select[name^="decision["]'), 'One settled.');
+        self::assertCount(2, $crawler->filter('fieldset'));
+
+        // Every row can reach a blader the buttons do not show.
+        self::assertCount(2, $crawler->filter('select[name^="elsewhere["]'));
         self::assertSelectorTextContains('body', self::UNKNOWN);
         self::assertSelectorTextContains('body', self::MISSPELLED);
 
@@ -123,13 +125,8 @@ final class BracketImportControllerTest extends AdminPageTestCase
 
         $this->fetchBracket($this->createBrowser());
 
-        /*
-         * A picker rather than buttons, because the only thing left to do with
-         * it is disagree — and disagreeing means finding one blader in a list
-         * of all of them.
-         */
         self::assertSelectorExists(sprintf(
-            'select[name="decision[%s]"] option[value="create"][selected]',
+            'input[name="decision[%s]"][value="create"][checked]',
             self::UNKNOWN_KEY,
         ));
 
@@ -176,6 +173,64 @@ final class BracketImportControllerTest extends AdminPageTestCase
         PlayerFactory::assert()->exists(['name' => self::UNKNOWN]);
 
         $this->assertFlashSays($client, '1 blader created (1 by default)');
+    }
+
+    /**
+     * The `Orteborn` shape: nothing came close, so the row arrives answered as
+     * somebody new — but it is three edits from a blader the league has, which
+     * is past the suggestion threshold. The dropdown behind "someone else" is
+     * the only way to say so, and it is a separate field from the buttons, so
+     * this is also the test that the two are folded back into one answer.
+     */
+    public function testTheDropdownReachesABladerTheButtonsCannotShow(): void
+    {
+        $this->league();
+
+        $stranger = PlayerFactory::createOne(['name' => 'Otrebor']);
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        $this->confirm($client, $crawler, [
+            'decision['.self::MISSPELLED_KEY.']' => 'blader:'.PlayerFactory::find(['name' => 'Giglio'])->getId(),
+            'decision['.self::UNKNOWN_KEY.']' => 'else',
+            'elsewhere['.self::UNKNOWN_KEY.']' => 'blader:'.$stranger->getId(),
+        ]);
+
+        self::assertResponseRedirects(self::PAGE);
+
+        // Nobody was invented: the spelling became an alias of a blader on record.
+        PlayerFactory::assert()->count(4);
+        PlayerFactory::assert()->notExists(['name' => self::UNKNOWN]);
+
+        self::assertPlacementsScoredInOrder(self::findTournament(self::TITLE), [
+            self::KNOWN,
+            self::ALIASED,
+            'Otrebor',
+            'Giglio',
+        ]);
+    }
+
+    /**
+     * Handing over to the dropdown without picking anybody in it answers
+     * nothing, which has to read as unanswered rather than as a blank alias.
+     */
+    public function testHandingOverToAnEmptyDropdownAnswersNothing(): void
+    {
+        $this->league();
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        $this->confirm($client, $crawler, [
+            'decision['.self::MISSPELLED_KEY.']' => 'else',
+        ]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('body', 'Nothing was written');
+
+        self::assertNoEventWasImported();
+        self::assertLedgerIsEmpty();
     }
 
     public function testAnUnansweredNameStopsTheImport(): void
