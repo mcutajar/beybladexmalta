@@ -343,6 +343,14 @@ service that owns the domain rules.
     second import doubles the event), and one with **no standings** (it states
     no finishing order).
 
+- `App\Dto\BracketDecision`
+  - One unreadable display name and the three answers it has, plus the default
+    it arrives with. **Nothing close: answered as somebody new. A suggestion:
+    never answered for you.** The asymmetry is the point — a wrong blader is a
+    duplicate row #56 can merge, a wrong alias is a merge nobody can undo.
+  - `wasSeeded()` is that rule read backwards, derived rather than posted, so a
+    browser cannot claim a row was examined.
+
 - `App\Service\BracketImportService`
   - Everything a confirmed preview writes, in the order a replay would: bladers,
     aliases, the snapshot, the tournament with its ten scoring results, then the

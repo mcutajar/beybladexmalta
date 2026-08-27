@@ -125,6 +125,35 @@ final readonly class BracketPreview
     }
 
     /**
+     * The questions that arrived answered, which is every spelling with
+     * nothing close to it.
+     *
+     * Collapsed on the screen rather than hidden: they are still editable, and
+     * on the 23 August bracket they are ten rows of the fourteen — the
+     * difference between reviewing a list and working through one.
+     *
+     * @return list<BracketDecision>
+     */
+    public function settled(): array
+    {
+        return array_values(array_filter(
+            $this->decisions,
+            static fn (BracketDecision $decision): bool => !$decision->isOutstanding(),
+        ));
+    }
+
+    /**
+     * How many answers are the screen's rather than somebody's.
+     */
+    public function seeded(): int
+    {
+        return count(array_filter(
+            $this->decisions,
+            static fn (BracketDecision $decision): bool => $decision->wasSeeded(),
+        ));
+    }
+
+    /**
      * @return list<BracketDecision>
      */
     public function collisions(): array

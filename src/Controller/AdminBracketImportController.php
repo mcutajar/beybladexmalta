@@ -382,7 +382,12 @@ final class AdminBracketImportController extends AbstractController
         }
 
         if ($outcome->created > 0) {
-            $message .= sprintf(', %d %s created', $outcome->created, 1 === $outcome->created ? 'blader' : 'bladers');
+            $message .= sprintf(
+                ', %d %s created%s',
+                $outcome->created,
+                1 === $outcome->created ? 'blader' : 'bladers',
+                $outcome->seeded > 0 ? sprintf(' (%d by default)', $outcome->seeded) : '',
+            );
         }
 
         if ($outcome->aliased > 0) {

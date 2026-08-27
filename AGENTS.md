@@ -545,6 +545,34 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   already names, because `app:import-tournament` has no guard and a second
   import doubles the evening; and one with no standings, which states no
   finishing order.
+- **A question with nothing close to it arrives answered; one with a suggestion
+  never does.** The two directions are not the same risk, and the asymmetry is
+  the whole rule. An unnecessary blader is a duplicate row — visible in the
+  list, and #56 merges it away. An unnecessary alias welds two people into one,
+  there is no unmerge, and nothing on any page looks wrong afterwards. Measured
+  against the 23 August bracket: fourteen names needed a decision, ten had
+  nothing close, and of the four suggestions **one was two different people**
+  (`Steve V.` is one edit from `Steve`). So the ten are seeded to *somebody new*
+  and folded into a review disclosure, and the four are offered their suggestion
+  first, loudest and one tap away — still a tap. There is deliberately no
+  "accept all suggestions": at one in four wrong, a batch control would
+  recreate exactly the risk the seeding rule avoids.
+  Seeding is wrong sometimes too and the screen says so: `Orteborn` is three
+  edits from `Otrebor`, past `AliasResolver::CLOSE_ENOUGH`, so nothing is
+  suggested and the default is a duplicate unless somebody uses *Someone else*.
+- **`BracketDecision` owns the default, and `wasSeeded()` is the same rule read
+  backwards.** It is derived rather than transported: the screen renders a
+  seeded row with its answer already selected, so the browser posts it back like
+  any other and a "this was not looked at" flag would be one the browser
+  controls. What is recorded is narrower and true either way — the answer is the
+  default and it was not changed — and it is logged per blader created, because
+  a duplicate that turns up three brackets later is one you want to be able to
+  trace to an unexamined row.
+- **Every control that can answer a decision is one radio group.** A `<select>`
+  sharing the field name posts alongside the radios and, being later in the
+  document, wins — blanking a button somebody already pressed. Radios are
+  exclusive by construction, so there is no precedence rule on the server. The
+  cost is the blader list repeated once per question; the server compresses it.
 - **The import screen is the only thing that creates a blader deliberately, and
   it gets a ledger line of its own.** `app:create-blader` exists because
   `var/data/imports/*.txt` stops at ten and most of the bladers this screen

@@ -21,6 +21,9 @@ final readonly class BracketImportOutcome
     /**
      * @param int          $scored   placements written as results, which is the top ten at most
      * @param int          $created  bladers this screen invented, being the only thing that does
+     * @param int          $seeded   how many of those answers were the screen's rather than
+     *                               somebody's — said out loud, because a default that was
+     *                               never examined is the one worth being able to find again
      * @param int          $aliased  spellings filed against a blader already on record
      * @param list<string> $problems why an alias was refused, in `AddAliasResult`'s terms
      */
@@ -29,6 +32,7 @@ final readonly class BracketImportOutcome
         public BracketPreview $preview,
         public int $scored = 0,
         public int $created = 0,
+        public int $seeded = 0,
         public int $aliased = 0,
         public ?ChallongeArchiveOutcome $archive = null,
         public array $problems = [],
@@ -39,6 +43,7 @@ final readonly class BracketImportOutcome
         BracketPreview $preview,
         int $scored,
         int $created,
+        int $seeded,
         int $aliased,
         ?ChallongeArchiveOutcome $archive,
     ): self {
@@ -47,6 +52,7 @@ final readonly class BracketImportOutcome
             $preview,
             $scored,
             $created,
+            $seeded,
             $aliased,
             $archive,
         );
