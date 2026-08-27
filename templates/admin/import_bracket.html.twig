@@ -77,8 +77,9 @@
 
             {% if settled is not empty %}
                 <twig:Disclosure
-                    summary="{{ settled|length }} answered by default — review"
+                    summary="{{ settled|length }} with nothing close — review"
                     icon="✓"
+                    tone="neutral"
                     class="{{ outstanding is empty ? '' : 'mt-5' }}"
                 >
                     <p class="mb-4 text-xs leading-relaxed text-ink-faint">
@@ -86,8 +87,8 @@
                         That is the safe way round: an unnecessary blader is a duplicate row you can see and merge,
                         while an unnecessary alias welds two people together and cannot be undone.
                         <strong class="text-ink-muted">It is still wrong sometimes</strong> &mdash; a spelling more than
-                        two edits from a blader's name is offered nothing at all &mdash; so use
-                        <em>Someone else</em> on any row you recognise.
+                        two edits from a blader's name is offered nothing at all &mdash; so pick the blader
+                        on any row you recognise.
                     </p>
 
                     <ul>

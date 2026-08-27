@@ -96,7 +96,8 @@ final class BracketImportControllerTest extends AdminPageTestCase
         self::assertSelectorTextContains('body', '90');
 
         // Both readable names resolved; both unreadable ones are questions.
-        self::assertCount(2, $crawler->filter('fieldset'));
+        self::assertCount(1, $crawler->filter('fieldset'), 'One live question.');
+        self::assertCount(1, $crawler->filter('select[name^="decision["]'), 'One settled.');
         self::assertSelectorTextContains('body', self::UNKNOWN);
         self::assertSelectorTextContains('body', self::MISSPELLED);
 
@@ -122,13 +123,18 @@ final class BracketImportControllerTest extends AdminPageTestCase
 
         $this->fetchBracket($this->createBrowser());
 
+        /*
+         * A picker rather than buttons, because the only thing left to do with
+         * it is disagree — and disagreeing means finding one blader in a list
+         * of all of them.
+         */
         self::assertSelectorExists(sprintf(
-            'input[name="decision[%s]"][value="create"][checked]',
+            'select[name="decision[%s]"] option[value="create"][selected]',
             self::UNKNOWN_KEY,
         ));
 
         // And it is folded away, because it is not asking anything.
-        self::assertSelectorTextContains('body', '1 answered by default');
+        self::assertSelectorTextContains('body', '1 with nothing close');
     }
 
     public function testANameWithASuggestionIsNeverAnsweredForYou(): void
