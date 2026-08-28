@@ -10,7 +10,9 @@ use App\Entity\PlayerAlias;
 use App\Entity\PlayerAliasSource;
 use App\Exception\LedgerWriteException;
 use App\Service\AddAliasResult;
+use App\Service\AliasRejectionService;
 use App\Service\AliasService;
+use App\Service\RejectAliasSuggestionResult;
 use App\Service\RemoveAliasResult;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -39,10 +41,15 @@ final class AliasCommand extends Command
 
     private const string LIST = 'list';
 
+    private const string REJECT = 'reject';
+
+    private const string ALLOW = 'allow';
+
     private const string REMOVE = 'remove';
 
     public function __construct(
         private readonly AliasService $aliases,
+        private readonly AliasRejectionService $rejections,
     ) {
         parent::__construct();
     }
@@ -53,12 +60,12 @@ final class AliasCommand extends Command
             ->addArgument(
                 'action',
                 InputArgument::REQUIRED,
-                sprintf('One of: %s, %s, %s', self::ADD, self::LIST, self::REMOVE),
+                sprintf('One of: %s, %s, %s, %s, %s', self::ADD, self::LIST, self::REMOVE, self::REJECT, self::ALLOW),
             )
             ->addArgument(
                 'names',
                 InputArgument::IS_ARRAY,
-                'add: the blader, then the spelling. remove: the spelling. list: nothing, or one blader.',
+                'add/reject/allow: the blader, then the spelling. remove: the spelling. list: nothing, or one blader.',
             )
             ->addOption(
                 'source',
@@ -71,6 +78,8 @@ final class AliasCommand extends Command
             ->addUsage('list')
             ->addUsage("list 'Il-Karm'")
             ->addUsage("remove 'KARM'")
+            ->addUsage("reject 'Steve' 'Steve V.'")
+            ->addUsage("allow 'Steve' 'Steve V.'")
             ->setHelp(<<<'HELP'
                 Over two hundred Challonge display names belong to about seventy-six
                 bladers. Case, punctuation and the "(invitation pending)" suffix are
@@ -94,6 +103,8 @@ final class AliasCommand extends Command
                 self::ADD => $this->add($io, $names, (string) $input->getOption('source')),
                 self::LIST => $this->list($io, $names),
                 self::REMOVE => $this->remove($io, $names),
+                self::REJECT => $this->reject($io, $names),
+                self::ALLOW => $this->allow($io, $names),
                 default => $this->unknownAction($io, (string) $input->getArgument('action')),
             };
         } catch (LedgerWriteException $exception) {
@@ -252,6 +263,48 @@ final class AliasCommand extends Command
         };
     }
 
+    /** @param list<string> $names */
+    private function reject(SymfonyStyle $io, array $names): int
+    {
+        if (2 !== count($names)) {
+            $io->error("Rejecting a suggestion takes the proposed blader and then the spelling: app:alias reject 'Steve' 'Steve V.'.");
+
+            return Command::INVALID;
+        }
+
+        [$blader, $spelling] = $names;
+
+        return match ($this->rejections->reject($blader, $spelling)) {
+            RejectAliasSuggestionResult::Rejected => $this->say($io, sprintf('%s will no longer be suggested for "%s".', $this->named($blader), $spelling)),
+            RejectAliasSuggestionResult::AlreadyRejected => $this->note($io, sprintf('%s was already rejected for "%s".', $this->named($blader), $spelling)),
+            RejectAliasSuggestionResult::BladerNotFound => $this->refuse($io, sprintf('There is no blader called "%s".', $blader)),
+            RejectAliasSuggestionResult::BladerIsAmbiguous => $this->refuse($io, sprintf('"%s" is how more than one blader is already spelled.', $blader)),
+            RejectAliasSuggestionResult::NotAName => $this->refuse($io, sprintf('"%s" has no name in it, so no suggestion can be rejected.', $spelling)),
+            RejectAliasSuggestionResult::Allowed, RejectAliasSuggestionResult::NotRejected => throw new \LogicException('Unexpected rejection result.'),
+        };
+    }
+
+    /** @param list<string> $names */
+    private function allow(SymfonyStyle $io, array $names): int
+    {
+        if (2 !== count($names)) {
+            $io->error("Allowing a suggestion takes the proposed blader and then the spelling: app:alias allow 'Steve' 'Steve V.'.");
+
+            return Command::INVALID;
+        }
+
+        [$blader, $spelling] = $names;
+
+        return match ($this->rejections->allow($blader, $spelling)) {
+            RejectAliasSuggestionResult::Allowed => $this->say($io, sprintf('%s may be suggested for "%s" again.', $this->named($blader), $spelling)),
+            RejectAliasSuggestionResult::NotRejected => $this->note($io, sprintf('%s was not rejected for "%s". Nothing was removed.', $this->named($blader), $spelling)),
+            RejectAliasSuggestionResult::BladerNotFound => $this->refuse($io, sprintf('There is no blader called "%s".', $blader)),
+            RejectAliasSuggestionResult::BladerIsAmbiguous => $this->refuse($io, sprintf('"%s" is how more than one blader is already spelled.', $blader)),
+            RejectAliasSuggestionResult::NotAName => $this->refuse($io, sprintf('"%s" has no name in it, so it cannot be allowed.', $spelling)),
+            RejectAliasSuggestionResult::Rejected, RejectAliasSuggestionResult::AlreadyRejected => throw new \LogicException('Unexpected allowance result.'),
+        };
+    }
+
     /**
      * The refusal the whole ticket is about, printed with the shortlist the
      * resolver came back with. Never acted on — the person reading it decides,
@@ -327,11 +380,13 @@ final class AliasCommand extends Command
     private function unknownAction(SymfonyStyle $io, string $action): int
     {
         $io->error(sprintf(
-            '"%s" is not something this does. The actions are: %s, %s, %s.',
+            '"%s" is not something this does. The actions are: %s, %s, %s, %s, %s.',
             $action,
             self::ADD,
             self::LIST,
             self::REMOVE,
+            self::REJECT,
+            self::ALLOW,
         ));
 
         return Command::INVALID;

@@ -259,13 +259,13 @@ class LedgerService
 
     public function aliasSuggestionRejectedCommand(string $bladerName, string $spelling): string
     {
-        return sprintf('php bin/console app:alias-rejection reject %s %s', escapeshellarg($bladerName), escapeshellarg($spelling));
+        return sprintf('php bin/console app:alias reject %s %s', escapeshellarg($bladerName), escapeshellarg($spelling));
     }
 
     public function logAliasSuggestionAllowed(string $bladerName, string $spelling): void
     {
         $this->append(sprintf(
-            'php bin/console app:alias-rejection allow %s %s',
+            'php bin/console app:alias allow %s %s',
             escapeshellarg($bladerName),
             escapeshellarg($spelling),
         ));
