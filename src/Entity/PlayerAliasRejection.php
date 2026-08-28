@@ -65,4 +65,9 @@ class PlayerAliasRejection
     {
         return $this->recordedAt;
     }
+
+    public function belongsTo(Player $player): void
+    {
+        $this->player = $player;
+    }
 }

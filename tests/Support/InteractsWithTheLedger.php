@@ -174,6 +174,15 @@ trait InteractsWithTheLedger
         ));
     }
 
+    protected static function assertLedgerRecordsPlayerMerge(string $fromName, string $intoName): void
+    {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:merge-player %s %s --force',
+            escapeshellarg($fromName),
+            escapeshellarg($intoName),
+        ));
+    }
+
     /**
      * file_put_contents() cannot write to a directory as though it were a
      * regular file, so a directory in the ledger's place forces the write to

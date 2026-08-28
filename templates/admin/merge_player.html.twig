@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}MBC Terminal | Merge Bladers{% endblock %}
+{% block column %}max-w-2xl px-3 py-6 sm:px-4 md:py-12{% endblock %}
+
+{% block body %}
+    <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-8">Return to hub</twig:BackLink>
+
+    <twig:PageHeader eyebrow="Identity correction" eyebrowTone="flame" title="Merge two bladers" size="sm">
+        Move every recorded appearance from a duplicate identity into the surviving blader.
+    </twig:PageHeader>
+
+    <twig:Flashes />
+
+    <twig:Alert tone="heat" class="mb-6">
+        The losing blader will be deleted. Review first: a merge is refused when the two identities overlap in a tournament, season registration, or team.
+    </twig:Alert>
+
+    <twig:Card variant="gradient" class="mb-6">
+        {{ form_start(merge_form, {'attr': {'class': 'space-y-4'}}) }}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <twig:Field label="Losing blader" hint="This player row will be removed.">
+                {{ form_widget(merge_form.from) }}
+            </twig:Field>
+            <twig:Field label="Surviving blader" hint="All history will point here.">
+                {{ form_widget(merge_form.into) }}
+            </twig:Field>
+        </div>
+        <twig:Field label="Tournament administration passphrase">
+            {{ form_widget(merge_form.passphrase) }}
+        </twig:Field>
+        <label class="flex items-start gap-3 rounded-card border border-line bg-surface-soft p-3 text-sm text-ink-muted">
+            {{ form_widget(merge_form.confirm, {'attr': {'class': 'mt-1'}}) }}
+            <span>Apply this merge after the collision checks pass. Leave unticked for a dry run.</span>
+        </label>
+        <div class="border-t border-line/60 pt-4">
+            <twig:Button tone="flame" class="w-full">Review or apply merge</twig:Button>
+        </div>
+        {{ form_end(merge_form, {'render_rest': false}) }}
+    </twig:Card>
+
+    {% if plan and plan.ready %}
+        <twig:Card>
+            <twig:SectionHeading title="What will move" size="sm" />
+            <twig:TotalsList class="mt-4" :rows="[
+                {label: 'Tournament results', value: plan.results|length},
+                {label: 'Archived participations', value: plan.participants|length},
+                {label: 'Season registrations', value: plan.registrations|length},
+                {label: 'Team memberships', value: plan.teamMemberships|length},
+                {label: 'Aliases', value: plan.aliases|length},
+                {label: 'Rejected suggestions', value: plan.rejections|length},
+            ]" />
+            <div class="mt-4 space-y-2 text-sm text-ink-muted">
+                <p><strong class="text-ink">Losing name retained:</strong> {{ plan.from.name }} becomes an alias of {{ plan.into.name }}.</p>
+                <p><strong class="text-ink">Match history:</strong> the {{ plan.participants|length }} moved participation(s) keep their matches and games attached.</p>
+                <p><strong class="text-ink">Old profile:</strong> <code>{{ plan.oldProfilePath }}</code> redirects permanently.</p>
+                {% if plan.reconciledRejections %}<p>{{ plan.reconciledRejections|length }} duplicate or contradictory rejection(s) will be reconciled.</p>{% endif %}
+                {% if plan.existingRedirects %}<p>{{ plan.existingRedirects|length }} older profile redirect(s) will follow the survivor.</p>{% endif %}
+            </div>
+        </twig:Card>
+    {% endif %}
+{% endblock %}

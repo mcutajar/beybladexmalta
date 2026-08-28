@@ -114,5 +114,6 @@ final class PageRendersTest extends PageTestCase
     {
         $this->assertPageRenders('/admin/payments');
         $this->assertPageRenders('/admin/import');
+        $this->assertPageRenders('/admin/merge-player');
     }
 }

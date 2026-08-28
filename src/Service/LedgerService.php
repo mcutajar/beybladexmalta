@@ -271,6 +271,20 @@ class LedgerService
         ));
     }
 
+    public function logPlayerMerged(string $fromName, string $intoName): void
+    {
+        $this->append($this->playerMergedCommand($fromName, $intoName));
+    }
+
+    public function playerMergedCommand(string $fromName, string $intoName): string
+    {
+        return sprintf(
+            'php bin/console app:merge-player %s %s --force',
+            escapeshellarg($fromName),
+            escapeshellarg($intoName),
+        );
+    }
+
     private function append(string $commandLine): void
     {
         /*

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Repository\PlayerMergeRedirectRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\SeasonRegistrationRepository;
 use App\Repository\SeasonRepository;
@@ -40,12 +41,21 @@ class LeagueController extends AbstractController
     #[Route('/season/{slug}/player/{id}', name: 'player_season_details', methods: ['GET'])]
     #[Route('/seasons/{slug}/player/{id}', name: 'player_season_details_2', methods: ['GET'])]
     #[Route('/preseason/player/{id}', name: 'player_season_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
-    public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, SeasonRepository $seasonRepository): Response
+    public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects): Response
     {
         $season = $seasonRepository->findOneBy(['slug' => $slug]);
         $player = $playerRepository->find($id);
 
-        if (!$season || !$player) {
+        if (!$season) {
+            throw $this->createNotFoundException('Requested contextual profiles do not exist.');
+        }
+
+        if (!$player) {
+            $survivor = $redirects->survivorFor($id);
+            if (null !== $survivor && null !== $survivor->getId()) {
+                return $this->redirectToRoute('player_season_details', ['slug' => $slug, 'id' => $survivor->getId()], Response::HTTP_MOVED_PERMANENTLY);
+            }
+
             throw $this->createNotFoundException('Requested contextual profiles do not exist.');
         }
 

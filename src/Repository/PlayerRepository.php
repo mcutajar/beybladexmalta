@@ -134,6 +134,21 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
         $this->getEntityManager()->persist($player);
     }
 
+    public function remove(Player $player): void
+    {
+        $this->getEntityManager()->remove($player);
+    }
+
+    /** @return list<Player> */
+    public function allExcept(Player $player): array
+    {
+        return $this->createQueryBuilder('p')
+            ->where('p != :player')
+            ->setParameter('player', $player)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findByName(string $name): ?Player
     {
         return $this->createQueryBuilder('p')
