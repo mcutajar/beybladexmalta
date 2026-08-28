@@ -217,26 +217,13 @@ class BracketImportService
         return $created;
     }
 
-    /**
-     * The first candidate is the suggestion the row puts in front of the
-     * operator. Choosing new or somebody else is an explicit refusal of it.
-     */
+    /** Every displayed candidate the operator's answer ruled out. */
     private function recordRejectedSuggestions(BracketPreview $preview): void
     {
         foreach ($preview->decisions as $decision) {
-            $suggestion = $decision->best();
-
-            if (null === $suggestion) {
-                continue;
+            foreach ($decision->rejectedSuggestions() as $suggestion) {
+                $this->rejections->reject($suggestion->player->getName(), $decision->name);
             }
-
-            $chosen = BracketAnswers::bladerId($decision->answer);
-
-            if ($chosen === $suggestion->player->getId() || BracketAnswers::DROP === $decision->answer || '' === $decision->answer) {
-                continue;
-            }
-
-            $this->rejections->reject($suggestion->player->getName(), $decision->name);
         }
     }
 
