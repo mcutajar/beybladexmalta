@@ -58,4 +58,9 @@ class TournamentTeamMember
     {
         return $this->player;
     }
+
+    public function belongsTo(Player $player): void
+    {
+        $this->player = $player;
+    }
 }

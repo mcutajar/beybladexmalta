@@ -22,7 +22,7 @@ class Player
     private string $name;
 
     /** @var Collection<int, TournamentResult> */
-    #[ORM\OneToMany(targetEntity: TournamentResult::class, mappedBy: 'player', orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: TournamentResult::class, mappedBy: 'player')]
     private Collection $results;
 
     public function __construct()
