@@ -156,6 +156,24 @@ trait InteractsWithTheLedger
         ));
     }
 
+    protected static function assertLedgerRecordsAliasRejection(string $bladerName, string $spelling): void
+    {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:alias reject %s %s',
+            escapeshellarg($bladerName),
+            escapeshellarg($spelling),
+        ));
+    }
+
+    protected static function assertLedgerRecordsAliasAllowance(string $bladerName, string $spelling): void
+    {
+        self::assertLedgerHolds(sprintf(
+            'php bin/console app:alias allow %s %s',
+            escapeshellarg($bladerName),
+            escapeshellarg($spelling),
+        ));
+    }
+
     /**
      * file_put_contents() cannot write to a directory as though it were a
      * regular file, so a directory in the ledger's place forces the write to

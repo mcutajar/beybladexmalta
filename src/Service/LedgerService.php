@@ -252,6 +252,25 @@ class LedgerService
         );
     }
 
+    public function logAliasSuggestionRejected(string $bladerName, string $spelling): void
+    {
+        $this->append($this->aliasSuggestionRejectedCommand($bladerName, $spelling));
+    }
+
+    public function aliasSuggestionRejectedCommand(string $bladerName, string $spelling): string
+    {
+        return sprintf('php bin/console app:alias reject %s %s', escapeshellarg($bladerName), escapeshellarg($spelling));
+    }
+
+    public function logAliasSuggestionAllowed(string $bladerName, string $spelling): void
+    {
+        $this->append(sprintf(
+            'php bin/console app:alias allow %s %s',
+            escapeshellarg($bladerName),
+            escapeshellarg($spelling),
+        ));
+    }
+
     private function append(string $commandLine): void
     {
         /*

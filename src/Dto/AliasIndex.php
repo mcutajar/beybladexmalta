@@ -24,12 +24,14 @@ use App\Entity\Player;
 final class AliasIndex
 {
     /**
-     * @param array<string, list<Player>> $bladers normalised blader name => whoever bears it
-     * @param array<string, Player>       $aliases normalised alias => the blader it points at
+     * @param array<string, list<Player>>     $bladers    normalised blader name => whoever bears it
+     * @param array<string, Player>           $aliases    normalised alias => the blader it points at
+     * @param array<string, array<int, true>> $rejections normalised spelling => rejected player ids
      */
     public function __construct(
         private readonly array $bladers,
         private readonly array $aliases,
+        private readonly array $rejections = [],
     ) {
     }
 
@@ -52,6 +54,13 @@ final class AliasIndex
     public function aliasedTo(string $normalised): ?Player
     {
         return $this->aliases[$normalised] ?? null;
+    }
+
+    public function rejects(string $normalised, Player $player): bool
+    {
+        $id = $player->getId();
+
+        return null !== $id && isset($this->rejections[$normalised][$id]);
     }
 
     /**

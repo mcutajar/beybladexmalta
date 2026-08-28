@@ -8,6 +8,7 @@ use App\Dto\BracketAnswers;
 use App\Dto\ChallongeUrl;
 use App\Repository\PlayerRepository;
 use App\Repository\SeasonRepository;
+use App\Service\AliasRejectionService;
 use App\Service\AliasService;
 use App\Service\BladerService;
 use App\Service\BracketImportService;
@@ -18,6 +19,7 @@ use App\Service\ChallongeFetcher;
 use App\Service\ChallongeSnapshotWriter;
 use App\Service\TournamentImportService;
 use App\Tests\Factory\PlayerAliasFactory;
+use App\Tests\Factory\PlayerAliasRejectionFactory;
 use App\Tests\Factory\PlayerFactory;
 use App\Tests\Factory\TournamentFactory;
 use App\Tests\Factory\TournamentResultFactory;
@@ -477,6 +479,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
             $container->get(ChallongeSnapshotWriter::class),
             $container->get(ChallongeEventFinder::class),
             $container->get(AliasService::class),
+            $container->get(AliasRejectionService::class),
             $container->get(BladerService::class),
             $container->get(PlayerRepository::class),
             $container->get(SeasonRepository::class),
@@ -555,6 +558,11 @@ final class BracketImportControllerTest extends AdminPageTestCase
         ]);
 
         self::assertResponseRedirects(self::PAGE);
+
+        PlayerAliasRejectionFactory::assert()->exists([
+            'player' => PlayerFactory::find(['name' => 'Giglio']),
+            'normalised' => self::MISSPELLED_KEY,
+        ]);
 
         $tournament = self::findTournament(self::TITLE);
 

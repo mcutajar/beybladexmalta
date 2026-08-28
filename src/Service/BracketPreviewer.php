@@ -530,6 +530,19 @@ class BracketPreviewer
         $lines = [];
 
         foreach ($decisions as $decision) {
+            $suggestion = $decision->best();
+            $chosen = BracketAnswers::bladerId($decision->answer);
+
+            if (null !== $suggestion
+                && $chosen !== $suggestion->player->getId()
+                && BracketAnswers::DROP !== $decision->answer
+                && '' !== $decision->answer) {
+                $lines[] = $this->ledgerService->aliasSuggestionRejectedCommand(
+                    $suggestion->player->getName(),
+                    $decision->name,
+                );
+            }
+
             if (BracketAnswers::CREATE === $decision->answer) {
                 $lines[] = $this->ledgerService->createBladerCommand(trim($decision->name));
             }

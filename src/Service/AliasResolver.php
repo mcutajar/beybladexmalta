@@ -10,6 +10,7 @@ use App\Dto\AliasResolution;
 use App\Dto\AliasSuggestion;
 use App\Dto\AliasSuggestionReason;
 use App\Entity\Player;
+use App\Repository\PlayerAliasRejectionRepository;
 use App\Repository\PlayerAliasRepository;
 use App\Repository\PlayerRepositoryInterface;
 
@@ -70,6 +71,7 @@ class AliasResolver
     public function __construct(
         private PlayerRepositoryInterface $players,
         private PlayerAliasRepository $aliases,
+        private PlayerAliasRejectionRepository $rejections,
         private AliasNormaliser $normaliser,
     ) {
     }
@@ -169,7 +171,17 @@ class AliasResolver
             $aliases[$alias->getNormalised()] = $alias->getPlayer();
         }
 
-        return new AliasIndex($bladers, $aliases);
+        $rejections = [];
+
+        foreach ($this->rejections->all() as $rejection) {
+            $id = $rejection->getPlayer()->getId();
+
+            if (null !== $id) {
+                $rejections[$rejection->getNormalised()][$id] = true;
+            }
+        }
+
+        return new AliasIndex($bladers, $aliases, $rejections);
     }
 
     /**
@@ -234,7 +246,10 @@ class AliasResolver
             }
         }
 
-        return $this->best($suggestions);
+        return $this->best(array_values(array_filter(
+            $suggestions,
+            static fn (AliasSuggestion $suggestion): bool => !$index->rejects($normalised, $suggestion->player),
+        )));
     }
 
     /**
