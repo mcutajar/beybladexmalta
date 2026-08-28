@@ -58,6 +58,7 @@ class BracketImportService
         private ChallongeSnapshotWriter $snapshotWriter,
         private ChallongeEventFinder $events,
         private AliasService $aliases,
+        private AliasRejectionService $rejections,
         private BladerService $bladers,
         private PlayerRepositoryInterface $players,
         private SeasonRepository $seasons,
@@ -89,6 +90,7 @@ class BracketImportService
         }
 
         $created = $this->createBladers($preview);
+        $this->recordRejectedSuggestions($preview);
         $problems = $this->fileAliases($preview);
 
         if ([] !== $problems) {
@@ -213,6 +215,29 @@ class BracketImportService
         }
 
         return $created;
+    }
+
+    /**
+     * The first candidate is the suggestion the row puts in front of the
+     * operator. Choosing new or somebody else is an explicit refusal of it.
+     */
+    private function recordRejectedSuggestions(BracketPreview $preview): void
+    {
+        foreach ($preview->decisions as $decision) {
+            $suggestion = $decision->best();
+
+            if (null === $suggestion) {
+                continue;
+            }
+
+            $chosen = BracketAnswers::bladerId($decision->answer);
+
+            if ($chosen === $suggestion->player->getId() || BracketAnswers::DROP === $decision->answer || '' === $decision->answer) {
+                continue;
+            }
+
+            $this->rejections->reject($suggestion->player->getName(), $decision->name);
+        }
     }
 
     /**

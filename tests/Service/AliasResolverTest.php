@@ -11,6 +11,7 @@ use App\Dto\AliasSuggestionReason;
 use App\Entity\Player;
 use App\Service\AliasResolver;
 use App\Tests\Factory\PlayerAliasFactory;
+use App\Tests\Factory\PlayerAliasRejectionFactory;
 use App\Tests\Factory\PlayerFactory;
 use App\Tests\Support\ServiceTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -108,6 +109,25 @@ final class AliasResolverTest extends ServiceTestCase
         self::assertSame(['Obelix'], self::suggested($resolution));
         self::assertSame(AliasSuggestionReason::Spelling, $resolution->suggestions[0]->reason);
         self::assertSame(2, $resolution->suggestions[0]->distance);
+    }
+
+    public function testARejectedSuggestionIsNeverOfferedAgain(): void
+    {
+        $steve = $this->blader('Steve');
+        $this->blader('Steve X');
+        PlayerAliasRejectionFactory::createOne(['player' => $steve, 'spelling' => 'Steve V.']);
+
+        self::assertSame(['Steve X'], self::suggested($this->resolver->resolve('STEVE_V')));
+    }
+
+    public function testARejectionOnlyAppliesToThatSpellingAndBladerPair(): void
+    {
+        $steve = $this->blader('Steve');
+        $this->blader('Steve X');
+        PlayerAliasRejectionFactory::createOne(['player' => $steve, 'spelling' => 'Steve V.']);
+
+        self::assertContains('Steve', self::suggested($this->resolver->resolve('Steve W.')));
+        self::assertContains('Steve X', self::suggested($this->resolver->resolve('Steve V.')));
     }
 
     /**
