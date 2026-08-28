@@ -6,6 +6,7 @@ namespace App\Tests\Command;
 
 use App\Entity\PlayerAliasSource;
 use App\Tests\Factory\PlayerAliasFactory;
+use App\Tests\Factory\PlayerAliasRejectionFactory;
 use App\Tests\Factory\PlayerFactory;
 use App\Tests\Support\ConsoleTestCase;
 use Symfony\Component\Console\Command\Command;
@@ -314,6 +315,53 @@ final class AliasCommandTest extends ConsoleTestCase
         self::assertLedgerRecordsAliasRemoval('KARM');
     }
 
+    public function testItRejectsAReplayableSuggestion(): void
+    {
+        $steve = PlayerFactory::createOne(['name' => 'Steve']);
+
+        $tester = $this->executeCommand(['action' => 'reject', 'names' => ['Steve', 'Steve V.']]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+        self::assertCommandSaid($tester, 'Steve will no longer be suggested for "Steve V.".');
+        PlayerAliasRejectionFactory::assert()->exists(['player' => $steve, 'normalised' => 'stevev']);
+        self::assertLedgerRecordsAliasRejection('Steve', 'Steve V.');
+    }
+
+    public function testReplayingARejectionChangesNothing(): void
+    {
+        PlayerFactory::createOne(['name' => 'Steve']);
+        $this->executeCommand(['action' => 'reject', 'names' => ['Steve', 'Steve V.']]);
+
+        $tester = $this->executeCommand(['action' => 'reject', 'names' => ['Steve', 'Steve V.']]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+        PlayerAliasRejectionFactory::assert()->count(1);
+        self::assertLedgerRecordsAliasRejection('Steve', 'Steve V.');
+    }
+
+    public function testItAllowsARejectedSuggestionAgain(): void
+    {
+        $steve = PlayerFactory::createOne(['name' => 'Steve']);
+        PlayerAliasRejectionFactory::createOne(['player' => $steve, 'spelling' => 'Steve V.']);
+
+        $tester = $this->executeCommand(['action' => 'allow', 'names' => ['Steve', 'Steve V.']]);
+
+        self::assertCommandExited($tester, Command::SUCCESS);
+        PlayerAliasRejectionFactory::assert()->empty();
+        self::assertLedgerRecordsAliasAllowance('Steve', 'Steve V.');
+    }
+
+    public function testAFailedLedgerWriteLeavesNoRejection(): void
+    {
+        PlayerFactory::createOne(['name' => 'Steve']);
+        self::blockLedgerWrites();
+
+        $tester = $this->executeCommand(['action' => 'reject', 'names' => ['Steve', 'Steve V.']]);
+
+        self::assertCommandExited($tester, Command::FAILURE);
+        PlayerAliasRejectionFactory::assert()->empty();
+    }
+
     public function testRemovingSomethingThatWasNeverThereWritesNothing(): void
     {
         $tester = $this->executeCommand(['action' => 'remove', 'names' => ['KARM']]);
@@ -329,7 +377,7 @@ final class AliasCommandTest extends ConsoleTestCase
         $tester = $this->executeCommand(['action' => 'frobnicate']);
 
         self::assertCommandExited($tester, Command::INVALID);
-        self::assertCommandSaid($tester, 'The actions are: add, list, remove.');
+        self::assertCommandSaid($tester, 'The actions are: add, list, remove, reject, allow.');
     }
 
     public function testAddingTakesABladerAndASpelling(): void
