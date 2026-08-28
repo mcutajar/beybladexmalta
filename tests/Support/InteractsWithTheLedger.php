@@ -159,7 +159,7 @@ trait InteractsWithTheLedger
     protected static function assertLedgerRecordsAliasRejection(string $bladerName, string $spelling): void
     {
         self::assertLedgerHolds(sprintf(
-            'php bin/console app:alias reject %s %s',
+            'php bin/console app:alias-rejection reject %s %s',
             escapeshellarg($bladerName),
             escapeshellarg($spelling),
         ));
@@ -168,7 +168,7 @@ trait InteractsWithTheLedger
     protected static function assertLedgerRecordsAliasAllowance(string $bladerName, string $spelling): void
     {
         self::assertLedgerHolds(sprintf(
-            'php bin/console app:alias allow %s %s',
+            'php bin/console app:alias-rejection allow %s %s',
             escapeshellarg($bladerName),
             escapeshellarg($spelling),
         ));

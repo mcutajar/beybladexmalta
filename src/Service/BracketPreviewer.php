@@ -530,13 +530,7 @@ class BracketPreviewer
         $lines = [];
 
         foreach ($decisions as $decision) {
-            $suggestion = $decision->best();
-            $chosen = BracketAnswers::bladerId($decision->answer);
-
-            if (null !== $suggestion
-                && $chosen !== $suggestion->player->getId()
-                && BracketAnswers::DROP !== $decision->answer
-                && '' !== $decision->answer) {
+            foreach ($decision->rejectedSuggestions() as $suggestion) {
                 $lines[] = $this->ledgerService->aliasSuggestionRejectedCommand(
                     $suggestion->player->getName(),
                     $decision->name,

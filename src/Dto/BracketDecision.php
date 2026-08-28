@@ -115,6 +115,29 @@ final readonly class BracketDecision
     }
 
     /**
+     * Every candidate the screen displayed and the answer ruled out.
+     *
+     * Creating a blader rejects the whole shortlist. Picking somebody else
+     * rejects everybody except the selected blader. Dropping the entrant says
+     * the row is not a person at all, so it says nothing about any candidate.
+     *
+     * @return list<AliasSuggestion>
+     */
+    public function rejectedSuggestions(): array
+    {
+        if (BracketAnswers::DROP === $this->answer || '' === $this->answer) {
+            return [];
+        }
+
+        $chosen = BracketAnswers::bladerId($this->answer);
+
+        return array_values(array_filter(
+            $this->suggestions,
+            static fn (AliasSuggestion $suggestion): bool => $suggestion->player->getId() !== $chosen,
+        ));
+    }
+
+    /**
      * Whether the answer points at somebody the shortlist did not offer, which
      * is what keeps the "someone else" control open across a re-render.
      */
