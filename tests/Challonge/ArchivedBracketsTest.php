@@ -22,13 +22,13 @@ use Zenstruck\Foundry\Attribute\ResetDatabase;
 use Zenstruck\Foundry\Attribute\WithStory;
 
 /**
- * The archive, put to the eighteen brackets the league actually played.
+ * The archive, put to the twenty brackets the league actually played.
  *
  * `ChallongeArchiveServiceTest` builds the shapes it wants; this one reads the
  * tracked snapshots in `var/data/challonge/` and writes all of them, which is
  * the only way to know what a backfill will actually produce. The numbers are
  * written out rather than derived, because a number that derived itself from
- * the same files would agree with anything — capturing a nineteenth bracket
+ * the same files would agree with anything — capturing a twenty-first bracket
  * will fail this test, and updating the counts is the point at which somebody
  * looks at what changed.
  */
@@ -38,23 +38,23 @@ final class ArchivedBracketsTest extends ServiceTestCase
 {
     /**
      * The two 2v2 events. Nothing in a snapshot says which they are —
-     * `is_team` is false in all eighteen — so a team event is declared at
+     * `is_team` is false in all twenty — so a team event is declared at
      * import, and holding teams is that declaration's persisted trace.
      */
     private const TEAM_EVENTS = ['uhxii7az', 'ivanixk6'];
 
-    private const EVENTS_ARCHIVED = 16;
+    private const EVENTS_ARCHIVED = 18;
 
-    private const STAGES = 30;
+    private const STAGES = 34;
 
-    private const PARTICIPANTS = 455;
+    private const PARTICIPANTS = 525;
 
-    private const MATCHES = 951;
+    private const MATCHES = 1091;
 
     /**
-     * Zero, on purpose. Every one of the 947 played solo matches in the corpus
+     * Zero, on purpose. Every one of the 1087 played solo matches in the corpus
      * is a single game, and all fifty-one multi-game matches are team matches
-     * — which are not archived. A backfill that produced 947 rows would be the
+     * — which are not archived. A backfill that produced 1087 rows would be the
      * sign the rule had been bypassed.
      */
     private const GAMES = 0;
@@ -65,7 +65,7 @@ final class ArchivedBracketsTest extends ServiceTestCase
      * The eight rows of each cut's standings table, which is what `Advanced`
      * is a badge for on the stage before it.
      */
-    private const ADVANCED = 108;
+    private const ADVANCED = 128;
 
     private ChallongeArchiveService $archive;
 
@@ -159,10 +159,10 @@ final class ArchivedBracketsTest extends ServiceTestCase
      * What the standings tables and the forfeits came to.
      *
      * Every entrant of every archived bracket was joined to the row that is
-     * about them — 455 of 455, through the match ids in the row's history cell
-     * where it has one and the name where it does not — and 108 of them carry
+     * about them — 525 of 525, through the match ids in the row's history cell
+     * where it has one and the name where it does not — and 128 of them carry
      * Challonge's `Advanced` badge, which is the eight who went through to
-     * each of the fourteen cuts.
+     * each of the sixteen cuts.
      *
      * The four forfeits are one of the three ways Challonge says nobody
      * played: all four are complete, all four have a winner, and none of them

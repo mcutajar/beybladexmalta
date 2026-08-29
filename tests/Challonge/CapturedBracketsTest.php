@@ -17,40 +17,40 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
- * The reader and the join, put to the eighteen brackets the league actually
+ * The reader and the join, put to the twenty brackets the league actually
  * played.
  *
  * Every other test here builds the shape it wants. This one reads the tracked
  * snapshots in `var/data/challonge/` and the placement lists in
  * `var/data/imports/` that were typed in by hand at the time, and asserts that
  * the two agree. That is the whole argument for importing from a bracket at
- * all: not that the new path is plausible, but that it reproduces sixteen
+ * all: not that the new path is plausible, but that it reproduces eighteen
  * events somebody already checked.
  *
  * The numbers are written out rather than derived, because a number that
  * derived itself from the same files would agree with anything. Capturing a
- * nineteenth bracket will fail this test, and updating the counts is the
+ * twenty-first bracket will fail this test, and updating the counts is the
  * point at which somebody looks at what changed.
  */
 final class CapturedBracketsTest extends TestCase
 {
-    private const BRACKETS = 18;
+    private const BRACKETS = 20;
 
-    private const MATCHES = 1010;
+    private const MATCHES = 1150;
 
-    private const MATCHES_PLAYED = 998;
+    private const MATCHES_PLAYED = 1138;
 
     /**
      * The two 2v2 events are excluded from these: their entrants are teams, so
      * nothing in them is a blader's result.
      */
-    private const MATCHES_PLAYED_BY_BLADERS = 947;
+    private const MATCHES_PLAYED_BY_BLADERS = 1087;
 
     /**
      * The same matches with the third-place playoffs taken out — the figure
      * that reconciles with the league's own count of what has been played.
      */
-    private const MATCHES_THAT_DECIDED_SOMETHING = 933;
+    private const MATCHES_THAT_DECIDED_SOMETHING = 1071;
 
     /**
      * Every way a bracket has ever spelled an entrant, counted once each.
@@ -58,7 +58,7 @@ final class CapturedBracketsTest extends TestCase
      * transcribes what the bracket said rather than what we would like it to
      * have said.
      */
-    private const DISTINCT_SPELLINGS = 207;
+    private const DISTINCT_SPELLINGS = 220;
 
     /**
      * The same spellings with case, punctuation and `(invitation pending)`
@@ -66,10 +66,10 @@ final class CapturedBracketsTest extends TestCase
      * the list; the gap between what is left and seventy-six bladers is what
      * the alias table is for.
      */
-    private const SPELLINGS_AFTER_FOLDING = 129;
+    private const SPELLINGS_AFTER_FOLDING = 142;
 
     /**
-     * How many of the differences below are mechanical. Eight of twenty-six —
+     * How many of the differences below are mechanical. Eight of twenty-nine —
      * so folding is worth doing and is nowhere near enough on its own.
      */
     private const ALIASES_FOLDING_CATCHES = 8;
@@ -77,33 +77,33 @@ final class CapturedBracketsTest extends TestCase
     /**
      * The rows `app:bootstrap-aliases` writes out of all this.
      *
-     * Fewer than the twenty-six differences below, and the gap is the point of
+     * Fewer than the twenty-nine differences below, and the gap is the point of
      * both halves of the alias problem sitting next to each other: eight of the
      * differences fold away mechanically and need no row at all, and three of
      * the spellings that remain are one row each spelled two ways —
      * `Derius_X` and `DeriusX`, `Guzman` with and without its invitation,
-     * `Myers6` with two of them. What is left is fifteen assertions somebody
+     * `Myers6` with two of them. What is left is eighteen assertions somebody
      * would otherwise have typed.
      */
-    private const SEEDED_ALIASES = 15;
+    private const SEEDED_ALIASES = 18;
 
-    private const STANDINGS_ROWS = 482;
+    private const STANDINGS_ROWS = 552;
 
-    private const ROWS_JOINED_BY_MATCH_IDS = 377;
+    private const ROWS_JOINED_BY_MATCH_IDS = 438;
 
-    private const ROWS_JOINED_BY_NAME = 105;
+    private const ROWS_JOINED_BY_NAME = 114;
 
-    private const EVENTS = 16;
+    private const EVENTS = 18;
 
-    private const PLACEMENTS = 160;
+    private const PLACEMENTS = 180;
 
-    private const PLACEMENTS_NAMED_THE_SAME_WAY = 118;
+    private const PLACEMENTS_NAMED_THE_SAME_WAY = 131;
 
-    private const EVENTS_WITH_A_CUT = 14;
+    private const EVENTS_WITH_A_CUT = 16;
 
     /**
      * The two 2v2 events, named here because nothing in a snapshot says which
-     * they are: `is_team` is false in all eighteen, the module store not
+     * they are: `is_team` is false in all twenty, the module store not
      * carrying the flag the fetch looks for.
      *
      * That is settled rather than outstanding. A team event is something the
@@ -133,8 +133,8 @@ final class CapturedBracketsTest extends TestCase
      * imported under, folded to lower case because the comparison is.
      *
      * These are the alias table's work (#50) and not this ticket's. What this
-     * test proves is that they are the *only* differences: 118 of the 160
-     * placements name the same person the same way, the remaining 42 sit at the
+     * test proves is that they are the *only* differences: 131 of the 180
+     * placements name the same person the same way, the remaining 49 sit at the
      * right rank under one of these spellings, and nothing else moved.
      */
     private const KNOWN_ALIASES = [
@@ -142,6 +142,8 @@ final class CapturedBracketsTest extends TestCase
         'bladerz = bladerzmlt',
         'derius = derius_x',
         'derius = deriusx',
+        'faenza = fajjenza',
+        'federico = federiko',
         'gerada46 = gerada 46',
         'giglio = giglio15 (invitation pending)',
         'guzman93 = guzman',
@@ -158,6 +160,7 @@ final class CapturedBracketsTest extends TestCase
         'myers = myers6',
         'myers = myers6 (invitation pending) (invitation pending)',
         'obelix = obelisk',
+        'piyus = peyus',
         'ripnburst = rip n\' burst',
         'ripnburst = rip_n_burst',
         'rizzler = the rizzler',
@@ -199,6 +202,38 @@ final class CapturedBracketsTest extends TestCase
             self::assertNotSame([], $snapshot->stages, sprintf('The snapshot for "%s" has no stages.', $slug));
             self::assertTrue($snapshot->hasStandings(), sprintf('The snapshot for "%s" has no standings.', $slug));
         }
+    }
+
+    /**
+     * Offline replay is a property of the ledger, not of whoever happens to
+     * have fetched a bracket before running it. Every Challonge URL therefore
+     * has to name the tracked snapshot that belongs to the same slug.
+     */
+    public function testEveryChallongeImportReplaysFromItsSnapshot(): void
+    {
+        $imports = 0;
+
+        foreach (explode("\n", (string) file_get_contents($this->projectDir().'/repeat.sh')) as $line) {
+            if (!str_contains($line, 'app:import-tournament') || !str_contains($line, '--challonge=')) {
+                continue;
+            }
+
+            ++$imports;
+            preg_match("/--challonge='([^']+)'/", $line, $url);
+            self::assertArrayHasKey(1, $url, sprintf('This import line names no Challonge URL: %s', trim($line)));
+
+            $slug = basename(rtrim($url[1], '/'));
+            $path = sprintf('/app/var/data/challonge/%s.json', $slug);
+
+            self::assertStringContainsString(
+                sprintf("--snapshot='%s'", $path),
+                $line,
+                sprintf('The import for "%s" does not explicitly replay its snapshot.', $slug),
+            );
+            self::assertFileExists($this->projectDir().'/var/data/challonge/'.$slug.'.json');
+        }
+
+        self::assertSame(self::BRACKETS, $imports);
     }
 
     public function testItHoldsEveryMatchTheBracketsRecorded(): void
@@ -353,7 +388,7 @@ final class CapturedBracketsTest extends TestCase
      * How far the mechanical half of the alias problem gets, measured on the
      * real thing rather than asserted about.
      *
-     * Two hundred and seven spellings fold to a hundred and twenty-nine, which
+     * Two hundred and twenty spellings fold to a hundred and forty-two, which
      * is the argument for normalising and against stopping there: the league
      * has about seventy-six bladers, so fifty-odd of these are still two names
      * for one person with nothing in the strings to say so.
@@ -381,8 +416,8 @@ final class CapturedBracketsTest extends TestCase
 
     /**
      * The same point made against the differences that actually cost somebody
-     * an evening: eight of the twenty-six are case, spacing or an invitation
-     * nobody accepted, and the other eighteen are knowledge. `Anzjan` is
+     * an evening: eight of the twenty-nine are case, spacing or an invitation
+     * nobody accepted, and the other twenty-one are knowledge. `Anzjan` is
      * `Lanzjan` and `Obelisk` is not `Obelix`, and no rule tells them apart.
      */
     public function testTheAliasTableIsWhatFoldingCannotDo(): void
@@ -412,11 +447,11 @@ final class CapturedBracketsTest extends TestCase
      * Two things have to hold for `app:bootstrap-aliases` to write anything at
      * all. Every spelling the brackets use has to reach one blader and not two,
      * because a spelling two evenings disagree about is reported and never
-     * filed. And the twenty-six differences have to collapse to the fifteen
+     * filed. And the twenty-nine differences have to collapse to the eighteen
      * rows the alias table actually needs, because a row for a spelling the
      * normaliser already folds is a row nothing ever reads.
      */
-    public function testTheAliasTableSeedsToFifteenRows(): void
+    public function testTheAliasTableSeedsToEighteenRows(): void
     {
         $bladerPerSpelling = [];
 
