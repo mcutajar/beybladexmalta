@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Service;
 
+use App\Dto\BracketAnswers;
 use App\Dto\BracketPreview;
 use App\Dto\BracketPreviewResult;
 use App\Dto\ChallongeSnapshot;
@@ -11,6 +12,7 @@ use App\Dto\ChallongeStage;
 use App\Dto\ChallongeStageKind;
 use App\Dto\ChallongeStanding;
 use App\Service\BracketPreviewer;
+use App\Tests\Factory\PlayerFactory;
 use App\Tests\Factory\SeasonFactory;
 use App\Tests\Factory\TournamentFactory;
 use App\Tests\Support\ServiceTestCase;
@@ -27,6 +29,34 @@ use Zenstruck\Foundry\Attribute\ResetDatabase;
 #[ResetDatabase]
 final class BracketPreviewerTest extends ServiceTestCase
 {
+    public function testANewBladerIsVisibleToTheNextPreview(): void
+    {
+        $first = PlayerFactory::createOne(['name' => 'First']);
+        $previewer = $this->service(BracketPreviewer::class);
+
+        $previewer->preview(
+            $this->bracket(),
+            'challonge.com/probe123',
+            'A Probe',
+            '2026-08-16',
+            'a-season',
+            new BracketAnswers(['somebody' => BracketAnswers::linkTo($first->getId())]),
+        );
+
+        $second = PlayerFactory::createOne(['name' => 'Second']);
+        $preview = $previewer->preview(
+            $this->bracket(),
+            'challonge.com/probe123',
+            'A Probe',
+            '2026-08-16',
+            'a-season',
+            new BracketAnswers(['somebody' => BracketAnswers::linkTo($second->getId())]),
+        );
+
+        self::assertSame('Second', $preview->placements[0]->bladerName);
+        self::assertContains("php bin/console app:alias add 'Second' 'Somebody'", $preview->ledger);
+    }
+
     public function testATeamBracketIsRefusedBecauseItsEntrantsAreTeams(): void
     {
         $preview = $this->preview($this->bracket(isTeam: true));

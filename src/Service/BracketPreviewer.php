@@ -74,6 +74,11 @@ class BracketPreviewer
         string $seasonSlug,
         BracketAnswers $answers = new BracketAnswers(),
     ): BracketPreview {
+        // FrankenPHP keeps services alive between requests. This cache is only
+        // request-local: a previous confirmation may have created a blader
+        // that the next bracket must be able to link immediately.
+        $this->bladerNames = null;
+
         $bracketUrl = trim($challongeUrl);
         $refusal = $this->refuse($snapshot);
 
