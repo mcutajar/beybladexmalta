@@ -297,14 +297,16 @@ class LeagueController extends AbstractController
             }
         }
 
+        $seasons = $seasonRepository->ordered();
+
         return $this->render('league/tournaments.html.twig', [
             'archive' => $shelves->present(
                 $tournaments->archiveIndex(),
-                $seasonRepository->ordered(),
+                $seasons,
                 $players->archivedBladerCount(),
                 $season,
             ),
-            'seasons' => $seasonRepository->ordered(),
+            'seasons' => $seasons,
             'current_season' => $season,
         ]);
     }
