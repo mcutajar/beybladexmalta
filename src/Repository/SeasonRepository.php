@@ -23,6 +23,21 @@ class SeasonRepository extends ServiceEntityRepository
         return $this->findOneBy(['slug' => $slug]);
     }
 
+    /**
+     * Every season, oldest first.
+     *
+     * The order is the id, because a season has no date of its own: it is
+     * created before its first event and the tournaments carry the dates. The
+     * scope selector lists them in this order and the last one is the current
+     * season.
+     *
+     * @return list<Season>
+     */
+    public function ordered(): array
+    {
+        return $this->findBy([], ['id' => 'ASC']);
+    }
+
     public function save(Season $season): void
     {
         $this->getEntityManager()->persist($season);

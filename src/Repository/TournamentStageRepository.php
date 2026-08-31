@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Player;
+use App\Entity\Season;
 use App\Entity\Tournament;
 use App\Entity\TournamentMatch;
 use App\Entity\TournamentStage;
@@ -148,5 +149,51 @@ class TournamentStageRepository extends ServiceEntityRepository
             ->addOrderBy('m.challongeId', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Every archived match in one scope, oldest first.
+     *
+     * Feeds the records board, which reads the whole archive rather than one
+     * blader's slice of it: about eleven hundred matches with both entrants
+     * and both bladers already joined, so the board is one query rather than
+     * one per match.
+     *
+     * The season is joined only when one is being filtered on. Leaving it out
+     * of the Overall query is deliberate and outlives this ticket — an inner
+     * join through `t.season` would silently drop the unranked tournaments
+     * #90 makes possible from exactly the scope that is supposed to include
+     * them.
+     *
+     * Chronological, because a win streak is a run through time and the
+     * presenter extends it in place rather than sorting afterwards.
+     *
+     * @return list<TournamentMatch>
+     */
+    public function acrossTheLeague(?Season $season): array
+    {
+        $matches = $this->getEntityManager()->createQueryBuilder()
+            ->select('m', 's', 't', 'p1', 'p2', 'b1', 'b2')
+            ->from(TournamentMatch::class, 'm')
+            ->join('m.stage', 's')
+            ->join('m.tournament', 't')
+            ->leftJoin('m.player1', 'p1')
+            ->leftJoin('m.player2', 'p2')
+            ->leftJoin('p1.player', 'b1')
+            ->leftJoin('p2.player', 'b2')
+            ->where('m.state = :complete')
+            ->setParameter('complete', 'complete')
+            ->orderBy('t.heldOn', 'ASC')
+            ->addOrderBy('t.id', 'ASC')
+            ->addOrderBy('s.position', 'ASC')
+            ->addOrderBy('m.consolation', 'ASC')
+            ->addOrderBy('m.round', 'ASC')
+            ->addOrderBy('m.challongeId', 'ASC');
+
+        if (null !== $season) {
+            $matches->andWhere('t.season = :season')->setParameter('season', $season);
+        }
+
+        return $matches->getQuery()->getResult();
     }
 }

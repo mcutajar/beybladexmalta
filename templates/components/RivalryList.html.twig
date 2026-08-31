@@ -1,0 +1,45 @@
+{#
+    Who has met whom most, and which way it runs.
+
+    <twig:RivalryList :rivalries="board.rivalries" seasonSlug="{{ season.slug }}" />
+
+    Each row is stated from the side that is ahead, so the record reads left to
+    right and never needs a minus sign. An even pair is joined by "vs" instead,
+    because nobody is over anybody. Ordered by meetings rather than by
+    margin — a 5–0 against somebody met five times says more than a 1–0 against
+    somebody met once.
+#}
+{% props rivalries = [], seasonSlug = null %}
+
+<ul {{ attributes.defaults({class: 'divide-y divide-line/40'}) }}>
+    {% for rivalry in rivalries %}
+        <li class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2.5 first:pt-0 last:pb-0">
+            <span class="min-w-0 text-sm text-ink">
+                {% if rivalry.leader and seasonSlug %}
+                    <a href="{{ path('player_season_details', {'slug': seasonSlug, 'id': rivalry.leader.id}) }}"
+                       class="font-bold transition-colors outline-none hover:text-brand focus:text-brand">{{ rivalry.leader_name }}</a>
+                {% else %}
+                    <span class="font-bold">{{ rivalry.leader_name }}</span>
+                {% endif %}
+                {# "over" only when somebody is: an even pair reads as a
+                   meeting rather than as a beating. #}
+                <span class="text-xs text-ink-faint">{{ rivalry.wins > rivalry.losses ? 'over' : 'vs' }}</span>
+                {% if rivalry.trailer and seasonSlug %}
+                    <a href="{{ path('player_season_details', {'slug': seasonSlug, 'id': rivalry.trailer.id}) }}"
+                       class="font-bold transition-colors outline-none hover:text-brand focus:text-brand">{{ rivalry.trailer_name }}</a>
+                {% else %}
+                    <span class="font-bold">{{ rivalry.trailer_name }}</span>
+                {% endif %}
+            </span>
+
+            <span class="flex shrink-0 items-baseline gap-2.5">
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">met {{ rivalry.met }}×</span>
+                <span class="font-mono text-sm font-black tabular-nums {{ rivalry.wins > rivalry.losses ? 'text-positive' : 'text-ink-muted' }}">
+                    {{ rivalry.wins }}–{{ rivalry.losses }}{{ rivalry.draws > 0 ? '–' ~ rivalry.draws : '' }}
+                </span>
+            </span>
+        </li>
+    {% else %}
+        <li class="text-xs italic text-ink-faint">Nobody has met often enough to have a rivalry yet.</li>
+    {% endfor %}
+</ul>

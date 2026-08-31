@@ -1,0 +1,40 @@
+{#
+    One record: what it is, who holds it, and the number that holds it.
+
+    <twig:RecordTile label="Highest win rate" name="Mezz" value="70.6%"
+                     note="24–10 in 34 matches" href="{{ path(…) }}" tone="brand" />
+
+    A record nobody in scope holds still renders. Saying so keeps the board the
+    same shape in a quiet season as it is overall, and a tile that vanished
+    would read as a record that does not exist rather than one nobody has set.
+#}
+{% props label, value = null, name = null, note = null, href = null, tone = 'flame' %}
+
+{% set tints = {
+    brand:    'text-brand',
+    flame:    'text-flame',
+    positive: 'text-positive',
+} %}
+
+<div {{ attributes.defaults({
+    class: 'flex flex-col gap-1 rounded-card border border-line bg-surface p-4',
+}) }}>
+    <span class="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{{ label }}</span>
+
+    {% if value is null %}
+        <span class="font-mono text-2xl font-black text-ink-ghost" aria-hidden="true">—</span>
+        <span class="text-[11px] italic text-ink-faint">Nobody has set this one yet.</span>
+    {% else %}
+        {% if href %}
+            <a href="{{ href }}" class="text-sm font-black text-ink transition-colors outline-none hover:text-brand focus:text-brand">{{ name }}</a>
+        {% else %}
+            <span class="text-sm font-black text-ink">{{ name }}</span>
+        {% endif %}
+
+        <span class="font-mono text-2xl font-black tabular-nums {{ tints[tone] }}">{{ value }}</span>
+
+        {% if note %}
+            <span class="text-[11px] text-ink-faint">{{ note }}</span>
+        {% endif %}
+    {% endif %}
+</div>

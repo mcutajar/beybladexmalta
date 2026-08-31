@@ -12,9 +12,11 @@ use App\Repository\TournamentRepository;
 use App\Repository\TournamentResultRepository;
 use App\Repository\TournamentStageRepository;
 use App\Repository\TournamentTeamRepository;
+use App\Service\LeagueRecordsPresenter;
 use App\Service\PlayerCareerPresenter;
 use App\Service\TournamentArchivePresenter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -116,6 +118,51 @@ class LeagueController extends AbstractController
             'teams' => $teams->forTournament($tournament),
             'archive' => $archivePresenter->present($stages->forTournament($tournament)),
             'current_season' => $season,
+        ]);
+    }
+
+    /**
+     * The records board, over the whole archive or over one season.
+     *
+     * `/records` is the overall historical record and includes every archived
+     * tournament, ranked or not; `/records?season=1` is the same board with
+     * the tournament season filtered. The scope is applied to the matches the
+     * board is built from and to nothing else, so the record values, the
+     * ordering and the eligibility threshold all move together and a career
+     * total cannot win a season record.
+     *
+     * An unknown season is a 404 rather than a quiet fall back to Overall: a
+     * page that answers a wrong URL with a different scope's numbers is a page
+     * nobody can cite.
+     *
+     * Nothing links here yet. #94 owns the navigation that will.
+     */
+    #[Route('/records', name: 'records_board', methods: ['GET'])]
+    public function records(Request $request, SeasonRepository $seasonRepository, TournamentStageRepository $stages, LeagueRecordsPresenter $recordsPresenter): Response
+    {
+        $slug = $request->query->getString('season');
+        $season = null;
+
+        if ('' !== $slug) {
+            $season = $seasonRepository->findBySlug($slug);
+            if (!$season) {
+                throw $this->createNotFoundException('No season answers to that name.');
+            }
+        }
+
+        $seasons = $seasonRepository->ordered();
+
+        /*
+         * A blader's profile still lives under a season, so an Overall board
+         * links through the newest one. #95 replaces this with the canonical
+         * `/player/{slug}` and the argument disappears; until then the link has
+         * to name some season and the current one is the least wrong.
+         */
+        return $this->render('league/records.html.twig', [
+            'board' => $recordsPresenter->present($stages->acrossTheLeague($season)),
+            'seasons' => $seasons,
+            'current_season' => $season,
+            'profile_season_slug' => ($season ?? ([] === $seasons ? null : $seasons[count($seasons) - 1]))?->getSlug(),
         ]);
     }
 

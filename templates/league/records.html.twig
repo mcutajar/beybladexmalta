@@ -1,0 +1,111 @@
+{#
+    The records board — option 5B of the design proposal, "hall of records".
+
+    One tile per record, each naming a blader and a number, and nothing that
+    has to be read as a table. Two cards under them: how the league finishes
+    its matches, and the rivalries that have run longest.
+
+    Everything on this page is counted from archived matches. `TournamentResult`
+    is not read at all, so no league points appear in either scope — they are
+    season-specific, and the season leaderboard remains the place for them.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}League records | Malta Beyblade Community League{% endblock %}
+
+{% block body %}
+
+    {# The scope rides in the eyebrow rather than in the tinted second line:
+       "The book" and a season name run together into one sentence there, and
+       the badge states the active scope before the selector repeats it. #}
+    <twig:PageHeader
+        eyebrow="{{ current_season ? current_season.name : 'Every season' }}"
+        title="The record book"
+        size="md"
+    >
+        {% if board.archived %}
+            {{ board.matches|number_format }} {{ board.matches == 1 ? 'match' : 'matches' }} across
+            {{ board.events }} {{ board.events == 1 ? 'event' : 'events' }},
+            {{ board.bladers }} {{ board.bladers == 1 ? 'blader' : 'bladers' }},
+            {{ board.points|number_format }} beyblade points. Counted from the brackets —
+            <strong>league points are not a record</strong> and live on the season leaderboard.
+        {% else %}
+            No bracket has been archived in this scope, so there is nothing to hold a record yet.
+        {% endif %}
+    </twig:PageHeader>
+
+    <div class="mb-8 flex justify-center" data-page-section="scope">
+        <twig:ScopeSwitch
+            route="records_board"
+            :seasons="seasons"
+            :activeSlug="current_season ? current_season.slug : null"
+        />
+    </div>
+
+    {% if board.archived %}
+        {# One column on a phone with no compromise: a record tile is a label,
+           a name and a number, and it has nothing to drop. #}
+        <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-page-section="records">
+            {% for record in board.records %}
+                <twig:RecordTile
+                    label="{{ record.label }}"
+                    :name="record.name"
+                    :value="record.value"
+                    :note="record.note"
+                    tone="{{ record.tone }}"
+                    :href="record.player and profile_season_slug
+                        ? path('player_season_details', {'slug': profile_season_slug, 'id': record.player.id})
+                        : null"
+                    data-record="{{ record.key }}"
+                />
+            {% endfor %}
+        </div>
+
+        <p class="mb-6 text-center text-xs text-ink-faint">
+            A win rate is a record once a blader has played {{ board.minimum_matches }} matches
+            {{ current_season ? 'in ' ~ current_season.name : 'in the league' }}. Awarded matches count as
+            a win and a loss and score nothing; nothing on this page is counted from the losing side.
+        </p>
+
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <twig:Card data-page-section="finishes">
+                <twig:SectionHeading title="How the league finishes" size="sm" tone="flame" />
+                <twig:TotalsList :rows="board.finishes|map(finish => {
+                    label: 'Won at ' ~ finish.score,
+                    value: finish.wins ~ ' · ' ~ finish.share ~ '%',
+                })" />
+
+                {# Inline flex weights rather than a width utility: the
+                   proportion is data, and Tailwind compiles the class names it
+                   can read in a template. #}
+                {% set tints = ['bg-ink-ghost', 'bg-brand-strong', 'bg-flame-strong', 'bg-heat-strong'] %}
+                <span class="mt-4 flex h-1.5 overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
+                    {% for finish in board.finishes %}
+                        <span class="{{ tints[loop.index0 % tints|length] }}" style="flex: {{ finish.wins }} 1 0"></span>
+                    {% endfor %}
+                </span>
+
+                <p class="mt-3 text-[11px] text-ink-faint">
+                    The score that won the match, read off the brackets rather than assumed. Awarded
+                    matches have no scoreline and are not counted here.
+                </p>
+            </twig:Card>
+
+            <twig:Card data-page-section="rivalries">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <twig:SectionHeading title="Standing rivalries" size="sm" tone="brand" class="mb-0" />
+                    <twig:Badge tone="neutral" size="sm">Most-met pairs</twig:Badge>
+                </div>
+                <twig:RivalryList :rivalries="board.rivalries" seasonSlug="{{ profile_season_slug }}" />
+            </twig:Card>
+        </div>
+    {% else %}
+        <div data-page-section="records-empty">
+            <twig:EmptyState icon="🗃️" title="Nothing archived yet">
+                No bracket in this scope has been archived, so there is no match to count a record from.
+                The board fills itself in the moment one is.
+            </twig:EmptyState>
+        </div>
+    {% endif %}
+
+{% endblock %}

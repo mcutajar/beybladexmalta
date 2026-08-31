@@ -109,6 +109,18 @@ final class PageRendersTest extends PageTestCase
         $this->assertPageRenders('/seasons/preseason-1');
     }
 
+    /**
+     * The board against a database with nothing archived — which is every
+     * database until a bracket has been. `ArchivedRecordsBoardTest` renders it
+     * against real brackets.
+     */
+    #[WithStory(SeasonStory::class)]
+    public function testTheRecordsBoardRenders(): void
+    {
+        $this->assertPageRenders('/records');
+        $this->assertPageRenders('/records?season=paid-season');
+    }
+
     #[WithStory(SeasonStory::class)]
     public function testTheAdminPagesRender(): void
     {

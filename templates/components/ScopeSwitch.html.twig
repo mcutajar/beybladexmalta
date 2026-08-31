@@ -1,0 +1,31 @@
+{#
+    Overall, or one season. The site's shared scope selector.
+
+    <twig:ScopeSwitch route="records_board" :seasons="seasons"
+                      :activeSlug="current_season ? current_season.slug : null" />
+
+    Links rather than a control, and for the same reason the import screen's
+    preview is a form submit: the scope belongs in the URL. Every scope is then
+    reachable, linkable and back-buttonable, and switching needs no script —
+    which the one script this site ships is not allowed to become.
+
+    `route` is the page being scoped, so the same selector serves the records
+    board, the tournament archive and anything else that reads `?season=`.
+#}
+{% props route, seasons = [], activeSlug = null, overall = 'Overall' %}
+
+{% set scopes = [{label: overall, slug: null}] %}
+{% for season in seasons %}
+    {% set scopes = scopes|merge([{label: season.name, slug: season.slug}]) %}
+{% endfor %}
+
+<nav {{ attributes.defaults({class: 'flex flex-wrap items-center gap-2'}) }} aria-label="Season scope">
+    {% for scope in scopes %}
+        {% set active = scope.slug == activeSlug %}
+        <a href="{{ scope.slug ? path(route, {'season': scope.slug}) : path(route) }}"
+           {% if active %}aria-current="page"{% endif %}
+           class="rounded-control border px-3 py-1.5 text-xs font-bold transition-colors outline-none {{ active
+               ? 'border-brand-strong bg-brand-strong/10 text-brand'
+               : 'border-line bg-surface text-ink-muted hover:border-line hover:text-ink focus:text-ink' }}">{{ scope.label }}</a>
+    {% endfor %}
+</nav>
