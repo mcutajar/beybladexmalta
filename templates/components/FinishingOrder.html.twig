@@ -1,0 +1,51 @@
+{#
+    Where everybody finished, on a page where that pays nothing.
+
+    <twig:FinishingOrder :rows="archive.finishing_order" />
+
+    The block an unranked tournament closes with. Rank, blader, record and
+    form — and **no F1, bonus or total column**, because an unranked event
+    writes no `TournamentResult` and there is no such value to show. A zeroed
+    column would be the lie the invariant exists to prevent.
+
+    It sits *under* the match archive rather than above it (option 3B): the
+    finishing order of an event which scores nothing is the least consequential
+    thing on the page, and the matches are the whole reason it was archived.
+
+    `record` and `form` are optional. A row the archive has no matches for
+    keeps its place and shows a dash, which is what the two 2v2 evenings would
+    look like if either were ever imported unranked.
+
+    The blader is named rather than linked. Every player URL still goes through
+    a season and an unranked event has none, so linking one would mean picking
+    a season the event was not in; #95's canonical `/player/{slug}` is what
+    this row is waiting for.
+#}
+{% props rows = [] %}
+
+<twig:DataTable bleed>
+    <thead>
+    <tr>
+        <th class="w-12 text-center sm:w-16">Rank</th>
+        <th>Blader</th>
+        <th class="text-center">W-L-D</th>
+        <th class="hidden text-center sm:table-cell">Form</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td class="text-center"><twig:RankMedal :rank="row.rank" /></td>
+            <td class="font-bold text-ink">{{ row.name }}</td>
+            <td class="whitespace-nowrap text-center font-mono text-xs text-ink-muted">
+                {% if row.matches > 0 %}{{ row.wins }}-{{ row.losses }}-{{ row.draws }}{% else %}&mdash;{% endif %}
+            </td>
+            <td class="hidden text-center sm:table-cell"><twig:FormStrip :results="row.form|default([])" /></td>
+        </tr>
+    {% else %}
+        <tr>
+            <td colspan="4" class="py-12 text-center text-sm italic text-ink-faint">This bracket recorded no finishing order.</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</twig:DataTable>

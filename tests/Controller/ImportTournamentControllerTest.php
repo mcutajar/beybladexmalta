@@ -72,7 +72,7 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
         PlayerFactory::assert()->count(10);
 
         $tournament = self::findTournament(self::TITLE);
-        self::assertResponseRedirects(sprintf('/season/%s/tournament/%d', self::SEASON, $tournament->getId()));
+        self::assertResponseRedirects(sprintf('/tournament/%d', $tournament->getId()));
 
         self::assertSame(
             SeasonStory::paymentSeason()->getId(),
@@ -274,7 +274,7 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
     {
         $tournament = self::findTournament(self::TITLE);
 
-        self::assertResponseRedirects(sprintf('/season/%s/tournament/%d', self::SEASON, $tournament->getId()));
+        self::assertResponseRedirects(sprintf('/tournament/%d', $tournament->getId()));
     }
 
     /**

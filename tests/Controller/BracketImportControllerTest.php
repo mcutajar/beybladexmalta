@@ -682,7 +682,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
     {
         $tournament = self::findTournament(self::TITLE);
 
-        self::assertResponseRedirects(sprintf('/season/%s/tournament/%d', self::SEASON, $tournament->getId()));
+        self::assertResponseRedirects(sprintf('/tournament/%d', $tournament->getId()));
     }
 
     /**

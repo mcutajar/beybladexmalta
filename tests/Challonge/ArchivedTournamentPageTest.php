@@ -170,7 +170,7 @@ final class ArchivedTournamentPageTest extends PageTestCase
     {
         $crawler = $this->createBrowser()->request(
             'GET',
-            sprintf('/season/paid-season/tournament/%d', $event->getId()),
+            sprintf('/tournament/%d', $event->getId()),
         );
 
         self::assertResponseIsSuccessful();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Player;
 use App\Entity\TournamentMatch;
 use App\Entity\TournamentParticipant;
 use App\Entity\TournamentStage;
@@ -22,6 +23,7 @@ use App\Entity\TournamentStage;
  * @phpstan-type SwissColumn array{key: string, label: string, title: ?string}
  * @phpstan-type SwissStage array{stage: TournamentStage, label: string, standings: list<array{participant: TournamentParticipant, form: list<string>}>, columns: list<SwissColumn>, rounds: list<SwissRound>}
  * @phpstan-type CutStage array{stage: TournamentStage, match_count: int, columns: list<string>, paths: list<CutPath>}
+ * @phpstan-type FinishingPlace array{rank: int, name: string, player: ?Player, matches: int, wins: int, losses: int, draws: int, form: list<string>}
  */
 final class TournamentArchivePresenter
 {
@@ -32,13 +34,14 @@ final class TournamentArchivePresenter
     /**
      * @param list<TournamentStage> $stages
      *
-     * @return array{archived: bool, swiss: list<SwissStage>, cuts: list<CutStage>}
+     * @return array{archived: bool, swiss: list<SwissStage>, cuts: list<CutStage>, finishing_order: list<FinishingPlace>}
      */
     public function present(array $stages): array
     {
         $swiss = [];
         $cuts = [];
         $matchCount = 0;
+        $forms = [];
         foreach ($stages as $stage) {
             $matches = $stage->getMatches()->toArray();
             $matchCount += count($matches);
@@ -66,6 +69,10 @@ final class TournamentArchivePresenter
             );
             $timeline = $this->swissTimeline($stage, $matches);
 
+            if ($stage === ($stages[0] ?? null)) {
+                $forms = $timeline['forms'];
+            }
+
             $swiss[] = [
                 'stage' => $stage,
                 'label' => $this->labels->stage($stage),
@@ -82,7 +89,74 @@ final class TournamentArchivePresenter
             'archived' => $matchCount > 0,
             'swiss' => $swiss,
             'cuts' => $cuts,
+            'finishing_order' => $this->finishingOrder($stages, $forms),
         ];
+    }
+
+    /**
+     * Where the bracket says everybody finished.
+     *
+     * **The first stage's ranking, and nothing cleverer.** That is already the
+     * league's rule — `ChallongeSnapshot::rankingStage()` returns stage zero
+     * and `ChallongeStandingsResolver::finishingOrder()` reads exactly that —
+     * so this is the same order the import writes, reconstructed from the two
+     * rankings the archive persists rather than derived by a second rule that
+     * could disagree with the first.
+     *
+     * It matters because an **unranked** event has no `TournamentResult` row
+     * to read a finishing order off, by design: the results table is the
+     * scoring record and an unranked event scores nothing. The order is still
+     * a fact the bracket stated, and the archive kept it.
+     *
+     * Worth knowing that this is not the cut's order. On `Gamesplus 23-08` the
+     * cut ranked Jape second and the event finished him third — Challonge ranks
+     * a two-stage event on its Swiss table — and following the cut here would
+     * quietly contradict every ranked page on the site.
+     *
+     * @param list<TournamentStage>    $stages
+     * @param array<int, list<string>> $forms  the ranking stage's form strings, by entrant id
+     *
+     * @return list<FinishingPlace>
+     */
+    private function finishingOrder(array $stages, array $forms): array
+    {
+        $stage = $stages[0] ?? null;
+
+        if (null === $stage) {
+            return [];
+        }
+
+        $entrants = $stage->getParticipants()->toArray();
+        usort($entrants, static fn (TournamentParticipant $left, TournamentParticipant $right): int => [$left->getStageRank() ?? PHP_INT_MAX, $left->getSeed() ?? PHP_INT_MAX]
+            <=> [$right->getStageRank() ?? PHP_INT_MAX, $right->getSeed() ?? PHP_INT_MAX]
+        );
+
+        $order = [];
+        $position = 0;
+
+        foreach ($entrants as $entrant) {
+            ++$position;
+            $record = $entrant->getRecord();
+            $wins = $record->wins ?? 0;
+            $losses = $record->losses ?? 0;
+            $draws = $record->ties ?? 0;
+
+            $order[] = [
+                // The rank Challonge printed where it printed one, so two
+                // entrants who genuinely tied keep the same number rather than
+                // being counted off the rows.
+                'rank' => $entrant->getStageRank() ?? $position,
+                'name' => $entrant->getPlayer()?->getName() ?? $entrant->getName(),
+                'player' => $entrant->getPlayer(),
+                'matches' => $wins + $losses + $draws,
+                'wins' => $wins,
+                'losses' => $losses,
+                'draws' => $draws,
+                'form' => $forms[$entrant->getChallongeId()] ?? [],
+            ];
+        }
+
+        return $order;
     }
 
     /**
