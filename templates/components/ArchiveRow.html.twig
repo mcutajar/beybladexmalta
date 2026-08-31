@@ -1,0 +1,66 @@
+{#
+    One event on the tournament archive's shelf.
+
+    <twig:ArchiveRow :events="shelf.events" />
+
+    A table rather than a list of cards, because these rows are compared: what
+    somebody does on this page is scan dates and field sizes down a column.
+
+    **The ranked/unranked mark rides in the name cell** rather than in a column
+    of its own. A column that is empty on nineteen rows in twenty is a column
+    spent badly at 375px, and horizontal room is the scarcest resource on the
+    site — the events are already filed under the season they score in, so the
+    mark is a reminder rather than the classification.
+
+    The knockout winner is simply absent on an unranked row. There is no
+    `TournamentResult` to name one from, which is what having no scoring record
+    looks like from the outside.
+#}
+{% props events = [] %}
+
+<twig:DataTable bleed compact>
+    <thead>
+    <tr>
+        <th class="w-20">Date</th>
+        <th>Event</th>
+        <th class="hidden text-center sm:table-cell">Field</th>
+        <th class="text-center">Matches</th>
+        <th class="hidden sm:table-cell">Won the cut</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for event in events %}
+        <tr class="group">
+            <td class="whitespace-nowrap font-mono text-xs text-ink-muted">{{ event.heldOn|date('d M') }}</td>
+            <td>
+                {# The date repeats inside the link on a phone, where the
+                   column beside it is the one that has to stay narrow. #}
+                <a href="{{ path('tournament_page', {'id': event.id}) }}"
+                   class="flex flex-col gap-1 font-bold text-ink transition-colors outline-none group-hover:text-brand focus:text-brand sm:flex-row sm:items-center sm:gap-2">
+                    <span data-event-title>{{ event.title }}</span>
+                    <span class="flex items-center gap-1.5">
+                        {% if not event.ranked %}<twig:Badge tone="neutral" size="sm">Unranked</twig:Badge>{% endif %}
+                        {% if event.teams > 0 %}<twig:Badge tone="info" size="sm">2v2</twig:Badge>{% endif %}
+                        <span class="font-mono text-[10px] font-normal text-ink-faint sm:hidden">
+                            {{ event.entrants }} entrants
+                        </span>
+                    </span>
+                </a>
+            </td>
+            <td class="hidden text-center font-mono text-xs text-ink-muted sm:table-cell">
+                {{ event.entrants > 0 ? event.entrants : '—' }}
+            </td>
+            <td class="text-center font-mono text-xs tabular-nums {{ event.matches > 0 ? 'text-ink-body' : 'text-ink-ghost' }}">
+                {{ event.matches > 0 ? event.matches : '—' }}
+            </td>
+            <td class="hidden text-xs sm:table-cell">
+                {% if event.knockoutWinner %}
+                    <span class="font-semibold text-flame">{{ event.knockoutWinner }}</span>
+                {% else %}
+                    <span class="text-ink-ghost">—</span>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</twig:DataTable>

@@ -1,0 +1,93 @@
+{#
+    The tournament archive — option 2B, the season shelf.
+
+    Events are grouped by the season they score in, and the events that score
+    nowhere get a group of their own headed "Unranked tournaments". Filing
+    rather than badging, so the invariant this epic turns on is the page's
+    structure rather than a label inside it.
+
+    This is the first page on the site whose job is the whole history rather
+    than the current table, and it is the only way to reach an unranked event
+    once you leave the post-import redirect: such an event appears in no season
+    leaderboard, and every other route into a tournament used to go through
+    one.
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Tournament archive | Malta Beyblade Community League{% endblock %}
+
+{% block body %}
+
+    <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-6">Return to league framework</twig:BackLink>
+
+    <twig:PageHeader
+        eyebrow="Every event on record"
+        title="Tournament"
+        highlight="archive"
+        size="md"
+    >
+        Every bracket the league has archived, filed under the season it scores in.
+    </twig:PageHeader>
+
+    <twig:Flashes />
+
+    <div class="mb-8 flex justify-center" data-page-section="scope">
+        <twig:ScopeSwitch
+            route="tournament_archive"
+            :seasons="seasons"
+            :activeSlug="current_season ? current_season.slug : null"
+        />
+    </div>
+
+    {# ARCHIVE-SUMMARY: what the archive holds, in four figures. #}
+    <twig:KpiRow class="mb-8" data-page-section="archive-summary" :tiles="[
+        {value: archive.totals.events, label: 'events archived'},
+        {value: archive.totals.matches, label: 'completed matches', highlight: true},
+        {value: archive.totals.bladers, label: 'bladers'},
+        {value: archive.totals.seasons, label: 'seasons'},
+    ]" />
+
+    {% for shelf in archive.shelves %}
+        <twig:Card class="mb-6" data-archive-shelf="{{ shelf.slug ?? 'unranked' }}">
+            <div class="mb-4 flex flex-col gap-2 border-b border-line/60 pb-4 sm:flex-row sm:items-baseline sm:justify-between">
+                <twig:SectionHeading
+                    title="{{ shelf.label }}"
+                    size="md"
+                    tone="{{ shelf.ranked ? 'flame' : 'neutral' }}"
+                    class="mb-0"
+                />
+                <p class="font-mono text-xs text-ink-faint">
+                    {% if shelf.events is empty %}
+                        no events yet
+                    {% else %}
+                        {{ shelf.events|length }} {{ shelf.events|length == 1 ? 'event' : 'events' }}
+                        &middot; {{ shelf.from|date('Y-m-d') }} → {{ shelf.to|date('Y-m-d') }}
+                        &middot; {{ shelf.matches }} matches
+                    {% endif %}
+                </p>
+            </div>
+
+            {% if not shelf.ranked %}
+                <p class="mb-4 text-xs text-ink-muted">
+                    These belong to no season and award no league points. Their matches count towards
+                    every blader's record and towards the league records board.
+                </p>
+            {% endif %}
+
+            {% if shelf.events is empty %}
+                <twig:EmptyState icon="🗓️" title="Nothing archived yet">
+                    No bracket has been archived under {{ shelf.label }}. It fills itself in the moment one is.
+                </twig:EmptyState>
+            {% else %}
+                <twig:ArchiveRow :events="shelf.events" />
+            {% endif %}
+        </twig:Card>
+    {% else %}
+        <div data-page-section="archive-empty">
+            <twig:EmptyState icon="🗃️" title="Nothing archived yet">
+                The league has held no seasons and archived no brackets, so there is nothing to file.
+            </twig:EmptyState>
+        </div>
+    {% endfor %}
+
+{% endblock %}
