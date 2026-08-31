@@ -182,7 +182,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
             'decision['.self::MISSPELLED_KEY.']' => 'blader:'.PlayerFactory::find(['name' => 'Giglio'])->getId(),
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         // The seeded row still created its blader, and the flash says so.
         PlayerFactory::assert()->exists(['name' => self::UNKNOWN]);
@@ -212,7 +212,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
             'elsewhere['.self::UNKNOWN_KEY.']' => 'blader:'.$stranger->getId(),
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         // Nobody was invented: the spelling became an alias of a blader on record.
         PlayerFactory::assert()->count(4);
@@ -297,7 +297,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
 
         $this->confirm($client, $crawler, $this->everyNameAnswered());
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         $tournament = self::findTournament(self::TITLE);
 
@@ -330,7 +330,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
 
         $this->confirm($client, $crawler, $this->everyNameAnswered());
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         self::assertFileExists($this->snapshotPath());
         self::assertFileExists($this->importPath());
@@ -412,7 +412,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
             ...$this->everyNameAnswered(),
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
         self::assertResultAtRank(
             self::findTournament(self::TITLE),
             rank: 1,
@@ -433,7 +433,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
             ...$this->everyNameAnswered(),
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
         self::assertResultAtRank(
             self::findTournament(self::TITLE),
             rank: 1,
@@ -557,7 +557,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
             'decision['.self::MISSPELLED_KEY.']' => 'create',
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         PlayerAliasRejectionFactory::assert()->exists([
             'player' => PlayerFactory::find(['name' => 'Giglio']),
@@ -676,6 +676,13 @@ final class BracketImportControllerTest extends AdminPageTestCase
     protected function artifactPaths(): array
     {
         return [...parent::artifactPaths(), $this->snapshotPath(), $this->importPath()];
+    }
+
+    private function assertRedirectsToImportedTournament(): void
+    {
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertResponseRedirects(sprintf('/season/%s/tournament/%d', self::SEASON, $tournament->getId()));
     }
 
     /**

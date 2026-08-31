@@ -220,7 +220,10 @@ final class AdminBracketImportController extends AbstractController
         $this->drafts->forget();
         $this->addFlash('success', $this->said($outcome));
 
-        return $this->redirectToRoute('admin_tournament_import');
+        return $this->redirectToRoute('tournament_details', [
+            'slug' => $outcome->tournament?->getSeason()->getSlug(),
+            'id' => $outcome->tournament?->getId(),
+        ]);
     }
 
     /**

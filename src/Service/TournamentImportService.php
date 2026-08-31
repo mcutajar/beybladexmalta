@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Dto\PreparedTeamImport;
 use App\Dto\TeamImportOutcome;
 use App\Dto\TeamPlacement;
+use App\Dto\TournamentImportOutcome;
 use App\Dto\TournamentPlacement;
 use App\Entity\Player;
 use App\Entity\Tournament;
@@ -71,10 +72,36 @@ class TournamentImportService
         ?string $knockoutWinner = null,
         ?string $sourceFilePath = null,
     ): TournamentImportResult {
+        return $this->importWithTournament(
+            $title,
+            $heldOn,
+            $seasonSlug,
+            $placements,
+            $challongeUrl,
+            $knockoutWinner,
+            $sourceFilePath,
+        )->result;
+    }
+
+    /**
+     * The web flows need the exact event they have just opened so they can
+     * continue to its public page without guessing from a non-unique title.
+     *
+     * @param list<TournamentPlacement> $placements
+     */
+    public function importWithTournament(
+        string $title,
+        string $heldOn,
+        string $seasonSlug,
+        array $placements,
+        ?string $challongeUrl = null,
+        ?string $knockoutWinner = null,
+        ?string $sourceFilePath = null,
+    ): TournamentImportOutcome {
         $opened = $this->prepare($title, $heldOn, $seasonSlug, $placements, $challongeUrl, $knockoutWinner);
 
         if ($opened instanceof TournamentImportResult) {
-            return $opened;
+            return new TournamentImportOutcome($opened);
         }
 
         $title = trim($title);
@@ -92,7 +119,7 @@ class TournamentImportService
             ),
         );
 
-        return TournamentImportResult::Imported;
+        return new TournamentImportOutcome(TournamentImportResult::Imported, $opened);
     }
 
     /**

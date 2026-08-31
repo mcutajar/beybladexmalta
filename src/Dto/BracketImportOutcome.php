@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Dto;
 
+use App\Entity\Tournament;
 use App\Service\BracketImportResult;
 
 /**
@@ -35,6 +36,7 @@ final readonly class BracketImportOutcome
         public int $seeded = 0,
         public int $aliased = 0,
         public ?ChallongeArchiveOutcome $archive = null,
+        public ?Tournament $tournament = null,
         public array $problems = [],
     ) {
     }
@@ -46,6 +48,7 @@ final readonly class BracketImportOutcome
         int $seeded,
         int $aliased,
         ?ChallongeArchiveOutcome $archive,
+        Tournament $tournament,
     ): self {
         return new self(
             BracketImportResult::Imported,
@@ -55,6 +58,7 @@ final readonly class BracketImportOutcome
             $seeded,
             $aliased,
             $archive,
+            $tournament,
         );
     }
 
