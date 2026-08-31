@@ -93,8 +93,10 @@ final class ArchivedRecordsBoardTest extends PageTestCase
     {
         $this->archiveBothEvenings();
 
-        $tile = $this->board()->filter('[data-record="matches"]');
+        $page = $this->board();
+        $tile = $page->filter('[data-record="matches"]');
 
+        self::assertStringNotContainsString('A win rate is a record once', $page->text());
         self::assertStringContainsString('self-start', (string) $tile->attr('class'));
         self::assertCount(1, $tile->filter('summary'));
         self::assertCount(1, $tile->filter('ol > li'));
