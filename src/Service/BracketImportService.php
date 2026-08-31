@@ -110,8 +110,20 @@ class BracketImportService
             knockoutWinner: $preview->knockoutWinner()?->bladerName,
         );
 
-        if (TournamentImportResult::Imported !== $imported->result || null === $imported->tournament) {
+        if (TournamentImportResult::Imported !== $imported->result) {
             return BracketImportOutcome::refused($this->mapped($imported->result), $preview);
+        }
+
+        /*
+         * Past this point the results and the ledger line are already written,
+         * so there is no refusal left to report: `mapped(Imported)` would hand
+         * back an outcome that says it imported and carries no event, and the
+         * controller would redirect to a route with a null id. An import that
+         * says it succeeded without naming what it opened is a broken
+         * invariant rather than an outcome somebody can answer.
+         */
+        if (null === $imported->tournament) {
+            throw new \LogicException('A successful import must name the tournament it opened.');
         }
 
         return BracketImportOutcome::imported(

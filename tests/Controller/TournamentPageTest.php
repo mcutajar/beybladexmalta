@@ -50,7 +50,7 @@ final class TournamentPageTest extends PageTestCase
 
         self::assertCount(1, $row);
         self::assertSame(['11', 'melhina', 'Unclaimed'], $row[0]);
-        self::assertSelectorTextContains('body', 'Match archive not available');
+        self::assertSelectorTextContains('body', 'No match archive for a 2v2 event');
     }
 
     /**
@@ -162,7 +162,7 @@ final class TournamentPageTest extends PageTestCase
         ));
         self::assertGreaterThan(0, $page->filter('[data-match-id] .font-black')->count(), 'The winner must be emphasised in each decided match.');
         self::assertCount(55, $page->filter('[data-swiss-round] [data-match-id] .line-through'));
-        self::assertSame(['Rank', 'Blader', 'Match history', 'W-L-B'], array_slice($page->filter('[data-page-section="swiss-standings"] th')->each(
+        self::assertSame(['Rank', 'Blader', 'Match history', 'W-L-T-B'], array_slice($page->filter('[data-page-section="swiss-standings"] th')->each(
             static fn (Crawler $heading): string => trim($heading->text()),
         ), 0, 4));
         foreach ($page->filter('[data-swiss-round]') as $roundIndex => $roundNode) {
@@ -191,7 +191,7 @@ final class TournamentPageTest extends PageTestCase
             static fn (Crawler $row): bool => str_contains($row->text(), 'Bye A'),
         );
         self::assertCount(1, $byeAStanding);
-        self::assertStringContainsString('1-0-1', $byeAStanding->text());
+        self::assertStringContainsString('1-0-0-1', $byeAStanding->text());
         self::assertSelectorTextContains('[data-page-section="swiss-standings"] th[title="Total points scored"]', 'Pts');
         self::assertSame(['W', 'B'], $byeAStanding->filter('[data-form-result]')->each(
             static fn (Crawler $result): string => $result->text(),

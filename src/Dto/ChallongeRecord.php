@@ -26,7 +26,11 @@ final readonly class ChallongeRecord
      * @param ?int   $wins               match wins, from the `Match W-L-T` column
      * @param ?int   $byes               a round nobody was paired against, worth a win
      * @param ?float $score              match points: a win is 1.0 and a tie 0.5, so it is not an integer
-     * @param ?float $buchholz           the sum of the opponents' scores, the Swiss tiebreaker
+     * @param ?float $buchholz           Challonge's `Buchholz` column, which is the *median* Buchholz:
+     *                                   the opponents' scores with the best and the worst dropped.
+     *                                   Measured against `nppk0890`, twelve of twelve rows match that
+     *                                   and none match the plain sum — Guzman's opponents scored
+     *                                   2, 3, 3, 4 and 4 for a stated 10.0, not 16.0.
      * @param ?float $tieBreak           Challonge's `TB` column, whatever it was configured to hold
      * @param ?int   $points             total points scored, from Challonge's `Pts` tiebreaker
      * @param ?int   $pointsDifferential Beyblade points for less against, as `Pts Diff`

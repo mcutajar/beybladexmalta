@@ -14,17 +14,26 @@ use App\Entity\TournamentStage;
  * Nothing here decides league places or points. Those remain TournamentResult
  * data; this presenter only arranges the bracket transcription for display.
  *
- * @phpstan-type MatchStep array{match_id: int, consolation: bool, result: string, own_score: ?int, opponent_score: ?int, opponent: ?TournamentParticipant, label: string, short_label: string, column_label: string}
+ * @phpstan-type MatchStep array{match_id: int, consolation: bool, forfeited: bool, result: string, own_score: ?int, opponent_score: ?int, opponent: ?TournamentParticipant, label: string, short_label: string, column_label: string}
  * @phpstan-type CutPath array{participant: TournamentParticipant, steps: list<MatchStep>}
  * @phpstan-type MatchRow array{match: TournamentMatch, player1_form: list<string>, player2_form: list<string>}
  * @phpstan-type ByeRow array{participant: TournamentParticipant, form: list<string>}
  * @phpstan-type SwissRound array{number: int, matches: list<MatchRow>, byes: list<ByeRow>}
  * @phpstan-type SwissColumn array{key: string, label: string, title: ?string}
- * @phpstan-type SwissStage array{stage: TournamentStage, standings: list<array{participant: TournamentParticipant, form: list<string>}>, columns: list<SwissColumn>, rounds: list<SwissRound>}
+ * @phpstan-type SwissStage array{stage: TournamentStage, label: string, standings: list<array{participant: TournamentParticipant, form: list<string>}>, columns: list<SwissColumn>, rounds: list<SwissRound>}
  * @phpstan-type CutStage array{stage: TournamentStage, match_count: int, columns: list<string>, paths: list<CutPath>}
  */
 final class TournamentArchivePresenter
 {
+    /**
+     * Challonge's own word for a knockout stage.
+     *
+     * The branch is on the format rather than on `ChallongeStageKind`,
+     * because a one-stage event that *is* a knockout should read as one. The
+     * kind only says whether a stage has a sibling.
+     */
+    private const string SINGLE_ELIMINATION = 'single elimination';
+
     /**
      * @param list<TournamentStage> $stages
      *
@@ -45,7 +54,7 @@ final class TournamentArchivePresenter
 
             usort($matches, self::matchesInBracketOrder(...));
 
-            if ('single elimination' === $stage->getFormat()) {
+            if (self::SINGLE_ELIMINATION === $stage->getFormat()) {
                 $cuts[] = [
                     'stage' => $stage,
                     'match_count' => count($matches),
@@ -64,6 +73,7 @@ final class TournamentArchivePresenter
 
             $swiss[] = [
                 'stage' => $stage,
+                'label' => $this->stageLabel($stage),
                 'standings' => array_map(static fn (TournamentParticipant $participant): array => [
                     'participant' => $participant,
                     'form' => $timeline['forms'][$participant->getChallongeId()] ?? [],
@@ -198,6 +208,7 @@ final class TournamentArchivePresenter
                 $steps[] = [
                     'match_id' => $match->getChallongeId(),
                     'consolation' => $match->isConsolation(),
+                    'forfeited' => $match->isForfeited(),
                     'result' => $this->resultFor($participant, $match),
                     'own_score' => $isPlayer1 ? $match->getPlayer1Score() : $match->getPlayer2Score(),
                     'opponent_score' => $isPlayer1 ? $match->getPlayer2Score() : $match->getPlayer1Score(),
@@ -210,6 +221,22 @@ final class TournamentArchivePresenter
 
             return ['participant' => $participant, 'steps' => $steps];
         }, $participants);
+    }
+
+    /**
+     * What to call a stage that is not a cut, in Challonge's own vocabulary.
+     *
+     * The league has played Swiss every week and one round robin, and a
+     * heading reading "Swiss" over a round robin would be the page stating
+     * something the bracket never said.
+     */
+    private function stageLabel(TournamentStage $stage): string
+    {
+        return match ($stage->getFormat()) {
+            'swiss' => 'Swiss',
+            'round robin' => 'Round-robin',
+            default => ucfirst($stage->getFormat()),
+        };
     }
 
     private function resultFor(TournamentParticipant $participant, TournamentMatch $match): string

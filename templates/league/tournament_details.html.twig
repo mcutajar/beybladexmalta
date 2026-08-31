@@ -120,8 +120,8 @@
 
         {% for swiss in archive.swiss %}
             <twig:Card class="mb-6" data-page-section="swiss-standings">
-                <twig:SectionHeading title="Swiss standings" size="md" tone="brand" />
-                <p class="mb-4 text-xs text-ink-muted">{{ swiss.stage.name ?: 'Swiss stage' }} · {{ swiss.stage.rounds }} rounds · {{ swiss.standings|length }} entrants</p>
+                <twig:SectionHeading title="{{ swiss.label }} standings" size="md" tone="brand" />
+                <p class="mb-4 text-xs text-ink-muted">{{ swiss.stage.name ?: swiss.label ~ ' stage' }} · {{ swiss.stage.rounds }} rounds · {{ swiss.standings|length }} entrants</p>
 
                 <twig:ExpandableTable :initialRows="5">
                 <twig:DataTable compact bleed>
@@ -130,7 +130,7 @@
                         <th class="w-12 text-center">Rank</th>
                         <th>Blader</th>
                         <th class="text-center">Match history</th>
-                        <th class="text-center">W-L-B</th>
+                        <th class="text-center">W-L-T-B</th>
                         {% for column in swiss.columns %}
                             <th class="hidden text-center sm:table-cell"{% if column.title %} title="{{ column.title }}"{% endif %}>{{ column.label }}</th>
                         {% endfor %}
@@ -143,7 +143,7 @@
                             <td class="text-center">{% if entrant.stageRank %}<twig:RankMedal :rank="entrant.stageRank" />{% else %}—{% endif %}</td>
                             <td class="font-bold text-ink">{{ entrant.player ? entrant.player.name : entrant.name|replace({' (invitation pending)': ''}) }}</td>
                             <td class="text-center"><twig:FormStrip :results="row.form" /></td>
-                            <td class="whitespace-nowrap text-center font-mono">{{ entrant.wins ?? '—' }}-{{ entrant.losses ?? '—' }}-{{ entrant.byes ?? 0 }}</td>
+                            <td class="whitespace-nowrap text-center font-mono">{{ entrant.wins ?? '—' }}-{{ entrant.losses ?? '—' }}-{{ entrant.ties ?? 0 }}-{{ entrant.byes ?? 0 }}</td>
                             {% for column in swiss.columns %}
                                 {% set value = attribute(entrant, column.key) %}
                                 <td class="hidden text-center sm:table-cell">{{ column.key == 'pointsDifferential' and value > 0 ? '+' ~ value : value ?? '—' }}</td>
@@ -159,7 +159,7 @@
 
         {% for swiss in archive.swiss %}
             <twig:Card class="mb-6" data-page-section="swiss-rounds">
-                <twig:SectionHeading title="Swiss rounds" size="md" tone="brand" />
+                <twig:SectionHeading title="{{ swiss.label }} rounds" size="md" tone="brand" />
                 <div class="space-y-3" data-swiss-rounds>
                     {% for round in swiss.rounds %}
                         {% set roundSummary = 'Round ' ~ round.number ~ ' · ' ~ (round.matches|length) ~ ' matches' %}
@@ -173,9 +173,18 @@
         {% endfor %}
     {% else %}
         <twig:Card class="mb-6">
-            <twig:EmptyState title="Match archive not available">
-                League points remain official. The full bracket will appear here when this tournament is archived.
-            </twig:EmptyState>
+            {# A 2v2 event is not waiting to be archived: a team match records only the
+               aggregate of its individual matchups, so there is no blader-level result
+               to hold. Saying "not yet" about it would be a promise nothing can keep. #}
+            {% if tournament.teamEvent %}
+                <twig:EmptyState title="No match archive for a 2v2 event">
+                    A team match records only the aggregate of its individual matchups, so there is no blader-level result to archive. The teams and their placings are above.
+                </twig:EmptyState>
+            {% else %}
+                <twig:EmptyState title="Match archive not available">
+                    League points remain official. The full bracket will appear here when this tournament is archived.
+                </twig:EmptyState>
+            {% endif %}
         </twig:Card>
     {% endif %}
 
