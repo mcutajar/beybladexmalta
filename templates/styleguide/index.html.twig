@@ -395,28 +395,35 @@
             <twig:SectionHeading title="Event feed" rule />
             <twig:EventFeed seasonSlug="paid-season" :initial="2" :events="[
                 {
-                    tournament: {id: 1, title: 'Gamebreaker 22-08', heldOn: date('2026-08-22'), season: {slug: 'paid-season', name: 'Season 1'}},
+                    tournament: {id: 1, title: 'Gamebreaker 22-08', heldOn: date('2026-08-22'), ranked: true, season: {slug: 'paid-season', name: 'Season 1'}},
                     archived: true, wins: 7, losses: 1, draws: 0, rank: 3, points: 25,
                     stage_rank: 3, stage_label: 'Swiss', won_the_cut: true, cut: cutDemo,
                     stages: [{label: 'Top cut', matches: cutDemo}],
                 },
                 {
-                    tournament: {id: 2, title: 'Gamesplus 26-07', heldOn: date('2026-07-26'), season: {slug: 'preseason-1', name: 'Preseason 1'}},
+                    tournament: {id: 2, title: 'Gamesplus 26-07', heldOn: date('2026-07-26'), ranked: true, season: {slug: 'preseason-1', name: 'Preseason 1'}},
                     archived: true, wins: 2, losses: 3, draws: 0, rank: null, points: null,
                     stage_rank: 15, stage_label: 'Swiss', won_the_cut: false, cut: [],
                     stages: [{label: 'Swiss', matches: cutDemo|slice(0, 2)}],
                 },
                 {
-                    tournament: {id: 3, title: '19th July Gamesplus 2v2', heldOn: date('2026-07-19'), season: {slug: 'paid-season', name: 'Season 1'}},
+                    tournament: {id: 3, title: '19th July Gamesplus 2v2', heldOn: date('2026-07-19'), ranked: true, season: {slug: 'paid-season', name: 'Season 1'}},
                     archived: false, wins: 0, losses: 0, draws: 0, rank: 1, points: 25,
                     stage_rank: null, stage_label: null, won_the_cut: false, cut: [], stages: [],
+                },
+                {
+                    tournament: {id: 4, title: 'Malta International Exhibition', heldOn: date('2026-07-12'), ranked: false, season: null},
+                    archived: true, wins: 3, losses: 2, draws: 0, rank: null, points: null,
+                    stage_rank: 4, stage_label: 'Swiss', won_the_cut: false, cut: [],
+                    stages: [{label: 'Swiss', matches: cutDemo|slice(0, 2)}],
                 },
             ]" />
             <p class="mt-4 text-xs text-ink-muted">
                 The career's match history, not a summary of it: every match is inside one of these panels.
                 <code class="font-mono">&lt;details&gt;</code> is native, so the whole history is reachable
                 with JavaScript off. A 2v2 evening archives no matches and says so; an event from another
-                season names it. The profile shows the newest three and folds the rest away — shown here
+                season names it, and an unranked one is marked as such and carries no points. The profile
+                shows the newest three and folds the rest away — shown here
                 with <code class="font-mono">initial</code> at two, so the fold has something to hold.
             </p>
         </twig:Card>
