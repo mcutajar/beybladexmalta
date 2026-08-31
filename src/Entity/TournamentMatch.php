@@ -20,8 +20,8 @@ use Doctrine\ORM\Mapping as ORM;
  * tournament rather than the stage because a Challonge id is unique across a
  * bracket, so a match cannot silently move between stages and become two.
  *
- * Three different things mean "didn't play", and all three are kept even
- * though nothing renders them yet:
+ * Three different things mean "didn't play", and all three are kept. Swiss
+ * byes now appear in match history, and awarded matches render as forfeits:
  *
  * - `forfeited` — the match was awarded. Four in the corpus, three of them in
  *   one bracket, each with an empty scoreline.

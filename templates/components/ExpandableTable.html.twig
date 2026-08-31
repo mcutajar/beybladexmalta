@@ -1,0 +1,17 @@
+{% props initialRows = 5 %}
+
+<div {{ attributes.defaults({'data-expandable-table': '', 'data-initial-rows': initialRows}) }}>
+    {% block content %}{% endblock %}
+
+    <div class="border-t border-line/60 pt-3 text-center" data-expandable-controls hidden>
+        <button
+            type="button"
+            class="rounded-control px-4 py-2 text-xs font-bold uppercase tracking-wider text-brand transition-colors hover:bg-surface-raised/40 hover:text-brand-bright focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            aria-expanded="false"
+            data-expandable-toggle
+        >
+            <span data-expandable-label>Show more</span>
+            <span class="ml-1 text-ink-faint" aria-hidden="true">↓</span>
+        </button>
+    </div>
+</div>

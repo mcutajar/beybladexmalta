@@ -103,6 +103,12 @@
     .data-table.is-dense td {
         @apply px-4 py-3 sm:px-6;
     }
+
+    /* A wide result vocabulary whose core columns still fit at 375px. */
+    .data-table.is-compact th,
+    .data-table.is-compact td {
+        @apply px-1.5 py-3 sm:px-4;
+    }
 }
 
 /*

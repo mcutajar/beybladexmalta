@@ -9,8 +9,8 @@ use Symfony\UX\TwigComponent\Attribute\AsTwigComponent;
 /**
  * Knockout bonus points, or an em dash where none were earned.
  *
- * The leaderboard shows these as a chip and the two detail tables show them
- * bare, which is the only difference `chip` exists for.
+ * The leaderboard and tournament summaries show these as a chip; detailed
+ * contribution tables can keep the quieter bare value.
  */
 #[AsTwigComponent]
 final class BonusPoints

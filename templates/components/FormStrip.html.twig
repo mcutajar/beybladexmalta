@@ -1,0 +1,16 @@
+{% props results = [], size = 'md' %}
+
+{% set sizes = {
+    md: {wrap: 'gap-0.5 sm:gap-1', bubble: 'size-4 text-[9px] sm:size-5 sm:text-[10px]'},
+    xs: {wrap: 'gap-px', bubble: 'size-3 text-[7px]'},
+} %}
+{% set scale = sizes[size] %}
+
+<span {{ attributes.defaults({class: 'inline-flex items-center ' ~ scale.wrap}) }} aria-label="Match history: {{ results|join(', ') }}">
+    {% for result in results %}
+        {% set tone = result == 'W' ? 'bg-positive/15 text-positive' : (result == 'L' ? 'bg-flame/15 text-flame-bright' : (result == 'B' ? 'bg-brand/15 text-brand' : 'bg-surface-raised text-ink-muted')) %}
+        <span class="inline-flex items-center justify-center rounded-control font-black {{ scale.bubble }} {{ tone }}" data-form-result="{{ result }}">{{ result }}</span>
+    {% else %}
+        <span class="text-xs text-ink-faint">—</span>
+    {% endfor %}
+</span>

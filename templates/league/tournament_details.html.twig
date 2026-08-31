@@ -67,14 +67,15 @@
         </twig:Card>
     {% endif %}
 
-    <twig:Card>
+    <twig:Card class="mb-6" data-page-section="league-points">
+        <twig:SectionHeading title="League points" size="md" tone="flame" />
+        <twig:ExpandableTable :initialRows="5">
         <twig:DataTable>
             <thead>
             <tr>
                 <th class="w-16 text-center">Rank</th>
                 <th>Blader name</th>
                 <th class="text-center">Base F1 pts</th>
-                <th class="text-center">KO/bonus pts</th>
                 <th class="pr-4 text-right font-bold text-brand">Total</th>
             </tr>
             </thead>
@@ -85,26 +86,96 @@
                         <twig:RankMedal :rank="row.rank" />
                     </td>
                     <td>
-                        <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': row.player_id}) }}"
-                           class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
-                            {{ row.player_name }}
-                        </a>
+                        <span class="flex items-center gap-2">
+                            <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': row.player_id}) }}"
+                               class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
+                                {{ row.player_name }}
+                            </a>
+                            {% if row.bonus_points > 0 %}<twig:BonusPoints :value="row.bonus_points" chip />{% endif %}
+                        </span>
                     </td>
                     <td class="text-center">{{ row.f1_points }}</td>
-                    <td class="text-center">
-                        <twig:BonusPoints :value="row.bonus_points" />
-                    </td>
                     <td class="pr-4 text-right font-black text-ink">
                         {{ row.total_points }} <span class="text-xs font-normal text-ink-faint">pts</span>
                     </td>
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="5" class="py-12 text-center text-sm italic text-ink-faint">No match details recorded for this tournament.</td>
+                    <td colspan="4" class="py-12 text-center text-sm italic text-ink-faint">No match details recorded for this tournament.</td>
                 </tr>
             {% endfor %}
             </tbody>
         </twig:DataTable>
+        </twig:ExpandableTable>
     </twig:Card>
+
+    {% if archive.archived %}
+        {% for cut in archive.cuts %}
+            <twig:Card class="mb-6" data-page-section="top-cut">
+                <twig:TopCut :paths="cut.paths" :columns="cut.columns" :matchCount="cut.match_count" />
+            </twig:Card>
+        {% endfor %}
+
+        {% for swiss in archive.swiss %}
+            <twig:Card class="mb-6" data-page-section="swiss-standings">
+                <twig:SectionHeading title="Swiss standings" size="md" tone="brand" />
+                <p class="mb-4 text-xs text-ink-muted">{{ swiss.stage.name ?: 'Swiss stage' }} · {{ swiss.stage.rounds }} rounds · {{ swiss.standings|length }} entrants</p>
+
+                <twig:ExpandableTable :initialRows="5">
+                <twig:DataTable compact bleed>
+                    <thead>
+                    <tr>
+                        <th class="w-12 text-center">Rank</th>
+                        <th>Blader</th>
+                        <th class="text-center">Match history</th>
+                        <th class="text-center">W-L-B</th>
+                        <th class="hidden text-center sm:table-cell">Score</th>
+                        <th class="hidden text-center sm:table-cell" title="Median-Buchholz">MB</th>
+                        <th class="hidden text-center sm:table-cell">TB</th>
+                        <th class="hidden text-center sm:table-cell">Diff</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in swiss.standings %}
+                        {% set entrant = row.participant %}
+                        <tr>
+                            <td class="text-center">{% if entrant.stageRank %}<twig:RankMedal :rank="entrant.stageRank" />{% else %}—{% endif %}</td>
+                            <td class="font-bold text-ink">{{ entrant.player ? entrant.player.name : entrant.name|replace({' (invitation pending)': ''}) }}</td>
+                            <td class="text-center"><twig:FormStrip :results="row.form" /></td>
+                            <td class="whitespace-nowrap text-center font-mono">{{ entrant.wins ?? '—' }}-{{ entrant.losses ?? '—' }}-{{ entrant.byes ?? 0 }}</td>
+                            <td class="hidden text-center sm:table-cell">{{ entrant.score ?? '—' }}</td>
+                            <td class="hidden text-center sm:table-cell">{{ entrant.buchholz ?? '—' }}</td>
+                            <td class="hidden text-center sm:table-cell">{{ entrant.tieBreak ?? '—' }}</td>
+                            <td class="hidden text-center sm:table-cell">{{ entrant.pointsDifferential is null ? '—' : (entrant.pointsDifferential > 0 ? '+' ~ entrant.pointsDifferential : entrant.pointsDifferential) }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </twig:DataTable>
+                </twig:ExpandableTable>
+            </twig:Card>
+
+        {% endfor %}
+
+        {% for swiss in archive.swiss %}
+            <twig:Card class="mb-6" data-page-section="swiss-rounds">
+                <twig:SectionHeading title="Swiss rounds" size="md" tone="brand" />
+                <div class="space-y-3" data-swiss-rounds>
+                    {% for round in swiss.rounds %}
+                        {% set roundSummary = 'Round ' ~ round.number ~ ' · ' ~ (round.matches|length) ~ ' matches' %}
+                        {% if round.byes %}{% set roundSummary = roundSummary ~ ' · ' ~ (round.byes|length) ~ ' ' ~ (round.byes|length == 1 ? 'bye' : 'byes') %}{% endif %}
+                        <twig:Disclosure summary="{{ roundSummary }}" tone="neutral" compact data-swiss-round="{{ round.number }}">
+                            <twig:MatchLog :rows="round.matches" :byes="round.byes" strikeLoser />
+                        </twig:Disclosure>
+                    {% endfor %}
+                </div>
+            </twig:Card>
+        {% endfor %}
+    {% else %}
+        <twig:Card class="mb-6">
+            <twig:EmptyState title="Match archive not available">
+                League points remain official. The full bracket will appear here when this tournament is archived.
+            </twig:EmptyState>
+        </twig:Card>
+    {% endif %}
 
 {% endblock %}

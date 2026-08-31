@@ -1,0 +1,42 @@
+{% props paths = [], columns = [], matchCount = 0 %}
+
+<div {{ attributes.defaults({class: 'space-y-4'}) }}>
+    <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-black text-ink">Top-cut scoreboard</span>
+        <twig:Badge tone="neutral" size="sm">{{ matchCount }} matches</twig:Badge>
+    </div>
+
+    <twig:DataTable compact bleed>
+        <thead>
+        <tr>
+            <th class="sticky left-0 z-10 min-w-28 bg-canvas text-left">Blader</th>
+            {% for column in columns %}
+                <th class="min-w-16 bg-flame/5 text-center text-flame-bright">{{ column }}</th>
+            {% endfor %}
+            <th class="min-w-20 text-right">Finish</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for path in paths %}
+            {% set participantName = (path.participant.player ?? null) ? path.participant.player.name : path.participant.name|replace({' (invitation pending)': ''}) %}
+            {% set rank = path.participant.stageRank %}
+            <tr data-cut-path="{{ participantName }}">
+                <td class="sticky left-0 z-10 bg-surface font-bold text-ink">{{ participantName }}</td>
+                {% for column in columns %}
+                    {% set step = path.steps|filter(candidate => candidate.column_label == column)|first %}
+                    <td class="bg-flame/5 text-center font-mono text-xs font-bold {{ step ? (step.result == 'W' ? 'text-positive' : 'text-flame-bright') : 'text-ink-ghost' }}"{% if step %} data-cut-match-id="{{ step.match_id }}"{% if step.consolation %} data-consolation{% endif %} title="{{ step.label }}{% if step.opponent %} against {{ (step.opponent.player ?? null) ? step.opponent.player.name : step.opponent.name|replace({' (invitation pending)': ''}) }}{% endif %}"{% endif %}>
+                        {% if step %}
+                            {% if step.own_score is not null and step.opponent_score is not null %}{{ step.own_score }}–{{ step.opponent_score }}{% else %}FF{% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                {% endfor %}
+                <td class="text-right">
+                    <span class="whitespace-nowrap text-xs font-black uppercase tracking-wider text-flame-bright">
+                        {{ rank == 1 ? '1st' : (rank == 2 ? '2nd' : (rank == 3 ? '3rd' : rank ~ 'th')) }}
+                    </span>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </twig:DataTable>
+</div>
