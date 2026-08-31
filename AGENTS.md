@@ -6,10 +6,10 @@ Tailwind, served by FrankenPHP.
 
 ## Skills
 
-Detail that only matters inside one subsystem lives in `.claude/skills/`, exposed
-to Codex through `.agents/skills/` and loaded on demand. The rules below are the
-ones that apply everywhere, or that you have to know *before* you would think to
-go looking.
+Detail that only matters inside one subsystem lives in `.agents/skills/`, exposed
+to Claude Code through `.claude/skills/` and loaded on demand. The rules below are
+the ones that apply everywhere, or that you have to know *before* you would think
+to go looking.
 
 | Skill | Covers |
 | --- | --- |
