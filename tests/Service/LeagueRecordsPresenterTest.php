@@ -122,13 +122,28 @@ final class LeagueRecordsPresenterTest extends TestCase
     /**
      * Two bladers level on a record is not a coin toss between two requests.
      */
-    public function testATiedRecordGoesToTheNameThatSortsFirst(): void
+    public function testARecordRanksItsTopThreeAndBreaksTiesByName(): void
     {
         $this->played(1, 'Belti', 9, 'Mezz', 2);
         $this->played(1, 'Amanda', 9, 'Mezz', 2);
+        $this->played(1, 'Amanda', 9, 'Giglio', 2);
+        $this->played(1, 'Giglio', 9, 'Mezz', 2);
 
-        self::assertSame('Amanda', $this->record('nines')['name']);
-        self::assertSame('1', $this->record('nines')['value']);
+        $record = $this->record('nines');
+
+        self::assertSame('Amanda', $record['name']);
+        self::assertSame('2', $record['value']);
+        self::assertSame(
+            [
+                ['name' => 'Amanda', 'value' => '2'],
+                ['name' => 'Belti', 'value' => '1'],
+                ['name' => 'Giglio', 'value' => '1'],
+            ],
+            array_map(static fn (array $leader): array => [
+                'name' => $leader['name'],
+                'value' => $leader['value'],
+            ], $record['leaders']),
+        );
     }
 
     /**
@@ -141,16 +156,8 @@ final class LeagueRecordsPresenterTest extends TestCase
         $this->played(1, 'Mezz', 7, 'Belti', 1);
         $this->played(1, 'Belti', 7, 'Mezz', 4);
 
-        $board = $this->board();
-
-        self::assertSame('Mezz', $board['rivalries'][0]['leader_name']);
-        self::assertSame('Belti', $board['rivalries'][0]['trailer_name']);
-        self::assertSame([2, 1, 3], [
-            $board['rivalries'][0]['wins'],
-            $board['rivalries'][0]['losses'],
-            $board['rivalries'][0]['met'],
-        ]);
         self::assertSame('Mezz over Belti', $this->record('one-sided')['name']);
+        self::assertSame('2–1', $this->record('one-sided')['leaders'][0]['value']);
     }
 
     /**
@@ -163,23 +170,6 @@ final class LeagueRecordsPresenterTest extends TestCase
         $this->played(1, 'Mezz', 7, 'Belti', 1);
 
         self::assertNull($this->record('one-sided')['value']);
-    }
-
-    /**
-     * The scores that win matches are read off the archive rather than assumed
-     * to be seven, eight and nine.
-     */
-    public function testTheFinishSpreadIsCountedFromTheWinningScores(): void
-    {
-        $this->played(1, 'Mezz', 7, 'Belti', 3);
-        $this->played(1, 'Mezz', 9, 'Belti', 1);
-        $this->played(1, 'Belti', 7, 'Mezz', 2);
-        $this->awarded(1, 'Mezz', 'Belti');
-
-        self::assertSame(
-            [['score' => 7, 'wins' => 2, 'share' => 66.7], ['score' => 9, 'wins' => 1, 'share' => 33.3]],
-            $this->board()['finishes'],
-        );
     }
 
     /**
@@ -208,8 +198,6 @@ final class LeagueRecordsPresenterTest extends TestCase
 
         self::assertFalse($board['archived']);
         self::assertSame(0, $board['matches']);
-        self::assertSame([], $board['finishes']);
-        self::assertSame([], $board['rivalries']);
         self::assertSame(
             array_fill(0, 9, null),
             array_column($board['records'], 'value'),
@@ -217,7 +205,7 @@ final class LeagueRecordsPresenterTest extends TestCase
     }
 
     /**
-     * @return array{key: string, label: string, name: ?string, player: ?Player, value: ?string, note: ?string, tone: string}
+     * @return array{key: string, label: string, name: ?string, player: ?Player, value: ?string, note: ?string, tone: string, leaders: list<array{name: string, player: ?Player, value: string}>}
      */
     private function record(string $key): array
     {
@@ -231,7 +219,7 @@ final class LeagueRecordsPresenterTest extends TestCase
     }
 
     /**
-     * @return array{archived: bool, matches: int, events: int, bladers: int, points: int, minimum_matches: int, records: list<array{key: string, label: string, name: ?string, player: ?Player, value: ?string, note: ?string, tone: string}>, finishes: list<array{score: int, wins: int, share: float}>, rivalries: list<array{leader: ?Player, leader_name: string, trailer: ?Player, trailer_name: string, wins: int, losses: int, draws: int, met: int}>}
+     * @return array{archived: bool, matches: int, events: int, bladers: int, points: int, minimum_matches: int, records: list<array{key: string, label: string, name: ?string, player: ?Player, value: ?string, note: ?string, tone: string, leaders: list<array{name: string, player: ?Player, value: string}>}>}
      */
     private function board(): array
     {

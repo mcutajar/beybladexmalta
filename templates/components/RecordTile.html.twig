@@ -2,13 +2,13 @@
     One record: what it is, who holds it, and the number that holds it.
 
     <twig:RecordTile label="Highest win rate" name="Mezz" value="70.6%"
-                     note="24–10 in 34 matches" href="{{ path(…) }}" tone="brand" />
+                     note="24–10 in 34 matches" :leaders="leaders" tone="brand" />
 
     A record nobody in scope holds still renders. Saying so keeps the board the
     same shape in a quiet season as it is overall, and a tile that vanished
     would read as a record that does not exist rather than one nobody has set.
 #}
-{% props label, value = null, name = null, note = null, href = null, tone = 'flame' %}
+{% props label, value = null, name = null, note = null, leaders = [], seasonSlug = null, tone = 'flame' %}
 
 {% set tints = {
     brand:    'text-brand',
@@ -16,25 +16,44 @@
     positive: 'text-positive',
 } %}
 
-<div {{ attributes.defaults({
-    class: 'flex flex-col gap-1 rounded-card border border-line bg-surface p-4',
+<details {{ attributes.defaults({
+    class: 'group rounded-card border border-line bg-surface',
 }) }}>
-    <span class="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{{ label }}</span>
+    <summary class="flex cursor-pointer list-none items-start justify-between gap-3 p-4 marker:content-none">
+        <span class="flex min-w-0 flex-col gap-1">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{{ label }}</span>
 
-    {% if value is null %}
-        <span class="font-mono text-2xl font-black text-ink-ghost" aria-hidden="true">—</span>
-        <span class="text-[11px] italic text-ink-faint">Nobody has set this one yet.</span>
-    {% else %}
-        {% if href %}
-            <a href="{{ href }}" class="text-sm font-black text-ink transition-colors outline-none hover:text-brand focus:text-brand">{{ name }}</a>
+        {% if value is null %}
+            <span class="font-mono text-2xl font-black text-ink-ghost" aria-hidden="true">—</span>
+            <span class="text-[11px] italic text-ink-faint">Nobody has set this one yet.</span>
         {% else %}
             <span class="text-sm font-black text-ink">{{ name }}</span>
-        {% endif %}
+            <span class="font-mono text-2xl font-black tabular-nums {{ tints[tone] }}">{{ value }}</span>
 
-        <span class="font-mono text-2xl font-black tabular-nums {{ tints[tone] }}">{{ value }}</span>
-
-        {% if note %}
-            <span class="text-[11px] text-ink-faint">{{ note }}</span>
+            {% if note %}
+                <span class="text-[11px] text-ink-faint">{{ note }}</span>
+            {% endif %}
         {% endif %}
+        </span>
+
+        {% if leaders is not empty %}
+            <span class="mt-1 shrink-0 text-lg leading-none text-ink-faint transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+        {% endif %}
+    </summary>
+
+    {% if leaders is not empty %}
+        <ol class="mx-4 border-t border-line/40 pb-3 pt-2">
+            {% for leader in leaders %}
+                <li class="flex items-baseline justify-between gap-3 py-1.5">
+                    {% if leader.player and seasonSlug %}
+                        <a href="{{ path('player_season_details', {'slug': seasonSlug, 'id': leader.player.id}) }}"
+                           class="min-w-0 truncate text-sm font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">{{ leader.name }}</a>
+                    {% else %}
+                        <span class="min-w-0 truncate text-sm font-bold text-ink">{{ leader.name }}</span>
+                    {% endif %}
+                    <span class="shrink-0 font-mono text-sm font-black tabular-nums {{ tints[tone] }}">{{ leader.value }}</span>
+                </li>
+            {% endfor %}
+        </ol>
     {% endif %}
-</div>
+</details>

@@ -12,7 +12,7 @@ use App\Entity\TournamentParticipant;
  * Turns a slice of the archive into the records board.
  *
  * One walk over every match in scope, tallying both sides of each, and then a
- * pass over the tallies to name a holder for each record. Nothing here reads
+ * pass over the tallies to rank the top three for each record. Nothing here reads
  * `TournamentResult`: **no league points appear on this page in either scope**,
  * because points are season-specific and a record is not. Every figure below
  * is a Beyblade point — the scoreline of a match — or a count of matches.
@@ -33,10 +33,10 @@ use App\Entity\TournamentParticipant;
  *   the record to whoever sorts first.
  *
  * @phpstan-type Tally array{player: Player, name: string, matches: int, wins: int, losses: int, draws: int, points_for: int, points_against: int, nines: int, strong: int, shutouts: int, events: array<int, true>, streak: int, streak_events: int, running: int, running_events: array<int, true>}
- * @phpstan-type BoardRecord array{key: string, label: string, name: ?string, player: ?Player, value: ?string, note: ?string, tone: string}
- * @phpstan-type Finish array{score: int, wins: int, share: float}
+ * @phpstan-type RecordLeader array{name: string, player: ?Player, value: string}
+ * @phpstan-type BoardRecord array{key: string, label: string, name: ?string, player: ?Player, value: ?string, note: ?string, tone: string, leaders: list<RecordLeader>}
  * @phpstan-type Rivalry array{leader: ?Player, leader_name: string, trailer: ?Player, trailer_name: string, wins: int, losses: int, draws: int, met: int}
- * @phpstan-type Board array{archived: bool, matches: int, events: int, bladers: int, points: int, minimum_matches: int, records: list<BoardRecord>, finishes: list<Finish>, rivalries: list<Rivalry>}
+ * @phpstan-type Board array{archived: bool, matches: int, events: int, bladers: int, points: int, minimum_matches: int, records: list<BoardRecord>}
  */
 final class LeagueRecordsPresenter
 {
@@ -53,9 +53,6 @@ final class LeagueRecordsPresenter
 
     /** A pair has to have met this often before the board calls it a rivalry. */
     private const MINIMUM_MEETINGS = 3;
-
-    /** Standing rivalries listed under the tiles. */
-    private const RIVALRIES_SHOWN = 6;
 
     public function __construct(private readonly ArchivedMatchReader $reader)
     {
@@ -74,23 +71,12 @@ final class LeagueRecordsPresenter
         $pairs = [];
         /** @var array<int, true> $events */
         $events = [];
-        /** @var array<int, int> $finishes wins keyed by the score that won */
-        $finishes = [];
-
         $played = 0;
         $points = 0;
 
         foreach ($matches as $match) {
             $events[(int) $match->getTournament()->getId()] = true;
             ++$played;
-
-            $winner = $match->getWinner();
-            if (!$match->isForfeited() && null !== $winner) {
-                $score = $this->reader->scoreFor($match, $winner);
-                if (null !== $score) {
-                    $finishes[$score] = ($finishes[$score] ?? 0) + 1;
-                }
-            }
 
             foreach ([$match->getPlayer1(), $match->getPlayer2()] as $side) {
                 if (null === $side) {
@@ -117,8 +103,6 @@ final class LeagueRecordsPresenter
             'points' => $points,
             'minimum_matches' => self::MINIMUM_MATCHES,
             'records' => $this->records($board, $rivalries),
-            'finishes' => $this->finishes($finishes),
-            'rivalries' => array_slice($rivalries, 0, self::RIVALRIES_SHOWN),
         ];
     }
 
@@ -129,7 +113,7 @@ final class LeagueRecordsPresenter
      * under their bracket spelling: two spellings of the same person would
      * hold two records between them, which is the failure the alias table
      * exists to prevent. Their matches still count towards the league totals
-     * and the finish spread, because those are counted per match.
+     * and the page totals, because those are counted per match.
      *
      * @param array<int, Tally> $tallies
      */
@@ -303,38 +287,6 @@ final class LeagueRecordsPresenter
     }
 
     /**
-     * How matches are won, by the score that won them.
-     *
-     * Read off the archive rather than assumed to be seven, eight and nine:
-     * that is what the corpus holds, and it is a fact about the rules in force
-     * rather than one about this page.
-     *
-     * @param array<int, int> $finishes
-     *
-     * @return list<Finish>
-     */
-    private function finishes(array $finishes): array
-    {
-        $total = array_sum($finishes);
-        if (0 === $total) {
-            return [];
-        }
-
-        ksort($finishes);
-
-        $spread = [];
-        foreach ($finishes as $score => $wins) {
-            $spread[] = [
-                'score' => $score,
-                'wins' => $wins,
-                'share' => round($wins / $total * 100, 1),
-            ];
-        }
-
-        return $spread;
-    }
-
-    /**
      * @param list<Tally>   $board
      * @param list<Rivalry> $rivalries
      *
@@ -342,22 +294,23 @@ final class LeagueRecordsPresenter
      */
     private function records(array $board, array $rivalries): array
     {
-        $rate = $this->leader($board, static fn (array $tally): ?float => $tally['matches'] >= self::MINIMUM_MATCHES
+        $rate = $this->leaders($board, static fn (array $tally): ?float => $tally['matches'] >= self::MINIMUM_MATCHES
             ? $tally['wins'] / $tally['matches']
             : null);
 
-        $streak = $this->leader($board, static fn (array $tally): ?int => $tally['streak'] > 0 ? $tally['streak'] : null);
-        $differential = $this->leader($board, static fn (array $tally): ?int => 0 === $tally['points_for'] && 0 === $tally['points_against']
+        $streak = $this->leaders($board, static fn (array $tally): ?int => $tally['streak'] > 0 ? $tally['streak'] : null);
+        $differential = $this->leaders($board, static fn (array $tally): ?int => 0 === $tally['points_for'] && 0 === $tally['points_against']
             ? null
             : $tally['points_for'] - $tally['points_against']);
-        $nines = $this->leader($board, static fn (array $tally): ?int => $tally['nines'] > 0 ? $tally['nines'] : null);
-        $strong = $this->leader($board, static fn (array $tally): ?int => $tally['strong'] > 0 ? $tally['strong'] : null);
-        $shutouts = $this->leader($board, static fn (array $tally): ?int => $tally['shutouts'] > 0 ? $tally['shutouts'] : null);
-        $played = $this->leader($board, static fn (array $tally): ?int => $tally['matches'] > 0 ? $tally['matches'] : null);
-        $scored = $this->leader($board, static fn (array $tally): ?int => $tally['points_for'] > 0 ? $tally['points_for'] : null);
+        $nines = $this->leaders($board, static fn (array $tally): ?int => $tally['nines'] > 0 ? $tally['nines'] : null);
+        $strong = $this->leaders($board, static fn (array $tally): ?int => $tally['strong'] > 0 ? $tally['strong'] : null);
+        $shutouts = $this->leaders($board, static fn (array $tally): ?int => $tally['shutouts'] > 0 ? $tally['shutouts'] : null);
+        $played = $this->leaders($board, static fn (array $tally): ?int => $tally['matches'] > 0 ? $tally['matches'] : null);
+        $scored = $this->leaders($board, static fn (array $tally): ?int => $tally['points_for'] > 0 ? $tally['points_for'] : null);
 
         $ninesEverywhere = array_sum(array_column($board, 'nines'));
         $onesided = $this->onesided($rivalries);
+        $oneSidedHolder = $onesided[0] ?? null;
 
         return [
             $this->record('win-rate', 'Highest win rate', $rate, static fn (array $tally): string => round($tally['wins'] / $tally['matches'] * 100, 1).'%',
@@ -387,13 +340,18 @@ final class LeagueRecordsPresenter
             [
                 'key' => 'one-sided',
                 'label' => 'Most one-sided rivalry',
-                'name' => null === $onesided ? null : $onesided['leader_name'].' over '.$onesided['trailer_name'],
-                'player' => null === $onesided ? null : $onesided['leader'],
-                'value' => null === $onesided ? null : $onesided['wins'].'–'.$onesided['losses'],
-                'note' => null === $onesided
+                'name' => null === $oneSidedHolder ? null : $oneSidedHolder['leader_name'].' over '.$oneSidedHolder['trailer_name'],
+                'player' => null,
+                'value' => null === $oneSidedHolder ? null : $oneSidedHolder['wins'].'–'.$oneSidedHolder['losses'],
+                'note' => null === $oneSidedHolder
                     ? null
-                    : sprintf('met %d times%s', $onesided['met'], 0 === $onesided['losses'] ? ', never beaten' : ''),
+                    : sprintf('met %d times%s', $oneSidedHolder['met'], 0 === $oneSidedHolder['losses'] ? ', never beaten' : ''),
                 'tone' => 'flame',
+                'leaders' => array_map(static fn (array $rivalry): array => [
+                    'name' => $rivalry['leader_name'].' over '.$rivalry['trailer_name'],
+                    'player' => null,
+                    'value' => $rivalry['wins'].'–'.$rivalry['losses'],
+                ], $onesided),
             ],
         ];
     }
@@ -403,24 +361,26 @@ final class LeagueRecordsPresenter
      *
      * @param list<Rivalry> $rivalries
      *
-     * @return ?Rivalry
+     * @return list<Rivalry>
      */
-    private function onesided(array $rivalries): ?array
+    private function onesided(array $rivalries): array
     {
         $standing = array_values(array_filter($rivalries, static fn (array $rivalry): bool => $rivalry['met'] >= self::MINIMUM_MEETINGS));
         if ([] === $standing) {
-            return null;
+            return [];
         }
 
         usort($standing, static fn (array $left, array $right): int => [$right['wins'] - $right['losses'], $right['met'], $left['leader_name']]
             <=> [$left['wins'] - $left['losses'], $left['met'], $right['leader_name']]
         );
 
-        return $standing[0]['wins'] > $standing[0]['losses'] ? $standing[0] : null;
+        $standing = array_values(array_filter($standing, static fn (array $rivalry): bool => $rivalry['wins'] > $rivalry['losses']));
+
+        return array_slice($standing, 0, 3);
     }
 
     /**
-     * The blader a record belongs to, or nobody.
+     * The top three bladers for a record.
      *
      * `$of` returns the figure being ranked, or null for a blader this record
      * cannot be awarded to at all — below the match threshold, or on nothing
@@ -430,44 +390,27 @@ final class LeagueRecordsPresenter
      * @param list<Tally>                       $board
      * @param callable(Tally): (int|float|null) $of
      *
-     * @return ?Tally
+     * @return list<Tally>
      */
-    private function leader(array $board, callable $of): ?array
+    private function leaders(array $board, callable $of): array
     {
-        $holder = null;
-        $best = null;
+        $eligible = array_values(array_filter($board, static fn (array $tally): bool => null !== $of($tally)));
+        usort($eligible, static fn (array $left, array $right): int => [$of($right), $left['name']] <=> [$of($left), $right['name']]);
 
-        foreach ($board as $tally) {
-            $value = $of($tally);
-            if (null === $value) {
-                continue;
-            }
-
-            if (null === $holder || null === $best) {
-                $holder = $tally;
-                $best = $value;
-
-                continue;
-            }
-
-            if ($value > $best || ($value === $best && $tally['name'] < $holder['name'])) {
-                $holder = $tally;
-                $best = $value;
-            }
-        }
-
-        return $holder;
+        return array_slice($eligible, 0, 3);
     }
 
     /**
-     * @param ?Tally                  $holder
+     * @param list<Tally>             $leaders
      * @param callable(Tally): string $value
      * @param callable(Tally): string $note
      *
      * @return BoardRecord
      */
-    private function record(string $key, string $label, ?array $holder, callable $value, callable $note, string $tone = 'flame'): array
+    private function record(string $key, string $label, array $leaders, callable $value, callable $note, string $tone = 'flame'): array
     {
+        $holder = $leaders[0] ?? null;
+
         return [
             'key' => $key,
             'label' => $label,
@@ -476,6 +419,11 @@ final class LeagueRecordsPresenter
             'value' => null === $holder ? null : $value($holder),
             'note' => null === $holder ? null : $note($holder),
             'tone' => $tone,
+            'leaders' => array_map(static fn (array $leader): array => [
+                'name' => $leader['name'],
+                'player' => $leader['player'],
+                'value' => $value($leader),
+            ], $leaders),
         ];
     }
 }

@@ -42,24 +42,18 @@ final class ArchivedRecordsBoardTest extends PageTestCase
 
     private const JULY_12 = 'zx9el0js';
 
-    public function testOverallCountsEverySeason(): void
+    public function testOverallUsesTheRecordsTitle(): void
     {
         $this->archiveBothEvenings();
 
-        self::assertStringContainsString(
-            '135 matches across 2 events, 1 blader',
-            $this->headline($this->board()),
-        );
+        self::assertSame('Malta Beyblade Community Records', $this->headline($this->board()));
     }
 
-    public function testASeasonCountsOnlyItsOwnEvents(): void
+    public function testASeasonUsesTheSameRecordsTitle(): void
     {
         $this->archiveBothEvenings();
 
-        self::assertStringContainsString(
-            '67 matches across 1 event',
-            $this->headline($this->board('paid-season')),
-        );
+        self::assertSame('Malta Beyblade Community Records', $this->headline($this->board('paid-season')));
     }
 
     /**
@@ -93,6 +87,18 @@ final class ArchivedRecordsBoardTest extends PageTestCase
 
         self::assertStringContainsString('16', $this->tile($this->board(), 'matches'));
         self::assertStringContainsString('8', $this->tile($this->board('paid-season'), 'matches'));
+    }
+
+    public function testEveryRecordIsExpandableIntoItsRankedValues(): void
+    {
+        $this->archiveBothEvenings();
+
+        $tile = $this->board()->filter('[data-record="matches"]');
+
+        self::assertCount(1, $tile->filter('summary'));
+        self::assertCount(1, $tile->filter('ol > li'));
+        self::assertStringContainsString('Giglio', $tile->filter('ol > li')->first()->text());
+        self::assertStringContainsString('16', $tile->filter('ol > li')->first()->text());
     }
 
     /**
@@ -194,7 +200,7 @@ final class ArchivedRecordsBoardTest extends PageTestCase
 
     private function headline(Crawler $page): string
     {
-        return (string) preg_replace('/\s+/', ' ', $page->filter('header')->text());
+        return trim($page->filter('h1')->text());
     }
 
     private function tile(Crawler $page, string $record): string
