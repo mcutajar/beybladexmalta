@@ -5,6 +5,74 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.3.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.3.0) - 2026-08-31
+
+### Features
+
+- Import a team event as one tournament, through a per-event roster ([33983bf](https://github.com/mcutajar/beybladexmalta/commit/33983bf6ef2a770cff61e2e338e822e863162d49))
+- Archive every match, game and standing a bracket contains ([4cf7c77](https://github.com/mcutajar/beybladexmalta/commit/4cf7c77392dc449abe1aab2e7a7cf018ee90c75b))
+- Import a tournament from a Challonge URL, with a preview before anything is written ([46b0900](https://github.com/mcutajar/beybladexmalta/commit/46b0900d740c8d628bd3fff6c175c96a6504a03a))
+- Answer the questions with nothing close, and make the rest three buttons ([658a4f1](https://github.com/mcutajar/beybladexmalta/commit/658a4f1da01372891709acb4240c1f7a9c001c56))
+- Make tournament imports deterministic and replayable ([577df0e](https://github.com/mcutajar/beybladexmalta/commit/577df0effffef0ae37152535d84570b6a0bf487f))
+- Remember rejected alias suggestions ([06ee84e](https://github.com/mcutajar/beybladexmalta/commit/06ee84e1f6481d35ea1d1991800e5dfea36e26a8))
+- Merge one blader into another ([7c8a5bc](https://github.com/mcutajar/beybladexmalta/commit/7c8a5bc93a8e08bc2036cbb71a1aa0eca26f242f))
+- Backfill every tournament archive ([186ce04](https://github.com/mcutajar/beybladexmalta/commit/186ce04d230c86373952e7ac6200422dc54a5531))
+- Show complete tournament archives ([0114c82](https://github.com/mcutajar/beybladexmalta/commit/0114c82f5cadcf2b3ed752a6b578bd53ac2b5d9d))
+- Open the imported tournament page ([d259d44](https://github.com/mcutajar/beybladexmalta/commit/d259d44a5818fec2b92e5c97465be39732d104bf))
+- Give the player profile a career ([5725937](https://github.com/mcutajar/beybladexmalta/commit/5725937c68441864615c7f989e668c60ce3d534b))
+- Keep a league record book ([14202b2](https://github.com/mcutajar/beybladexmalta/commit/14202b25e91b05e4322f4d5a2bf0106ebf8bc973))
+- Expand the league record book ([d1e8a01](https://github.com/mcutajar/beybladexmalta/commit/d1e8a01fe2f01af9a33bf656951c28c285582b86))
+- Link standings to season records ([e19bf5c](https://github.com/mcutajar/beybladexmalta/commit/e19bf5c999f4cfb861b08fd6bbd0351ad3250375))
+- [#90] let a tournament belong to no season ([6ae312e](https://github.com/mcutajar/beybladexmalta/commit/6ae312e8d9baee04a4d70be323ad5f73a6cedd59))
+- [#92] give a tournament a season-independent page ([de2816b](https://github.com/mcutajar/beybladexmalta/commit/de2816b5be6d178d7b52f813301702927885af9c))
+- [#91] import a Challonge bracket as an unranked tournament ([e688725](https://github.com/mcutajar/beybladexmalta/commit/e68872510ba693be129129c9bdaaf73cb6f59555))
+- [#93] add a tournament archive at /tournaments ([444f99a](https://github.com/mcutajar/beybladexmalta/commit/444f99ac91217d56750e8dae10aeec47bb96aa26))
+- [#94] add a seasons index and take Overall off the leaderboard ([ef757cd](https://github.com/mcutajar/beybladexmalta/commit/ef757cde6fb8afa1fd92e04f04abb2c40d75bd8b))
+- [#95] scope the player profile to a season and give it a canonical slug ([647aa94](https://github.com/mcutajar/beybladexmalta/commit/647aa94f4ecaff31a58c77ac488f89bc7e665186))
+
+### Fixes
+
+- Nobody is scored twice for one evening, on either path ([dbfa0c2](https://github.com/mcutajar/beybladexmalta/commit/dbfa0c223524978dd86557506f9623b71149f172))
+- Three findings from the review of the bracket archive ([879427a](https://github.com/mcutajar/beybladexmalta/commit/879427a3f9609e1c03067f2ffa5acb2bae7ed94a))
+- Give a settled decision a picker, and stop painting it like a call to action ([9df92b6](https://github.com/mcutajar/beybladexmalta/commit/9df92b6335584482d88f0316bfa80cffd4522dc8))
+- One shape for every decision, and a dropdown that cannot overwrite a button ([1836fe2](https://github.com/mcutajar/beybladexmalta/commit/1836fe2b73717a214b29e87925de11b11bb470db))
+- Read the finishing order and the winner, and let the table follow the decisions ([24782f3](https://github.com/mcutajar/beybladexmalta/commit/24782f3db57ccad118a8e85b311514055c6f734e))
+- Keep bracket confirmation atomic before import ([3a7bdbb](https://github.com/mcutajar/beybladexmalta/commit/3a7bdbbf66034a4940a0753cd5f09ea4e231ddd9))
+- Apply the confirmed rejection rules ([e253b61](https://github.com/mcutajar/beybladexmalta/commit/e253b61046e5e8f7ad3b4b0e0be6d4517b46c35a))
+- Follow Challonge Swiss ranking methods ([beee1d1](https://github.com/mcutajar/beybladexmalta/commit/beee1d1734467258f05319cabcfe7b8ffc44c7fa))
+- Count a drawn match in the Swiss record ([91a97eb](https://github.com/mcutajar/beybladexmalta/commit/91a97eb1bbac46585f713afe501753787093b529))
+- Fold the timeline to the newest three events ([874b657](https://github.com/mcutajar/beybladexmalta/commit/874b6577a25e42194b2ca1cb12ebe370a5687361))
+- Exclude unplayed matches from careers ([4fc5406](https://github.com/mcutajar/beybladexmalta/commit/4fc54069eccab31acdddc02a9e09120421a766c3))
+- Link records back to standings ([7193838](https://github.com/mcutajar/beybladexmalta/commit/7193838dd4657cd3ee63f561e65646559f8fa3b5))
+- Keep record tiles at natural height ([447eff0](https://github.com/mcutajar/beybladexmalta/commit/447eff096a2a7d1848b66e357bf3e702eea4539e))
+- [#92] reach an unranked event from a career timeline ([e1cb246](https://github.com/mcutajar/beybladexmalta/commit/e1cb2463c5138d96186d628a41f05c4246a45279))
+- [#92] stop repeating the standings as a finishing order ([d0ef6d3](https://github.com/mcutajar/beybladexmalta/commit/d0ef6d3b75f939c461b4d9027ff6c777fda3b15b))
+- [#93] name the archive's turnout column and keep it on a phone ([e9a842b](https://github.com/mcutajar/beybladexmalta/commit/e9a842b642df5002082ae2e9999013e81f915e21))
+
+### Refactoring
+
+- Keep rejections under the alias command ([95c8b72](https://github.com/mcutajar/beybladexmalta/commit/95c8b726784a2bdbce28381f5084f1f8616ab312))
+- Share how a bracket round is named ([ad42b26](https://github.com/mcutajar/beybladexmalta/commit/ad42b26dc72b23f5f13bf7e7406e723e1d883e97))
+- [#93] read the season list once per archive request ([0c53709](https://github.com/mcutajar/beybladexmalta/commit/0c53709bb8bc3f48017fed685402930de7041684))
+
+### Documentation
+
+- Record how a team event is imported and how a team is claimed ([402f867](https://github.com/mcutajar/beybladexmalta/commit/402f867c307d7c524e71b9e165480a4a66fdca5e))
+- Record how a bracket is previewed and imported from a URL ([d233c96](https://github.com/mcutajar/beybladexmalta/commit/d233c96061c39cfb4394fc5b22621cd8f4cf54ef))
+- Move subsystem detail into on-demand skills ([cfaa47c](https://github.com/mcutajar/beybladexmalta/commit/cfaa47c323667b48216698c3f003d79d1d269885))
+- Expose project skills to Codex ([72afe14](https://github.com/mcutajar/beybladexmalta/commit/72afe14391d8d7131a20ef0bd2c8992ea83f59ba))
+- Make agent skills canonical ([d3a3dc8](https://github.com/mcutajar/beybladexmalta/commit/d3a3dc8cacb45f8bd75964494521a91bcf7166ed))
+
+### Testing
+
+- Assert the win-rate footnote is gone ([2f44344](https://github.com/mcutajar/beybladexmalta/commit/2f44344f3c785acaa488bcff9be1b5ff1a721395))
+
+### Maintenance
+
+- Remove redundant blader replay commands ([b269984](https://github.com/mcutajar/beybladexmalta/commit/b2699841a1fc84352c4ca9fdd567a51002c16485))
+- Preserve pre-backfill replay ledger ([8315f42](https://github.com/mcutajar/beybladexmalta/commit/8315f423730479f9f8e69dfd746aa833b71a6791))
+- Give coverage reports room to render ([230d7fd](https://github.com/mcutajar/beybladexmalta/commit/230d7fde1e3e61973026b830bc1f00254a66ce60))
+
 ## [1.2.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.2.0) - 2026-08-26
 
 ### Features
