@@ -15,6 +15,7 @@ use App\Repository\TournamentTeamRepository;
 use App\Service\LeagueRecordsPresenter;
 use App\Service\PlayerCareerPresenter;
 use App\Service\TournamentArchivePresenter;
+use App\Service\TournamentShelfPresenter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -138,6 +139,50 @@ class LeagueController extends AbstractController
     public function tournamentDetails(int $id): Response
     {
         return $this->redirectToRoute('tournament_page', ['id' => $id], Response::HTTP_MOVED_PERMANENTLY);
+    }
+
+    /**
+     * The tournament archive — every event the league has held, filed under
+     * the season it scores in.
+     *
+     * Option 2B, the season shelf. The final group holds the events that score
+     * nowhere, headed **Unranked tournaments**. Grouping rather than badging,
+     * so the invariant is the page's structure: there is no synthetic "Other"
+     * season and nothing here invents one — the last group is exactly the rows
+     * whose relation is null.
+     *
+     * `?season=` narrows to one season, sharing the scope contract with the
+     * records board: a season scope holds only the tournaments assigned to that
+     * season, and an unknown season is a 404 rather than a quiet fall back to
+     * Overall.
+     *
+     * Without this page an unranked event is unreachable the moment you leave
+     * the post-import redirect.
+     */
+    #[Route('/tournaments', name: 'tournament_archive', methods: ['GET'])]
+    public function tournamentArchive(Request $request, SeasonRepository $seasonRepository, TournamentRepository $tournaments, PlayerRepository $players, TournamentShelfPresenter $shelves): Response
+    {
+        $slug = $request->query->getString('season');
+        $season = null;
+
+        if ('' !== $slug) {
+            $season = $seasonRepository->findBySlug($slug);
+
+            if (!$season) {
+                throw $this->createNotFoundException('No season answers to that name.');
+            }
+        }
+
+        return $this->render('league/tournaments.html.twig', [
+            'archive' => $shelves->present(
+                $tournaments->archiveIndex(),
+                $seasonRepository->ordered(),
+                $players->archivedBladerCount(),
+                $season,
+            ),
+            'seasons' => $seasonRepository->ordered(),
+            'current_season' => $season,
+        ]);
     }
 
     /**

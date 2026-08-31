@@ -28,7 +28,7 @@
             'scope-switch': 'Scope switch', 'record-tile': 'Record tile',
             'player-headline': 'Player headline', 'h2h-bars': 'Head-to-head bars',
             'cut-path': 'Cut path', 'player-match-log': 'Player match log', 'event-feed': 'Event feed',
-            'finishing-order': 'Finishing order',
+            'finishing-order': 'Finishing order', 'archive-row': 'Archive row',
             'artifacts': 'Artifacts & ledger',
         } %}
             <a href="#{{ anchor }}" class="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink">{{ label }}</a>
@@ -470,6 +470,21 @@
                 <strong class="text-ink-muted">No F1, bonus or total column</strong> — an unranked event
                 writes no result row, so there is no such value to put in one. The fourth row is an
                 entrant the archive holds no matches for.
+            </p>
+        </twig:Card>
+
+        <twig:Card id="archive-row">
+            <twig:SectionHeading title="Archive row" rule />
+            <twig:ArchiveRow :events="[
+                {id: 1, title: 'Gamesplus 23-08', heldOn: date('2026-08-23'), entrants: 31, matches: 87, teams: 0, knockoutWinner: 'Giglio', ranked: true},
+                {id: 2, title: '19th July Gamesplus 2v2', heldOn: date('2026-07-19'), entrants: 0, matches: 0, teams: 11, knockoutWinner: null, ranked: true},
+                {id: 3, title: 'Malta International Exhibition', heldOn: date('2026-08-16'), entrants: 12, matches: 24, teams: 0, knockoutWinner: null, ranked: false},
+            ]" />
+            <p class="mt-4 text-xs text-ink-muted">
+                The ranked/unranked mark rides in the name cell rather than in a column of its own:
+                a column empty on nineteen rows in twenty is a column spent badly at 375px. A 2v2
+                evening archives no matches, and an unranked one has no result row to name a
+                knockout winner from.
             </p>
         </twig:Card>
 

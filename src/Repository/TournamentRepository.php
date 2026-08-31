@@ -84,6 +84,65 @@ class TournamentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every archived event with the two figures the archive page states about
+     * it, oldest first within each season.
+     *
+     * One query rather than one per event, and raw SQL rather than DQL because
+     * both figures are counts over collections: fetch-joining entrants and
+     * matches together is a cartesian product — thirty-one entrants against
+     * eighty-seven matches is the largest event in the corpus — and two
+     * `COUNT(DISTINCT)` subqueries are cheaper than either.
+     *
+     * The season is joined on the left. An inner join would drop exactly the
+     * unranked events this page exists to make findable.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function archiveIndex(): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = '
+            SELECT
+                t.id,
+                t.title,
+                t.held_on,
+                t.challonge_url,
+                s.slug AS season_slug,
+                s.name AS season_name,
+                (
+                    SELECT COUNT(*)
+                    FROM tournament_participants p
+                    JOIN tournament_stages st ON st.id = p.stage_id
+                    WHERE st.tournament_id = t.id AND st.position = 0
+                ) AS entrants,
+                (
+                    SELECT COUNT(*)
+                    FROM tournament_matches m
+                    WHERE m.tournament_id = t.id AND m.state = \'complete\'
+                ) AS matches,
+                (
+                    SELECT COUNT(*)
+                    FROM tournament_teams tt
+                    WHERE tt.tournament_id = t.id
+                ) AS teams,
+                (
+                    SELECT pl.name
+                    FROM tournament_results tr
+                    JOIN players pl ON pl.id = tr.player_id
+                    WHERE tr.tournament_id = t.id AND tr.bonus_points > 0
+                    ORDER BY tr.rank ASC
+                    LIMIT 1
+                ) AS knockout_winner
+            FROM tournaments t
+            LEFT JOIN seasons s ON s.id = t.season_id
+            ORDER BY s.id ASC NULLS LAST, t.held_on ASC, t.id ASC
+        ';
+
+        return $conn->executeQuery($sql)->fetchAllAssociative();
+    }
+
+    /**
      * Fetches all player results for a single tournament.
      *
      * The rank is selected rather than counted off the rows, because a team

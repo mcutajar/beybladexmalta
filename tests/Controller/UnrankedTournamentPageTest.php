@@ -149,12 +149,11 @@ final class UnrankedTournamentPageTest extends PageTestCase
         );
     }
 
-    public function testAnUnrankedPageGoesBackSomewhereThatIsNotASeason(): void
+    public function testAnUnrankedPageGoesBackToTheArchiveRatherThanASeason(): void
     {
         $page = $this->render($this->unrankedEvent());
-        $back = $page->filter('a[href^="/records"]');
 
-        self::assertGreaterThan(0, $back->count());
+        self::assertCount(1, $page->filter('a[href="/tournaments"]'));
         self::assertCount(0, $page->filter('a[href^="/season/"]'));
     }
 

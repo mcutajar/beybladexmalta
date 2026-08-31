@@ -27,15 +27,14 @@
 {% block body %}
 
     {# An unranked event has no season leaderboard to go back to, so it goes
-       somewhere that is not a season. The records board is that place until
-       #93 adds the tournament archive, which is where it belongs. #}
+       back to the archive — which is the page that files it. #}
     {% if tournament.ranked %}
         <twig:BackLink href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}" class="mb-6">
             Return to {{ current_season.name }} leaderboard
         </twig:BackLink>
     {% else %}
-        <twig:BackLink href="{{ path('records_board') }}" class="mb-6">
-            Return to the league records
+        <twig:BackLink href="{{ path('tournament_archive') }}" class="mb-6">
+            Return to the tournament archive
         </twig:BackLink>
     {% endif %}
 

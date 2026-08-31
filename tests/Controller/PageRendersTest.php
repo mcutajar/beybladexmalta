@@ -134,6 +134,13 @@ final class PageRendersTest extends PageTestCase
     }
 
     #[WithStory(SeasonStory::class)]
+    public function testTheTournamentArchiveRenders(): void
+    {
+        $this->assertPageRenders('/tournaments');
+        $this->assertPageRenders('/tournaments?season=paid-season');
+    }
+
+    #[WithStory(SeasonStory::class)]
     public function testTheAdminPagesRender(): void
     {
         $this->assertPageRenders('/admin/payments');

@@ -111,6 +111,24 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
         return $resultSet->fetchAllAssociative();
     }
 
+    /**
+     * How many bladers the archive actually reaches.
+     *
+     * Distinct players behind an archived entrant, rather than rows in
+     * `players`: the difference is everybody the league has on record but has
+     * never seen play, and the archive page is stating what it holds. It
+     * counts unranked events like any other — an entrant resolves to a blader
+     * whether or not the evening scored.
+     */
+    public function archivedBladerCount(): int
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        return (int) $conn->executeQuery(
+            'SELECT COUNT(DISTINCT p.player_id) FROM tournament_participants p WHERE p.player_id IS NOT NULL',
+        )->fetchOne();
+    }
+
     public function getPlayerByName(string $name): ?Player
     {
         return $this->createQueryBuilder('p')
