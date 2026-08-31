@@ -110,10 +110,12 @@ final class UnrankedTournamentPageTest extends PageTestCase
     }
 
     /**
-     * Option 3B. The archive leads and the finishing order sits under it,
-     * asserted by document order rather than by the presence of both.
+     * Option 3B. The archive leads — and on this page it is the whole of it.
+     *
+     * The top cut, the standings and the rounds are carried over from the
+     * ranked page unchanged, and nothing scoring sits between them.
      */
-    public function testAnUnrankedPagePutsItsArchiveAboveItsFinishingOrder(): void
+    public function testAnUnrankedPageIsItsArchiveAndNothingElse(): void
     {
         $page = $this->render($this->unrankedEvent());
 
@@ -121,31 +123,32 @@ final class UnrankedTournamentPageTest extends PageTestCase
             static fn (Crawler $node): string => (string) $node->attr('data-page-section'),
         );
 
-        self::assertContains('swiss-standings', $sections);
-        self::assertContains('finishing-order', $sections);
-        self::assertLessThan(
-            array_search('finishing-order', $sections, true),
-            array_search('swiss-standings', $sections, true),
-            'The match archive leads and the finishing order follows it.',
+        self::assertSame(
+            ['unranked-notice', 'swiss-standings', 'swiss-rounds'],
+            $sections,
         );
     }
 
-    public function testAnUnrankedFinishingOrderNamesEverybodyAndPaysNobody(): void
+    /**
+     * The finishing order of an archived event *is* the ranking of its first
+     * stage, which the Swiss standings block already renders — with the record,
+     * the form and the tiebreak columns a separate block would drop. Repeating
+     * it minus columns adds nothing, and the only thing it could have added is
+     * the points, of which there are none.
+     *
+     * The block still exists and is still used, on the import preview, where
+     * nothing is archived yet.
+     */
+    public function testItDoesNotRepeatTheStandingsAsASeparateFinishingOrder(): void
     {
         $page = $this->render($this->unrankedEvent());
-        $rows = $page->filter('[data-page-section="finishing-order"] tbody tr')->each(
-            static fn (Crawler $row): array => $row->filter('td')->each(
-                static fn (Crawler $cell): string => trim((string) preg_replace('/\s+/', ' ', $cell->text())),
-            ),
-        );
 
+        self::assertCount(0, $page->filter('[data-page-section="finishing-order"]'));
+
+        // One table, holding the order once.
         self::assertSame(
-            [
-                ['1', 'Exhibit A', '2-0-0', 'W W'],
-                ['2', 'Exhibit B', '1-1-0', 'L W'],
-                ['3', 'Exhibit C', '0-2-0', 'L L'],
-            ],
-            $rows,
+            [['1', 'Exhibit A', 'W W', '2-0-0-0'], ['2', 'Exhibit B', 'L W', '1-1-0-0'], ['3', 'Exhibit C', 'L L', '0-2-0-0']],
+            $this->standings($page),
         );
     }
 
@@ -155,6 +158,25 @@ final class UnrankedTournamentPageTest extends PageTestCase
 
         self::assertCount(1, $page->filter('a[href="/tournaments"]'));
         self::assertCount(0, $page->filter('a[href^="/season/"]'));
+    }
+
+    /**
+     * The Swiss standings, cell by cell — the one place this page states the
+     * order everybody finished in.
+     *
+     * The trailing columns are dropped on a phone (`hidden sm:table-cell`) and
+     * the crawler reads the markup rather than the viewport, so the tiebreak
+     * cells are sliced off here instead.
+     *
+     * @return list<list<string>>
+     */
+    private function standings(Crawler $page): array
+    {
+        return $page->filter('[data-page-section="swiss-standings"] tbody tr')->each(
+            static fn (Crawler $row): array => array_slice($row->filter('td')->each(
+                static fn (Crawler $cell): string => trim((string) preg_replace('/\s+/', ' ', $cell->text())),
+            ), 0, 4),
+        );
     }
 
     /**
