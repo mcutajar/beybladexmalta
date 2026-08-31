@@ -19,7 +19,8 @@ use App\Entity\TournamentStage;
  * @phpstan-type MatchRow array{match: TournamentMatch, player1_form: list<string>, player2_form: list<string>}
  * @phpstan-type ByeRow array{participant: TournamentParticipant, form: list<string>}
  * @phpstan-type SwissRound array{number: int, matches: list<MatchRow>, byes: list<ByeRow>}
- * @phpstan-type SwissStage array{stage: TournamentStage, standings: list<array{participant: TournamentParticipant, form: list<string>}>, rounds: list<SwissRound>}
+ * @phpstan-type SwissColumn array{key: string, label: string, title: ?string}
+ * @phpstan-type SwissStage array{stage: TournamentStage, standings: list<array{participant: TournamentParticipant, form: list<string>}>, columns: list<SwissColumn>, rounds: list<SwissRound>}
  * @phpstan-type CutStage array{stage: TournamentStage, match_count: int, columns: list<string>, paths: list<CutPath>}
  */
 final class TournamentArchivePresenter
@@ -67,6 +68,7 @@ final class TournamentArchivePresenter
                     'participant' => $participant,
                     'form' => $timeline['forms'][$participant->getChallongeId()] ?? [],
                 ], $standings),
+                'columns' => $this->swissColumns($standings),
                 'rounds' => $timeline['rounds'],
             ];
         }
@@ -76,6 +78,38 @@ final class TournamentArchivePresenter
             'swiss' => $swiss,
             'cuts' => $cuts,
         ];
+    }
+
+    /**
+     * Challonge only renders the ranking methods configured for this bracket.
+     * A non-null value is therefore the persisted trace that a column existed.
+     *
+     * @param list<TournamentParticipant> $participants
+     *
+     * @return list<SwissColumn>
+     */
+    private function swissColumns(array $participants): array
+    {
+        $definitions = [
+            'score' => ['label' => 'Score', 'title' => null],
+            'buchholz' => ['label' => 'MB', 'title' => 'Median-Buchholz'],
+            'tieBreak' => ['label' => 'TB', 'title' => null],
+            'points' => ['label' => 'Pts', 'title' => 'Total points scored'],
+            'pointsDifferential' => ['label' => 'Diff', 'title' => 'Points differential'],
+        ];
+        $columns = [];
+
+        foreach ($definitions as $key => $definition) {
+            $getter = 'get'.ucfirst($key);
+            foreach ($participants as $participant) {
+                if (null !== $participant->{$getter}()) {
+                    $columns[] = ['key' => $key, ...$definition];
+                    break;
+                }
+            }
+        }
+
+        return $columns;
     }
 
     /**

@@ -104,6 +104,9 @@ class TournamentParticipant
     private ?float $tieBreak = null;
 
     #[ORM\Column(nullable: true)]
+    private ?int $points = null;
+
+    #[ORM\Column(nullable: true)]
     private ?int $pointsDifferential = null;
 
     public function __construct(
@@ -145,6 +148,7 @@ class TournamentParticipant
         $this->score = $record->score;
         $this->buchholz = $record->buchholz;
         $this->tieBreak = $record->tieBreak;
+        $this->points = $record->points;
         $this->pointsDifferential = $record->pointsDifferential;
     }
 
@@ -236,6 +240,11 @@ class TournamentParticipant
         return $this->tieBreak;
     }
 
+    public function getPoints(): ?int
+    {
+        return $this->points;
+    }
+
     public function getPointsDifferential(): ?int
     {
         return $this->pointsDifferential;
@@ -251,6 +260,7 @@ class TournamentParticipant
             score: $this->score,
             buchholz: $this->buchholz,
             tieBreak: $this->tieBreak,
+            points: $this->points,
             pointsDifferential: $this->pointsDifferential,
         );
     }
