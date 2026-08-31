@@ -332,12 +332,12 @@
         </twig:Card>
 
         {% set rivalDemo = [
-            {opponent: {id: 1}, name: 'Markulegend', wins: 7, losses: 3, draws: 0, met: 10},
-            {opponent: {id: 2}, name: 'Evilbeys', wins: 5, losses: 1, draws: 0, met: 6},
-            {opponent: {id: 3}, name: 'Claude', wins: 5, losses: 0, draws: 0, met: 5},
-            {opponent: {id: 4}, name: 'Kaori', wins: 4, losses: 0, draws: 0, met: 4},
-            {opponent: {id: 5}, name: 'Belti', wins: 3, losses: 1, draws: 0, met: 4},
-            {opponent: {id: 6}, name: 'Obelix', wins: 2, losses: 1, draws: 1, met: 4},
+            {opponent: {id: 1, slug: 'blader-1'}, name: 'Markulegend', wins: 7, losses: 3, draws: 0, met: 10},
+            {opponent: {id: 2, slug: 'blader-2'}, name: 'Evilbeys', wins: 5, losses: 1, draws: 0, met: 6},
+            {opponent: {id: 3, slug: 'blader-3'}, name: 'Claude', wins: 5, losses: 0, draws: 0, met: 5},
+            {opponent: {id: 4, slug: 'blader-4'}, name: 'Kaori', wins: 4, losses: 0, draws: 0, met: 4},
+            {opponent: {id: 5, slug: 'blader-5'}, name: 'Belti', wins: 3, losses: 1, draws: 0, met: 4},
+            {opponent: {id: 6, slug: 'blader-6'}, name: 'Obelix', wins: 2, losses: 1, draws: 1, met: 4},
         ] %}
         <twig:Card id="h2h-bars">
             <twig:SectionHeading title="Head-to-head bars" rule />
@@ -349,7 +349,7 @@
                 <div>
                     <twig:SectionHeading title="Behind on the head to head" size="sm" tone="heat" />
                     <twig:H2hBars :rivals="[
-                        {opponent: {id: 7}, name: 'Giglio', wins: 2, losses: 4, draws: 0, met: 6},
+                        {opponent: {id: 7, slug: 'blader-7'}, name: 'Giglio', wins: 2, losses: 4, draws: 0, met: 6},
                         {opponent: null, name: 'Someone unresolved', wins: 0, losses: 1, draws: 0, met: 1},
                     ]" tone="heat" seasonSlug="paid-season" />
                 </div>
@@ -379,10 +379,10 @@
         <twig:Card id="player-match-log">
             <twig:SectionHeading title="Player match log" rule />
             <twig:PlayerMatchLog seasonSlug="paid-season" :rows="[
-                {label: 'R1', outcome: 'W', own_score: 8, opponent_score: 4, forfeited: false, opponent: {id: 1}, opponent_name: 'Fir3bladetv', cut: false},
-                {label: 'R2', outcome: 'W', own_score: 7, opponent_score: 1, forfeited: false, opponent: {id: 2}, opponent_name: 'Guzman93', cut: false},
-                {label: 'R3', outcome: 'L', own_score: 6, opponent_score: 7, forfeited: false, opponent: {id: 3}, opponent_name: 'Belti', cut: false},
-                {label: 'R4', outcome: 'T', own_score: 0, opponent_score: 0, forfeited: false, opponent: {id: 4}, opponent_name: 'Obelix', cut: false},
+                {label: 'R1', outcome: 'W', own_score: 8, opponent_score: 4, forfeited: false, opponent: {id: 1, slug: 'blader-1'}, opponent_name: 'Fir3bladetv', cut: false},
+                {label: 'R2', outcome: 'W', own_score: 7, opponent_score: 1, forfeited: false, opponent: {id: 2, slug: 'blader-2'}, opponent_name: 'Guzman93', cut: false},
+                {label: 'R3', outcome: 'L', own_score: 6, opponent_score: 7, forfeited: false, opponent: {id: 3, slug: 'blader-3'}, opponent_name: 'Belti', cut: false},
+                {label: 'R4', outcome: 'T', own_score: 0, opponent_score: 0, forfeited: false, opponent: {id: 4, slug: 'blader-4'}, opponent_name: 'Obelix', cut: false},
                 {label: 'R5', outcome: 'W', own_score: null, opponent_score: null, forfeited: true, opponent: null, opponent_name: 'Bye', cut: false},
             ]" />
             <p class="mt-4 text-xs text-ink-muted">

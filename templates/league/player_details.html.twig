@@ -1,12 +1,43 @@
+{#
+    One blader, at `/player/{slug}` — canonical, and independent of any season.
+
+    `?season=` narrows the page. What it touches and what it does not is the
+    whole of #95:
+
+    - **Career figures are match-derived**, so they answer at either scope, and
+      they include unranked events — which have matches and no points.
+    - **Points are grouped by season and never totalled across them.** Best 14
+      is a season's cap: applying fourteen to a career would be a number nobody
+      agreed to, and summing across seasons is what the scope contract forbids.
+      So there is no grand total anywhere on this page, at any scope.
+    - **An unranked event appears in the timeline and never in the points
+      card.** There is no `TournamentResult` row to put there, and a zero-point
+      line would be the lie the invariant exists to prevent.
+#}
 {% extends 'base.html.twig' %}
 
 {% block title %}{{ player.name }} | Tournament Breakdown{% endblock %}
 
 {% block body %}
 
-    <twig:BackLink href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}" class="mb-6">
-        Return to {{ current_season.name }} leaderboard
-    </twig:BackLink>
+    {% if current_season %}
+        <twig:BackLink href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}" class="mb-6">
+            Return to {{ current_season.name }} leaderboard
+        </twig:BackLink>
+    {% else %}
+        <twig:BackLink href="{{ path('tournament_archive') }}" class="mb-6">
+            Return to the tournament archive
+        </twig:BackLink>
+    {% endif %}
+
+    <div class="mb-8 flex justify-center" data-page-section="scope">
+        <twig:ScopeSwitch
+            route="player_page"
+            :seasons="seasons"
+            :activeSlug="current_season ? current_season.slug : null"
+            :routeParams="{'slug': player.slug}"
+        />
+    </div>
 
     <twig:PlayerHeadline
         name="{{ player.name }}"
@@ -34,7 +65,7 @@
                     <twig:SectionHeading title="Ahead on the head to head" size="sm" tone="positive" class="mb-0" />
                     <twig:Badge tone="neutral" size="sm">{{ career.rivals.ahead|length }} rivals</twig:Badge>
                 </div>
-                <twig:H2hBars :rivals="career.rivals.ahead" tone="positive" seasonSlug="{{ current_season.slug }}" />
+                <twig:H2hBars :rivals="career.rivals.ahead" tone="positive" seasonSlug="{{ current_season ? current_season.slug : '' }}" />
             </twig:Card>
 
             <twig:Card data-page-section="rivals-behind">
@@ -42,7 +73,7 @@
                     <twig:SectionHeading title="Behind on the head to head" size="sm" tone="heat" class="mb-0" />
                     <twig:Badge tone="neutral" size="sm">{{ career.rivals.behind|length }} rivals</twig:Badge>
                 </div>
-                <twig:H2hBars :rivals="career.rivals.behind" tone="heat" seasonSlug="{{ current_season.slug }}" />
+                <twig:H2hBars :rivals="career.rivals.behind" tone="heat" seasonSlug="{{ current_season ? current_season.slug : '' }}" />
             </twig:Card>
         </div>
 
@@ -52,19 +83,24 @@
                     <twig:SectionHeading title="Even" size="sm" tone="neutral" class="mb-0" />
                     <twig:Badge tone="neutral" size="sm">Could go either way</twig:Badge>
                 </div>
-                <twig:H2hBars :rivals="career.rivals.even" tone="neutral" seasonSlug="{{ current_season.slug }}" />
+                <twig:H2hBars :rivals="career.rivals.even" tone="neutral" seasonSlug="{{ current_season ? current_season.slug : '' }}" />
             </twig:Card>
         {% endif %}
 
         <twig:Card class="mb-6" data-page-section="career-timeline">
             <twig:SectionHeading title="Every event, newest first" size="md" tone="flame" />
             <p class="mb-4 text-xs text-ink-muted">
-                Every match this blader has played, across every season. Open an event to see its rounds.
+                {% if current_season %}
+                    Every match this blader played in {{ current_season.name }}. Open an event to see its rounds.
+                {% else %}
+                    Every match this blader has played, across every season and including events that
+                    score nothing. Open an event to see its rounds.
+                {% endif %}
                 {% if career.unarchived_events > 0 %}
                     The {{ career.unarchived_events }} 2v2 {{ career.unarchived_events == 1 ? 'event' : 'events' }} below archive no matches, so they carry a placement and no record.
                 {% endif %}
             </p>
-            <twig:EventFeed :events="career.timeline" seasonSlug="{{ current_season.slug }}" />
+            <twig:EventFeed :events="career.timeline" seasonSlug="{{ current_season ? current_season.slug : '' }}" />
         </twig:Card>
     {% else %}
         <div class="mb-6" data-page-section="career-empty">
@@ -75,44 +111,68 @@
         </div>
     {% endif %}
 
-    {# Unchanged, and deliberately last: nothing above this line feeds scoring. #}
-    <twig:Card data-page-section="league-points">
-        <twig:SectionHeading title="League points · best 14" size="md" tone="brand" />
-        <twig:DataTable>
-            <thead>
-            <tr>
-                <th>Tournament</th>
-                <th class="text-center">Date held</th>
-                <th class="text-center">Base F1 pts</th>
-                <th class="text-center">KO/bonus pts</th>
-                <th class="pr-4 text-right font-bold text-brand">Total</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for match in contributions %}
+    {# Deliberately last: nothing above this line feeds scoring.
+
+       One block per season, each with its own best-14 subtotal on the same
+       line as its heading so the figure is never orphaned from the season it
+       belongs to — and no total across them, at any scope. #}
+    {% for block in points %}
+        <twig:Card class="{{ loop.last ? '' : 'mb-6' }}" data-page-section="league-points" data-points-season="{{ block.slug }}">
+            <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <twig:SectionHeading
+                    title="{{ block.name }} · best 14"
+                    size="md"
+                    tone="brand"
+                    class="mb-0"
+                />
+                <span class="font-mono text-lg font-black tabular-nums text-brand" data-season-total>
+                    {{ block.total }} pts
+                </span>
+            </div>
+
+            <twig:DataTable>
+                <thead>
                 <tr>
-                    <td>
-                        <a href="{{ path('tournament_details', {'slug': current_season.slug, 'id': match.tournament_id}) }}"
-                           class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
-                            {{ match.tournament_name }}
-                        </a>
-                    </td>
-                    <td class="text-center font-mono text-xs text-ink-muted">{{ match.held_on|date('Y-m-d') }}</td>
-                    <td class="text-center">{{ match.f1_points }}</td>
-                    <td class="text-center">
-                        <twig:BonusPoints :value="match.bonus_points" />
-                    </td>
-                    <td class="pr-4 text-right font-black text-ink">
-                        {{ match.total_points }} <span class="text-xs font-normal text-ink-faint">pts</span>
-                    </td>
+                    <th>Tournament</th>
+                    <th class="text-center">Date held</th>
+                    <th class="text-center">Base F1 pts</th>
+                    <th class="text-center">KO/bonus pts</th>
+                    <th class="pr-4 text-right font-bold text-brand">Total</th>
                 </tr>
-            {% else %}
-                <tr>
-                    <td colspan="5" class="py-12 text-center text-sm italic text-ink-faint">No registered records under active seasonal criteria.</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </twig:DataTable>
-    </twig:Card>
+                </thead>
+                <tbody>
+                {% for match in block.events %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('tournament_page', {'id': match.tournament_id}) }}"
+                               class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
+                                {{ match.tournament_name }}
+                            </a>
+                        </td>
+                        <td class="text-center font-mono text-xs text-ink-muted">{{ match.held_on|date('Y-m-d') }}</td>
+                        <td class="text-center">{{ match.f1_points }}</td>
+                        <td class="text-center">
+                            <twig:BonusPoints :value="match.bonus_points" />
+                        </td>
+                        <td class="pr-4 text-right font-black text-ink">
+                            {{ match.total_points }} <span class="text-xs font-normal text-ink-faint">pts</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </twig:DataTable>
+        </twig:Card>
+    {% else %}
+        <div data-page-section="league-points-empty">
+            <twig:EmptyState icon="🏁" title="No league points">
+                {% if current_season %}
+                    This blader scored nothing in {{ current_season.name }}.
+                {% else %}
+                    This blader has not finished in the points at a ranked event. Unranked events
+                    award none by design, so a career can hold matches and no points at all.
+                {% endif %}
+            </twig:EmptyState>
+        </div>
+    {% endfor %}
 
 {% endblock %}

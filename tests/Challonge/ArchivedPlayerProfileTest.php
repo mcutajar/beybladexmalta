@@ -111,9 +111,15 @@ final class ArchivedPlayerProfileTest extends PageTestCase
         self::assertCount(1, $page->filter('[data-page-section="career-empty"]'));
         self::assertCount(0, $page->filter('[data-career-match]'));
 
-        // Nothing above the points table feeds scoring, and nothing below it
-        // is affected by there being no archive.
-        self::assertCount(1, $page->filter('[data-page-section="league-points"]'));
+        /*
+         * Nothing above the points table feeds scoring, and nothing below it
+         * is affected by there being no archive. Since #95 the points table is
+         * one block per season rather than one table with an empty row, so a
+         * blader who has scored nowhere gets the empty state instead — there
+         * is no season to head a block with.
+         */
+        self::assertCount(0, $page->filter('[data-page-section="league-points"]'));
+        self::assertCount(1, $page->filter('[data-page-section="league-points-empty"]'));
     }
 
     /**
@@ -176,7 +182,7 @@ final class ArchivedPlayerProfileTest extends PageTestCase
     {
         $crawler = $this->createBrowser()->request(
             'GET',
-            sprintf('/season/paid-season/player/%d', $player->getId()),
+            sprintf('/player/%s', $player->getSlug()),
         );
 
         self::assertResponseIsSuccessful();

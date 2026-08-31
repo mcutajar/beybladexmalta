@@ -88,7 +88,7 @@
                         <td>
                             {% if team.claimed %}
                                 {% for blader in team.bladers %}
-                                    <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': blader.id}) }}"
+                                    <a href="{{ path('player_page', {'slug': blader.slug}) }}"
                                        class="font-semibold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
                                         {{ blader.name }}</a>{% if not loop.last %}<span class="text-ink-faint"> + </span>{% endif %}
                                 {% endfor %}
@@ -127,7 +127,7 @@
                     </td>
                     <td>
                         <span class="flex items-center gap-2">
-                            <a href="{{ path('player_season_details', {'slug': current_season.slug, 'id': row.player_id}) }}"
+                            <a href="{{ path('player_page', {'slug': row.player_slug}) }}"
                                class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
                                 {{ row.player_name }}
                             </a>

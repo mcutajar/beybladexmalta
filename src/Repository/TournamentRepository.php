@@ -159,6 +159,7 @@ class TournamentRepository extends ServiceEntityRepository
             SELECT 
                 p.id as player_id,
                 p.name as player_name,
+                p.slug as player_slug,
                 tr.rank,
                 tr.f1_points,
                 tr.bonus_points,

@@ -164,14 +164,26 @@ final class ArchivedRecordsBoardTest extends PageTestCase
         self::assertSame('Free Season', trim($current->text()));
     }
 
-    public function testTheBoardReturnsToTheSeasonOneLeaderboard(): void
+    /**
+     * The Overall board has no season to go back to, so it goes to the index
+     * — which is what #94 made the answer to "everything". A season-scoped
+     * board goes back to that season's own table.
+     */
+    public function testTheBoardReturnsToTheIndexOverallAndToTheSeasonWhenScoped(): void
     {
-        $back = $this->board()->filter('a')->reduce(
-            static fn (Crawler $link): bool => str_contains($link->text(), 'Return to Season 1 leaderboard'),
+        $overall = $this->board()->filter('a')->reduce(
+            static fn (Crawler $link): bool => str_contains($link->text(), 'Return to every season'),
         );
 
-        self::assertCount(1, $back);
-        self::assertSame('/season/1', $back->attr('href'));
+        self::assertCount(1, $overall);
+        self::assertSame('/seasons', $overall->attr('href'));
+
+        $scoped = $this->board('free-season')->filter('a')->reduce(
+            static fn (Crawler $link): bool => str_contains($link->text(), 'Return to Free Season leaderboard'),
+        );
+
+        self::assertCount(1, $scoped);
+        self::assertSame('/season/free-season', $scoped->attr('href'));
     }
 
     private function archiveBothEvenings(): void

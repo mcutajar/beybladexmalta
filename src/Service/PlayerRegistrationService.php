@@ -17,6 +17,7 @@ class PlayerRegistrationService
         private PlayerRepositoryInterface $players,
         private SeasonRepository $seasons,
         private SeasonRegistrationRepository $registrations,
+        private PlayerSlugs $slugs,
         private LedgerService $ledgerService,
         private LoggerInterface $logger,
         private FlusherInterface $flusher)
@@ -44,6 +45,7 @@ class PlayerRegistrationService
         if (null === $player) {
             $player = new Player();
             $player->setName($playerName);
+            $this->slugs->assign($player);
             $this->players->save($player);
 
             $this->logger->info('New player record generated', [

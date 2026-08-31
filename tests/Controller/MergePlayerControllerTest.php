@@ -53,18 +53,33 @@ final class MergePlayerControllerTest extends AdminPageTestCase
         self::assertLedgerIsEmpty();
     }
 
+    /**
+     * Both of the losing blader's public URLs survive the merge: the id form
+     * every season-scoped route used, and the slug form #95 made canonical.
+     * The row is deleted, so the redirect table is the only thing that
+     * remembers either — and the season, which was never part of a blader's
+     * identity, comes across as the query parameter it now is.
+     */
     public function testConfirmedMergeRedirectsTheOldProfilePermanently(): void
     {
         [$from, $into] = $this->players();
-        $season = SeasonFactory::createOne(['slug' => 'one']);
+        SeasonFactory::createOne(['slug' => 'one']);
         $oldId = $from->getId();
+        $oldSlug = $from->getSlug();
         $client = $this->createBrowser();
 
         $this->submitMerge($client, $oldId, $into->getId(), self::ADMIN_PASSPHRASE, true);
         self::assertResponseRedirects(self::PAGE);
 
         $client->request('GET', sprintf('/season/one/player/%d', $oldId));
-        self::assertResponseRedirects(sprintf('/season/one/player/%d', $into->getId()), 301);
+        self::assertResponseRedirects(sprintf('/player/%s?season=one', $into->getSlug()), 301);
+
+        $client->request('GET', sprintf('/player/%s?season=one', $oldSlug));
+        self::assertResponseRedirects(sprintf('/player/%s?season=one', $into->getSlug()), 301);
+
+        $client->request('GET', sprintf('/player/%s', $oldSlug));
+        self::assertResponseRedirects(sprintf('/player/%s', $into->getSlug()), 301);
+
         self::assertLedgerRecordsPlayerMerge('Old Name', 'Survivor');
     }
 

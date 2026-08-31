@@ -86,7 +86,8 @@ final class PageRendersTest extends PageTestCase
     {
         $player = PaidRegistrationStory::bob();
 
-        $this->assertPageRenders(sprintf('/season/paid-season/player/%d', $player->getId()));
+        $this->assertPageRenders(sprintf('/player/%s', $player->getSlug()));
+        $this->assertPageRenders(sprintf('/player/%s?season=paid-season', $player->getSlug()));
     }
 
     #[WithStory(SeasonStory::class)]

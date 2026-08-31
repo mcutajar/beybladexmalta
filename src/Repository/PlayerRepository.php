@@ -44,6 +44,7 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
         SELECT 
             p.id,
             p.name,
+            p.slug,
             COALESCE(SUM(rr.f1_points), 0) as base_f1,
             COALESCE(SUM(rr.bonus_points), 0) as total_bonus,
             COALESCE(SUM(rr.total_points), 0) as total,
@@ -112,6 +113,60 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
     }
 
     /**
+     * One blader's scoring events, grouped by the season each scored in.
+     *
+     * The best-14 cap is applied **per season**, because that is the only
+     * scope in which it means anything: it is a season's rule, and applying
+     * fourteen to a whole career would be a number nobody agreed to. Which is
+     * also why nothing here totals across seasons and the profile shows no
+     * grand total — the contract forbids summing points across seasons, and
+     * every alternative is a figure the league does not award.
+     *
+     * An unranked event cannot appear: it has no `TournamentResult` row, which
+     * is what this reads.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getPlayerContributionsBySeason(int $playerId): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        $sql = '
+            WITH RankedResults AS (
+                SELECT
+                    tr.tournament_id,
+                    tr.f1_points,
+                    tr.bonus_points,
+                    tr.total_points,
+                    t.title AS tournament_name,
+                    t.held_on,
+                    s.id AS season_id,
+                    s.slug AS season_slug,
+                    s.name AS season_name,
+                    ROW_NUMBER() OVER (PARTITION BY s.id ORDER BY tr.total_points DESC) AS season_nth
+                FROM tournament_results tr
+                JOIN tournaments t ON t.id = tr.tournament_id
+                JOIN seasons s ON s.id = t.season_id
+                WHERE tr.player_id = :playerId
+            )
+            SELECT
+                tournament_id,
+                tournament_name,
+                held_on,
+                f1_points,
+                bonus_points,
+                total_points,
+                season_slug,
+                season_name
+            FROM RankedResults
+            WHERE season_nth <= 14
+            ORDER BY season_id DESC, held_on DESC
+        ';
+
+        return $conn->executeQuery($sql, ['playerId' => $playerId])->fetchAllAssociative();
+    }
+
+    /**
      * How many bladers the archive actually reaches.
      *
      * Distinct players behind an archived entrant, rather than rows in
@@ -136,15 +191,6 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
                 ->setParameter('name', trim($name))
                 ->getQuery()
                 ->getOneOrNullResult();
-    }
-
-    public function createPlayerWithName(string $name): Player
-    {
-        $player = new Player();
-        $player->setName(trim($name));
-        $this->getEntityManager()->persist($player);
-
-        return $player;
     }
 
     public function save(Player $player): void
