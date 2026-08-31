@@ -25,6 +25,8 @@
             'disclosure': 'Disclosure', 'empty-state': 'Empty state',
             'form-strip': 'Form strip', 'match-log': 'Match log', 'top-cut': 'Top cut',
             'kpi-row': 'KPI row', 'totals-list': 'Totals list',
+            'player-headline': 'Player headline', 'h2h-bars': 'Head-to-head bars',
+            'cut-path': 'Cut path', 'player-match-log': 'Player match log', 'event-feed': 'Event feed',
             'artifacts': 'Artifacts & ledger',
         } %}
             <a href="#{{ anchor }}" class="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink">{{ label }}</a>
@@ -311,6 +313,108 @@
             <p class="mt-4 text-xs text-ink-muted">
                 An awarded match reads <code class="font-mono">FF</code>, which is the bracket's own word for
                 it. A round somebody never reached is an em dash, and the two are not the same thing.
+            </p>
+        </twig:Card>
+
+        <twig:Card id="player-headline">
+            <twig:SectionHeading title="Player headline" rule />
+            <twig:PlayerHeadline name="Markinu" :played="99" :wins="69" :losses="30" :opponents="35" class="mb-0" />
+            <twig:PlayerHeadline name="Bankai" :played="55" :wins="21" :losses="33" :draws="1" :opponents="31" class="mt-8 mb-0" />
+            <twig:PlayerHeadline name="Tristan" class="mt-8 mb-0" />
+            <p class="mt-4 text-xs text-ink-muted">
+                The career line joins the name and drops <strong>opponents faced</strong> whole below
+                <code class="font-mono">sm:</code> rather than abbreviating it. A blader with no archived
+                matches gets the name alone. A draw only appears when there is one.
+            </p>
+        </twig:Card>
+
+        {% set rivalDemo = [
+            {opponent: {id: 1}, name: 'Markulegend', wins: 7, losses: 3, draws: 0, met: 10},
+            {opponent: {id: 2}, name: 'Evilbeys', wins: 5, losses: 1, draws: 0, met: 6},
+            {opponent: {id: 3}, name: 'Claude', wins: 5, losses: 0, draws: 0, met: 5},
+            {opponent: {id: 4}, name: 'Kaori', wins: 4, losses: 0, draws: 0, met: 4},
+            {opponent: {id: 5}, name: 'Belti', wins: 3, losses: 1, draws: 0, met: 4},
+            {opponent: {id: 6}, name: 'Obelix', wins: 2, losses: 1, draws: 1, met: 4},
+        ] %}
+        <twig:Card id="h2h-bars">
+            <twig:SectionHeading title="Head-to-head bars" rule />
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div>
+                    <twig:SectionHeading title="Ahead on the head to head" size="sm" tone="positive" />
+                    <twig:H2hBars :rivals="rivalDemo" tone="positive" seasonSlug="paid-season" />
+                </div>
+                <div>
+                    <twig:SectionHeading title="Behind on the head to head" size="sm" tone="heat" />
+                    <twig:H2hBars :rivals="[
+                        {opponent: {id: 7}, name: 'Giglio', wins: 2, losses: 4, draws: 0, met: 6},
+                        {opponent: null, name: 'Someone unresolved', wins: 0, losses: 1, draws: 0, met: 1},
+                    ]" tone="heat" seasonSlug="paid-season" />
+                </div>
+            </div>
+            <p class="mt-4 text-xs text-ink-muted">
+                Five rows, then a <code class="font-mono">&lt;details&gt;</code> for the rest — never the
+                &ldquo;Show more&rdquo; button, which is the one script this site ships. An opponent nobody has
+                resolved to a blader keeps the bracket's spelling and gets no link.
+            </p>
+        </twig:Card>
+
+        {% set cutDemo = [
+            {label: 'QF', outcome: 'W', own_score: 8, opponent_score: 1, forfeited: false, opponent: null, opponent_name: 'Privv', cut: true},
+            {label: 'SF', outcome: 'L', own_score: 2, opponent_score: 7, forfeited: false, opponent: null, opponent_name: 'Sanya', cut: true},
+            {label: '3P', outcome: 'W', own_score: null, opponent_score: null, forfeited: true, opponent: null, opponent_name: 'Belti', cut: true},
+        ] %}
+        <twig:Card id="cut-path">
+            <twig:SectionHeading title="Cut path" rule />
+            <twig:CutPath :steps="cutDemo" />
+            <p class="mt-4 text-xs text-ink-muted">
+                How far a blader got, one leg per knockout match. The labels come from
+                <code class="font-mono">BracketRoundLabels</code>, so a four-round cut numbers its opening
+                rounds here exactly as the tournament page's scoreboard does.
+            </p>
+        </twig:Card>
+
+        <twig:Card id="player-match-log">
+            <twig:SectionHeading title="Player match log" rule />
+            <twig:PlayerMatchLog seasonSlug="paid-season" :rows="[
+                {label: 'R1', outcome: 'W', own_score: 8, opponent_score: 4, forfeited: false, opponent: {id: 1}, opponent_name: 'Fir3bladetv', cut: false},
+                {label: 'R2', outcome: 'W', own_score: 7, opponent_score: 1, forfeited: false, opponent: {id: 2}, opponent_name: 'Guzman93', cut: false},
+                {label: 'R3', outcome: 'L', own_score: 6, opponent_score: 7, forfeited: false, opponent: {id: 3}, opponent_name: 'Belti', cut: false},
+                {label: 'R4', outcome: 'T', own_score: 0, opponent_score: 0, forfeited: false, opponent: {id: 4}, opponent_name: 'Obelix', cut: false},
+                {label: 'R5', outcome: 'W', own_score: null, opponent_score: null, forfeited: true, opponent: null, opponent_name: 'Bye', cut: false},
+            ]" />
+            <p class="mt-4 text-xs text-ink-muted">
+                The same log as <code class="font-mono">MatchLog</code>, told from one blader's side, because
+                a career page has a subject and a tournament page does not. A win at 8 or better is tinted
+                amber; an awarded match reads <code class="font-mono">FF</code>.
+            </p>
+        </twig:Card>
+
+        <twig:Card id="event-feed">
+            <twig:SectionHeading title="Event feed" rule />
+            <twig:EventFeed seasonSlug="paid-season" :events="[
+                {
+                    tournament: {id: 1, title: 'Gamebreaker 22-08', heldOn: date('2026-08-22'), season: {slug: 'paid-season', name: 'Season 1'}},
+                    archived: true, wins: 7, losses: 1, draws: 0, rank: 3, points: 25,
+                    stage_rank: 3, stage_label: 'Swiss', won_the_cut: true, cut: cutDemo,
+                    stages: [{label: 'Top cut', matches: cutDemo}],
+                },
+                {
+                    tournament: {id: 2, title: 'Gamesplus 26-07', heldOn: date('2026-07-26'), season: {slug: 'preseason-1', name: 'Preseason 1'}},
+                    archived: true, wins: 2, losses: 3, draws: 0, rank: null, points: null,
+                    stage_rank: 15, stage_label: 'Swiss', won_the_cut: false, cut: [],
+                    stages: [{label: 'Swiss', matches: cutDemo|slice(0, 2)}],
+                },
+                {
+                    tournament: {id: 3, title: '19th July Gamesplus 2v2', heldOn: date('2026-07-19'), season: {slug: 'paid-season', name: 'Season 1'}},
+                    archived: false, wins: 0, losses: 0, draws: 0, rank: 1, points: 25,
+                    stage_rank: null, stage_label: null, won_the_cut: false, cut: [], stages: [],
+                },
+            ]" />
+            <p class="mt-4 text-xs text-ink-muted">
+                The career's match history, not a summary of it: every match is inside one of these panels.
+                <code class="font-mono">&lt;details&gt;</code> is native, so the whole history is reachable
+                with JavaScript off. A 2v2 evening archives no matches and says so; an event from another
+                season names it.
             </p>
         </twig:Card>
 

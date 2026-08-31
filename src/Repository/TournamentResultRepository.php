@@ -26,6 +26,29 @@ class TournamentResultRepository extends ServiceEntityRepository
     }
 
     /**
+     * Where a blader finished at every event they scored at, newest first.
+     *
+     * Across every season, because a career is not season-scoped: 35 bladers
+     * have played in both. The page says which season each event belonged to
+     * rather than pretending the archive stops at the one in the URL.
+     *
+     * @return list<TournamentResult>
+     */
+    public function careerOf(Player $player): array
+    {
+        return $this->createQueryBuilder('r')
+            ->addSelect('t', 'season')
+            ->join('r.tournament', 't')
+            ->join('t.season', 'season')
+            ->where('r.player = :player')
+            ->setParameter('player', $player)
+            ->orderBy('t.heldOn', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Whether a blader already finished somewhere in this event.
      *
      * Asked before a team claim awards a placement, because a blader who is

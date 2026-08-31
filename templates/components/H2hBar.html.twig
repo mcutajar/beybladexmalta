@@ -1,0 +1,44 @@
+{#
+    One opponent, and which way the record between the two of them runs.
+
+    <twig:H2hBar :rival="rival" tone="positive" seasonSlug="{{ season.slug }}" />
+
+    Its own component rather than a macro inside `H2hBars`, because the
+    overflow rows are rendered inside a `<twig:Disclosure>` — and a component's
+    content is compiled as a block, which cannot reach the macros its template
+    imported.
+
+    The bar is inline `flex` weights rather than a width utility: the
+    proportion is data, and Tailwind compiles the class names it can read in a
+    template, which `w-[{{ n }}%]` is not.
+#}
+{% props rival, tone = 'neutral', seasonSlug = null %}
+
+{% set tints = {
+    positive: 'text-positive',
+    heat: 'text-heat',
+    neutral: 'text-ink-muted',
+} %}
+
+<li class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,7rem)_1fr_auto]"
+    data-rival="{{ rival.name }}">
+    {% if rival.opponent and seasonSlug %}
+        <a href="{{ path('player_season_details', {'slug': seasonSlug, 'id': rival.opponent.id}) }}"
+           class="truncate text-sm font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">{{ rival.name }}</a>
+    {% else %}
+        <span class="truncate text-sm font-bold text-ink">{{ rival.name }}</span>
+    {% endif %}
+
+    {# The bar drops below the name and the record at 375px, where a third
+       column would leave it about forty pixels wide. #}
+    <span class="order-last col-span-2 flex h-1.5 overflow-hidden rounded-full bg-surface-raised sm:order-none sm:col-span-1"
+          aria-hidden="true">
+        <span class="bg-positive" style="flex: {{ rival.wins }} 1 0"></span>
+        <span class="bg-ink-ghost" style="flex: {{ rival.draws }} 1 0"></span>
+        <span class="bg-heat" style="flex: {{ rival.losses }} 1 0"></span>
+    </span>
+
+    <span class="font-mono text-sm font-black tabular-nums {{ tints[tone] }}">
+        {{ rival.wins }}–{{ rival.losses }}{{ rival.draws > 0 ? '–' ~ rival.draws : '' }}
+    </span>
+</li>

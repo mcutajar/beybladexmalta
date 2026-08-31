@@ -1,0 +1,22 @@
+{#
+    How far a blader got through a top cut, as a chain.
+
+    <twig:CutPath :steps="event.cut" />
+
+    Each leg is one knockout match — `QF W 8–1 › SF L 2–7 › 3P L 2–8`. The
+    labels come from `BracketRoundLabels`, so a four-round cut numbers its
+    opening rounds here exactly as the tournament page's scoreboard does.
+#}
+{% props steps = [] %}
+
+<span {{ attributes.defaults({class: 'inline-flex flex-wrap items-center gap-x-1.5 gap-y-1'}) }}>
+    {% for step in steps %}
+        {% if not loop.first %}<span class="text-ink-ghost" aria-hidden="true">›</span>{% endif %}
+        <span class="inline-flex items-center gap-1 rounded-control border px-1.5 py-0.5 font-mono text-[11px] font-bold whitespace-nowrap
+            {{ step.outcome == 'W' ? 'border-positive/30 text-positive' : (step.outcome == 'L' ? 'border-heat/30 text-heat' : 'border-line text-ink-muted') }}"
+              data-cut-leg="{{ step.label }}">
+            <span class="text-ink-faint">{{ step.label }}</span>
+            {% if step.forfeited %}{{ step.outcome }} FF{% elseif step.own_score is not null and step.opponent_score is not null %}{{ step.outcome }} {{ step.own_score }}–{{ step.opponent_score }}{% else %}{{ step.outcome }}{% endif %}
+        </span>
+    {% endfor %}
+</span>
