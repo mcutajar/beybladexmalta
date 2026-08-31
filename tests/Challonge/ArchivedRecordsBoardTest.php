@@ -95,6 +95,7 @@ final class ArchivedRecordsBoardTest extends PageTestCase
 
         $tile = $this->board()->filter('[data-record="matches"]');
 
+        self::assertStringContainsString('self-start', (string) $tile->attr('class'));
         self::assertCount(1, $tile->filter('summary'));
         self::assertCount(1, $tile->filter('ol > li'));
         self::assertStringContainsString('Giglio', $tile->filter('ol > li')->first()->text());
