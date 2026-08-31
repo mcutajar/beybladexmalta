@@ -4,17 +4,24 @@
     **A ranked page is exactly what it was.** Season context, the League points
     card and the leaderboard back link all stand; #92 must not alter one.
 
-    An unranked page is option 3B, **archive first**: the match archive leads
-    and the finishing order sits under it, on the argument that the finishing
-    order of an event which scores nothing is the least consequential thing on
-    the page and the matches are the whole reason it was archived.
+    An unranked page is option 3B, **archive first** — and on this page that
+    turns out to mean the archive and nothing else.
 
     The League points card is not rendered for one. Not empty, not zeroed —
     absent, because there are no `TournamentResult` rows to fill it and no F1,
     bonus or total value exists anywhere on the event.
 
-    The accepted cost: the two kinds now differ in order as well as in content,
-    so they no longer teach each other and there are two orders to maintain.
+    **No separate finishing order either**, and the reason is worth keeping:
+    the order an unranked event finished in *is* the ranking of its first
+    stage, which the Swiss standings block below already renders — with the
+    record, the form and the tiebreak columns this page would have dropped. A
+    second table of the same entrants in the same order, minus columns, is a
+    repetition rather than a summary; the only thing it could have added is the
+    points, and there are none. The proposal drew `FINISHING-ORDER` here
+    because it was drawing a page whose archive had not been built yet.
+
+    It still earns its place on the import preview, where nothing is archived
+    yet and it is the only statement of who finished where.
 #}
 {% extends 'base.html.twig' %}
 
@@ -228,20 +235,6 @@
                     An unranked tournament is kept for its matches, and this one has none yet.
                 </twig:EmptyState>
             {% endif %}
-        </twig:Card>
-    {% endif %}
-
-    {# Option 3B: under the archive, and last. The finishing order of an event
-       that scores nothing is the least consequential thing on the page. #}
-    {% if not tournament.ranked and archive.finishing_order is not empty %}
-        <twig:Card class="mb-6" data-page-section="finishing-order">
-            <twig:SectionHeading title="Finishing order" size="md" tone="neutral" />
-            <p class="mb-4 text-xs text-ink-muted">
-                As the bracket ranked it. Nothing here awards a point.
-            </p>
-            <twig:ExpandableTable :initialRows="10">
-                <twig:FinishingOrder :rows="archive.finishing_order" />
-            </twig:ExpandableTable>
         </twig:Card>
     {% endif %}
 

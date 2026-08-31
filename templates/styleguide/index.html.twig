@@ -467,10 +467,12 @@
                 {rank: 4, name: 'Federico', player: null, matches: 0, wins: 0, losses: 0, draws: 0, form: []},
             ]" />
             <p class="mt-4 text-xs text-ink-muted">
-                Where the bracket says everybody finished, on a page where that pays nothing.
+                Where the bracket says everybody finished, on a screen where that pays nothing.
                 <strong class="text-ink-muted">No F1, bonus or total column</strong> — an unranked event
                 writes no result row, so there is no such value to put in one. The fourth row is an
-                entrant the archive holds no matches for.
+                entrant with no matches behind it, which is every row on the import preview: the
+                bracket has not been transcribed yet. The archived tournament page does not use this
+                block, because there the Swiss standings already state the same order in full.
             </p>
         </twig:Card>
 

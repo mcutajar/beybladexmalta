@@ -1,25 +1,28 @@
 {#
-    Where everybody finished, on a page where that pays nothing.
+    Where everybody finished, on a screen where that pays nothing.
 
-    <twig:FinishingOrder :rows="archive.finishing_order" />
+    <twig:FinishingOrder :rows="rows" />
 
-    The block an unranked tournament closes with. Rank, blader, record and
-    form — and **no F1, bonus or total column**, because an unranked event
-    writes no `TournamentResult` and there is no such value to show. A zeroed
-    column would be the lie the invariant exists to prevent.
+    Rank, blader, record and form — and **no F1, bonus or total column**,
+    because an unranked event writes no `TournamentResult` and there is no such
+    value to show. A zeroed column would be the lie the invariant exists to
+    prevent.
 
-    It sits *under* the match archive rather than above it (option 3B): the
-    finishing order of an event which scores nothing is the least consequential
-    thing on the page, and the matches are the whole reason it was archived.
+    **Used by the import preview, and deliberately not by the tournament page.**
+    The proposal drew this block on both, but on an archived event the order it
+    states *is* the ranking of the first stage — which the Swiss standings block
+    already renders, with the record, the form and the tiebreak columns this one
+    drops. A second table of the same entrants in the same order, minus columns,
+    is a repetition rather than a summary. The preview is the case that stands:
+    nothing is archived yet there, so this is the only statement of who finished
+    where.
 
-    `record` and `form` are optional. A row the archive has no matches for
-    keeps its place and shows a dash, which is what the two 2v2 evenings would
-    look like if either were ever imported unranked.
+    `record` and `form` are optional. A row with no matches behind it keeps its
+    place and shows a dash — which is every row on the preview, where the
+    bracket has not been transcribed yet.
 
-    The blader is named rather than linked. Every player URL still goes through
-    a season and an unranked event has none, so linking one would mean picking
-    a season the event was not in; #95's canonical `/player/{slug}` is what
-    this row is waiting for.
+    The blader is named rather than linked. On the preview a row may be somebody
+    the league is about to invent, so there is no profile to point at.
 #}
 {% props rows = [] %}
 
