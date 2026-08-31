@@ -46,7 +46,11 @@
             </twig:Field>
         </div>
 
-        <twig:Field label="Target season context">
+        <twig:Field
+            label="Target season context"
+            hint="Choosing “No season” archives the bracket in full and scores nothing. The review screen states exactly that before anything is written."
+            hintTone="caution"
+        >
             {{ form_widget(bracket_form.season) }}
         </twig:Field>
 
@@ -77,7 +81,10 @@
         </div>
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <twig:Field label="Target season context">
+            <twig:Field
+                label="Target season context"
+                hint="Ranked only. A pasted list retains no match history, so there would be nothing worth keeping in an unranked one."
+            >
                 {{ form_widget(import_form.season) }}
             </twig:Field>
             <twig:Field label="Challonge URL">

@@ -29,11 +29,15 @@ final class ReplayTournamentImportService
     ) {
     }
 
-    /** @param list<TournamentPlacement> $placements */
+    /**
+     * @param ?string                   $seasonSlug null replays an unranked event: archived in
+     *                                              full, scoring nothing
+     * @param list<TournamentPlacement> $placements
+     */
     public function import(
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         array $placements,
         string $sourceFilePath,
         ChallongeSnapshot $snapshot,
@@ -110,7 +114,7 @@ final class ReplayTournamentImportService
         ChallongeSnapshot $snapshot,
         string $snapshotPath,
         string $sourceFilePath,
-        string $seasonSlug,
+        ?string $seasonSlug,
         string $challongeUrl,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,

@@ -69,7 +69,9 @@ final class TournamentArchivePresenter
             );
             $timeline = $this->swissTimeline($stage, $matches);
 
-            if ($stage === ($stages[0] ?? null)) {
+            // The ranking stage's own forms, kept for the finishing order
+            // below. It is stage zero, which is the league's existing rule.
+            if ($stage === $stages[0]) {
                 $forms = $timeline['forms'];
             }
 

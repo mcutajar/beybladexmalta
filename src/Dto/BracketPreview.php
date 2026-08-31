@@ -34,7 +34,7 @@ final readonly class BracketPreview
         public string $shape = '',
         public string $title = '',
         public string $heldOn = '',
-        public string $seasonSlug = '',
+        public ?string $seasonSlug = null,
         public int $participants = 0,
         public int $matches = 0,
         public int $pointsScored = 0,
@@ -59,7 +59,7 @@ final readonly class BracketPreview
         string $shape,
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         int $participants,
         int $matches,
         int $pointsScored,
@@ -99,6 +99,19 @@ final readonly class BracketPreview
     public function isReady(): bool
     {
         return BracketPreviewResult::Ready === $this->result;
+    }
+
+    /**
+     * Whether confirming this preview would write league points.
+     *
+     * The season and nothing else, the same question `Tournament::isRanked()`
+     * answers about the event afterwards. An unranked preview shows a
+     * finishing order and no F1, bonus or total anywhere, because no such
+     * value exists to show.
+     */
+    public function isRanked(): bool
+    {
+        return null !== $this->seasonSlug;
     }
 
     /**
@@ -167,13 +180,43 @@ final readonly class BracketPreview
     /**
      * The placements that will be written as results.
      *
+     * Ranked only, and deliberately so. An unranked import writes none at all,
+     * so this is empty for one — which is why nothing may use it as the
+     * measure of whether there is an event to import. `resolved()` is that
+     * measure.
+     *
      * @return list<BracketPlacement>
      */
     public function scoring(): array
     {
+        if (!$this->isRanked()) {
+            return [];
+        }
+
         return array_values(array_filter(
             $this->placements,
             static fn (BracketPlacement $placement): bool => $placement->scores(),
+        ));
+    }
+
+    /**
+     * The finishing order the league can read: every place that reaches a
+     * blader, uncapped.
+     *
+     * **Separate from "placements which score" on purpose.** An unranked
+     * import produces an all-zero points list, and filtering that through
+     * `scores()` reduces it to nothing — so a preview that used the scoring
+     * list as its signal would refuse every unranked event as having no
+     * placements at all. This is the list an unranked import archives and
+     * writes to `var/data/imports/*.txt`.
+     *
+     * @return list<BracketPlacement>
+     */
+    public function resolved(): array
+    {
+        return array_values(array_filter(
+            $this->placements,
+            static fn (BracketPlacement $placement): bool => null !== $placement->bladerName,
         ));
     }
 

@@ -4,13 +4,28 @@
     <twig:Field label="Blader name" hint="Unknown names are created.">
         {{ form_widget(form.playerName) }}
     </twig:Field>
+
+    `hintTone="caution"` is the SEASON-CHOICE extension: the season select now
+    holds one option that is not a season, and choosing it by accident produces
+    a real, archived, unscored tournament. A footnote in the same grey as every
+    other footnote is not what that deserves, so the tone exists — and it is
+    still a hint rather than an Alert, because the guard is the preview screen
+    and putting a warning box on an untouched form would cry wolf on every
+    import.
+
+    <twig:Field label="Target season context" hint="…" hintTone="caution">
 #}
-{% props label, hint = null %}
+{% props label, hint = null, hintTone = 'muted' %}
+
+{% set hintTones = {
+    muted:   'text-ink-faint',
+    caution: 'text-heat',
+} %}
 
 <div {{ attributes.defaults({class: 'space-y-2'}) }}>
     <label class="block text-xs font-bold uppercase tracking-wider text-ink-muted">{{ label }}</label>
     {% block content %}{% endblock %}
     {% if hint %}
-        <p class="text-[11px] italic text-ink-faint">{{ hint }}</p>
+        <p class="text-[11px] italic {{ hintTones[hintTone] }}">{{ hint }}</p>
     {% endif %}
 </div>

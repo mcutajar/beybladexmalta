@@ -31,7 +31,23 @@ final readonly class BracketPlacement
         public int $f1Points,
         public int $bonusPoints,
         public bool $wonTheKnockout,
+        public ChallongeRecord $record = new ChallongeRecord(),
     ) {
+    }
+
+    /**
+     * The W-L-D the standings row printed, as three integers.
+     *
+     * Read here rather than persisted, because the preview writes nothing and
+     * the archive has not been transcribed yet — but an unranked event's
+     * finishing order is the only table on its screen, and a rank with no
+     * record beside it says very little about who was there. A column the
+     * bracket did not print reads as absent rather than as zero, which is why
+     * `matches()` can be zero for a cut's standings.
+     */
+    public function matches(): int
+    {
+        return ($this->record->wins ?? 0) + ($this->record->losses ?? 0) + ($this->record->ties ?? 0);
     }
 
     /**

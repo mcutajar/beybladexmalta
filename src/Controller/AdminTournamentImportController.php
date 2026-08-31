@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\BracketImportData;
 use App\Dto\ImportTournamentData;
 use App\Exception\ImportFileWriteException;
 use App\Exception\LedgerWriteException;
@@ -77,7 +78,31 @@ final class AdminTournamentImportController extends AbstractController
             return $this->redirectToRoute('admin_tournament_import');
         }
 
-        $seasonSlug = $data->season?->getSlug() ?? '';
+        /*
+         * Ranked only, and said out loud rather than swallowed. Without a
+         * snapshot this path retains no match history, so an unranked import
+         * here would open a tournament holding a finishing order and nothing
+         * else — the archive is the entire reason an unranked event is worth
+         * keeping.
+         *
+         * The form is re-rendered rather than redirected to, because it still
+         * holds the pasted list. Discarding ten hand-typed names to deliver a
+         * message about the eleventh field is the failure this refusal exists
+         * to avoid.
+         */
+        if (BracketImportData::UNRANKED === $data->season) {
+            $this->addFlash(
+                'error',
+                'An unranked tournament is imported from its bracket, not from a pasted list: without a snapshot it would keep no matches, which is the only reason to archive one. Your list is still below — choose a season, or fetch the bracket above.',
+            );
+
+            return $this->render('admin/import_tournament.html.twig', [
+                'import_form' => $form,
+                'bracket_form' => $this->createForm(BracketImportType::class),
+            ]);
+        }
+
+        $seasonSlug = $data->season ?? '';
         $placements = $this->placementListParser->parse($data->playerList);
         $placementCount = count($placements);
 

@@ -66,12 +66,18 @@ class BracketImportService
     ) {
     }
 
+    /**
+     * @param ?string $seasonSlug null imports the bracket unranked: everything
+     *                            below happens exactly as it does for a ranked
+     *                            event except that no `TournamentResult` row is
+     *                            written and no knockout bonus is calculated
+     */
     public function apply(
         ChallongeSnapshot $snapshot,
         string $challongeUrl,
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         BracketAnswers $answers,
     ): BracketImportOutcome {
         $preview = $this->previewer->preview(
@@ -99,7 +105,7 @@ class BracketImportService
 
         $this->snapshotWriter->write($snapshot);
 
-        $placements = $this->scoringPlacements($preview);
+        $placements = $this->placementsToWrite($preview);
 
         $imported = $this->imports->importWithTournament(
             title: $title,
@@ -128,7 +134,8 @@ class BracketImportService
 
         return BracketImportOutcome::imported(
             preview: $preview,
-            scored: count($placements),
+            scored: $preview->isRanked() ? count($this->scoringPlacements($preview)) : 0,
+            archived: count($placements),
             created: $created,
             seeded: $preview->seeded(),
             aliased: count($this->linked($preview)),
@@ -143,8 +150,11 @@ class BracketImportService
      * The date and the season are checked here rather than left to the import
      * to reject, because by then a blader would have been invented and an
      * alias filed for a tournament that never opened.
+     *
+     * A null season is not a missing one. It is the deliberate choice to
+     * import an event that scores nothing, so there is no slug to look up.
      */
-    private function refuse(BracketPreview $preview, string $heldOn, string $seasonSlug): ?BracketImportResult
+    private function refuse(BracketPreview $preview, string $heldOn, ?string $seasonSlug): ?BracketImportResult
     {
         if (!$preview->isReady()) {
             return BracketImportResult::Refused;
@@ -158,11 +168,17 @@ class BracketImportService
             return BracketImportResult::InvalidDate;
         }
 
-        if (null === $this->seasons->findBySlug(trim($seasonSlug))) {
+        if (null !== $seasonSlug && null === $this->seasons->findBySlug(trim($seasonSlug))) {
             return BracketImportResult::SeasonNotFound;
         }
 
-        if ([] === $this->scoringPlacements($preview)) {
+        /*
+         * The resolved order rather than the scoring one. An unranked preview
+         * pays nothing, so filtering it through `scores()` reduces it to an
+         * empty list and would refuse every unranked bracket as having no
+         * finishing order at all — which is exactly the trap #91 names.
+         */
+        if ([] === $this->placementsToWrite($preview)) {
             return BracketImportResult::NoPlacements;
         }
 
@@ -361,6 +377,41 @@ class BracketImportService
     }
 
     /**
+     * What the import is handed, and what the recovery file will hold.
+     *
+     * Ranked: the top ten, because the F1 matrix stops there and everyone
+     * below is archived and unscored. Unranked: the whole resolved finishing
+     * order, uncapped — there is no scoring cap to apply, nothing is written
+     * as a result, and the file is the record of who finished where.
+     *
+     * @return list<TournamentPlacement>
+     */
+    private function placementsToWrite(BracketPreview $preview): array
+    {
+        return $preview->isRanked()
+            ? $this->scoringPlacements($preview)
+            : $this->resolvedPlacements($preview);
+    }
+
+    /**
+     * Every place the league can read, in finishing order.
+     *
+     * @return list<TournamentPlacement>
+     */
+    private function resolvedPlacements(BracketPreview $preview): array
+    {
+        $placements = [];
+
+        foreach ($preview->resolved() as $placement) {
+            if (null !== $placement->bladerName) {
+                $placements[] = new TournamentPlacement($placement->bladerName);
+            }
+        }
+
+        return $placements;
+    }
+
+    /**
      * This runs before creating bladers or filing aliases. In particular, two
      * different bracket spellings may both have been linked to one blader;
      * letting either alias persist would make every retry fail the same way.
@@ -369,7 +420,7 @@ class BracketImportService
     {
         $seen = [];
 
-        foreach ($this->scoringPlacements($preview) as $placement) {
+        foreach ($this->placementsToWrite($preview) as $placement) {
             $name = mb_strtolower(trim($placement->playerName));
 
             if (isset($seen[$name])) {

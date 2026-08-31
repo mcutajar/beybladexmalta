@@ -6,6 +6,14 @@
     nothing, and nothing here has been written. The whole page is one form, so
     the decisions, the finishing order, the knockout winner and the passphrase
     are one submission — there is no half-applied state to get into.
+
+    **This screen is the guard against a mis-tapped season.** The entry form
+    offers "No season — unranked tournament" in the same select as the seasons,
+    which is easy to hit wrong on a phone at an event, and the mis-tap is
+    otherwise silent: it produces a real, archived, unscored tournament. So an
+    unranked preview says so in three places that cannot be skimmed past — the
+    notice under the header, the finishing order with no points columns at all,
+    and the exact `--unranked` line that will land in `repeat.sh`.
 #}
 {% extends 'base.html.twig' %}
 
@@ -23,6 +31,16 @@
 
     <twig:Flashes />
 
+    {% if not preview.isRanked %}
+        <twig:Alert tone="neutral" data-page-section="unranked-notice">
+            <strong class="text-ink-body">This will be imported as an unranked tournament.</strong>
+            It belongs to no season. The bracket is archived in full — every stage, entrant, match
+            and game — and its entrants stay linked to their bladers, so the matches count towards
+            every career and towards the records board. It scores nothing: no league points, no
+            knockout bonus, and no result row at all.
+        </twig:Alert>
+    {% endif %}
+
     {{ form_start(confirm_form, {'action': path('admin_bracket_confirm'), 'attr': {'class': 'space-y-6'}}) }}
 
     {{ form_widget(confirm_form.slug) }}
@@ -35,10 +53,15 @@
         <twig:Badge tone="positive" size="sm" class="sm:ml-auto">Fetched &middot; {{ preview.shape }}</twig:Badge>
     </div>
 
+    {# The third tile is the one that moves. An unranked event scores no points,
+       so counting them would put a zero where the reader is looking for the
+       size of the thing they are about to archive. #}
     <twig:KpiRow :tiles="[
         {value: preview.participants, label: 'entrant rows'},
         {value: preview.matches, label: 'matches found', highlight: true},
-        {value: preview.pointsScored, label: 'points scored'},
+        preview.isRanked
+            ? {value: preview.pointsScored, label: 'points scored'}
+            : {value: preview.resolved|length, label: 'placings archived'},
         {value: preview.decisions|length, label: 'need a decision'},
     ]" />
 
@@ -106,14 +129,33 @@
     {# ── The finishing order, with the matrix already applied ────────── #}
     <twig:Card id="placements">
         <div class="mb-4 space-y-1">
-            <twig:SectionHeading title="Placements & points" size="sm" />
+            <twig:SectionHeading title="{{ preview.isRanked ? 'Placements & points' : 'Finishing order' }}" size="sm" />
             <p class="text-xs text-ink-faint">
-                The bracket's own finishing order &mdash; the top {{ preview.scoring|length }} score.
+                {% if preview.isRanked %}
+                    The bracket's own finishing order &mdash; the top {{ preview.scoring|length }} score.
+                {% else %}
+                    The bracket's own finishing order. <strong class="text-ink-muted">Nothing here scores</strong>,
+                    so there is no F1, bonus or total column: no such value exists for an unranked event.
+                {% endif %}
                 {% if preview.decisions is not empty %}
                     It follows the decisions above: press <strong class="text-ink-muted">Update</strong> to see them applied.
                 {% endif %}
             </p>
         </div>
+
+        {% if not preview.isRanked %}
+            {# Form strings are the archive's, and nothing is archived yet, so
+               the column is empty here and filled on the event's own page. #}
+            <twig:FinishingOrder :rows="preview.resolved|map(row => {
+                rank: row.position,
+                name: row.bladerName ?? row.challongeName,
+                matches: row.matches,
+                wins: row.record.wins ?? 0,
+                losses: row.record.losses ?? 0,
+                draws: row.record.ties ?? 0,
+                form: [],
+            })" />
+        {% else %}
 
         <twig:DataTable bleed>
             <thead>
@@ -155,6 +197,7 @@
                     </tbody>
                 </twig:DataTable>
             </twig:Disclosure>
+        {% endif %}
         {% endif %}
     </twig:Card>
 
@@ -211,7 +254,11 @@
 
             <div class="flex flex-col gap-3 border-t border-line/60 pt-4 sm:flex-row-reverse">
                 <twig:Button tone="flame" class="w-full sm:w-auto">
-                    Import {{ preview.scoring|length }} &amp; archive {{ preview.matches }} ✓
+                    {% if preview.isRanked %}
+                        Import {{ preview.scoring|length }} &amp; archive {{ preview.matches }} ✓
+                    {% else %}
+                        Archive {{ preview.matches }} unranked ✓
+                    {% endif %}
                 </twig:Button>
 
                 {% if preview.decisions is not empty %}

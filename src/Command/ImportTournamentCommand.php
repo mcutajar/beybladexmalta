@@ -78,6 +78,12 @@ final class ImportTournamentCommand extends Command
                 'The target season slug this tournament belongs to',
             )
             ->addOption(
+                'unranked',
+                'u',
+                InputOption::VALUE_NONE,
+                'The event belongs to no season: archived in full, scoring nothing',
+            )
+            ->addOption(
                 'snapshot',
                 null,
                 InputOption::VALUE_REQUIRED,
@@ -117,6 +123,13 @@ final class ImportTournamentCommand extends Command
                 A team event is declared here, never detected: nothing in a bracket
                 says which events are 2v2, and the rosters have to be supplied by
                 hand whatever happens.
+
+                <info>--season</info> and <info>--unranked</info> are mutually exclusive, and one of them
+                is <info>required</info>. An unranked event — an exhibition, an international —
+                is archived in full and writes no result row at all, not a
+                zero-point one; omitting both is an error rather than a default,
+                because a line that quietly meant unranked would rebuild a scored
+                event as an unscored one.
                 HELP);
     }
 
@@ -168,20 +181,42 @@ final class ImportTournamentCommand extends Command
             return Command::INVALID;
         }
 
+        $unranked = (bool) $input->getOption('unranked');
         $seasonSlug = trim((string) $input->getOption('season'));
 
-        if ('' === $seasonSlug) {
-            $io->error('The --season option is required.');
+        if ($unranked && '' !== $seasonSlug) {
+            $io->error('An unranked event belongs to no season, so --season and --unranked cannot be used together.');
 
             return Command::INVALID;
         }
 
-        $season = $this->seasonRepository->findBySlug($seasonSlug);
+        /*
+         * Never a default. An import line that omitted both would replay a
+         * scored event as an unscored one, silently, and the ledger is the
+         * only record either of them has.
+         */
+        if (!$unranked && '' === $seasonSlug) {
+            $io->error('One of --season or --unranked is required. Omitting both would leave it unsaid whether the event scores.');
 
-        if (null === $season) {
-            $io->error(sprintf('Season "%s" does not exist.', $seasonSlug));
+            return Command::INVALID;
+        }
 
-            return Command::FAILURE;
+        if ($unranked && $teamEvent) {
+            $io->error('A 2v2 event is imported from a hand-typed roster and scores on its finishing order, so --team and --unranked cannot be used together.');
+
+            return Command::INVALID;
+        }
+
+        $season = null;
+
+        if (!$unranked) {
+            $season = $this->seasonRepository->findBySlug($seasonSlug);
+
+            if (null === $season) {
+                $io->error(sprintf('Season "%s" does not exist.', $seasonSlug));
+
+                return Command::FAILURE;
+            }
         }
 
         $challongeUrl = null !== $challongeUrl ? (string) $challongeUrl : null;
@@ -195,6 +230,10 @@ final class ImportTournamentCommand extends Command
             ? ($snapshotPath ?? $this->snapshotFiles->pathFor($snapshot->slug))
             : null;
 
+        /*
+         * `$season` is non-null on the team branch: `--team` with `--unranked`
+         * was refused above, and the other path found the season or failed.
+         */
         return $teamEvent
             ? $this->importTeamEvent(
                 title: $title,
@@ -227,7 +266,7 @@ final class ImportTournamentCommand extends Command
     private function import(
         string $title,
         string $date,
-        Season $season,
+        ?Season $season,
         array $placements,
         string $filePath,
         ?string $challongeUrl,
@@ -241,7 +280,7 @@ final class ImportTournamentCommand extends Command
                 ? $this->replayImportService->import(
                     title: $title,
                     heldOn: $date,
-                    seasonSlug: $season->getSlug(),
+                    seasonSlug: $season?->getSlug(),
                     placements: $placements,
                     sourceFilePath: $filePath,
                     snapshot: $snapshot,
@@ -252,7 +291,7 @@ final class ImportTournamentCommand extends Command
                 : $this->importService->import(
                     title: $title,
                     heldOn: $date,
-                    seasonSlug: $season->getSlug(),
+                    seasonSlug: $season?->getSlug(),
                     placements: $placements,
                     challongeUrl: $challongeUrl,
                     knockoutWinner: $knockoutWinner,
@@ -266,12 +305,18 @@ final class ImportTournamentCommand extends Command
             return Command::FAILURE;
         }
 
-        return $this->translate($result, $io, $season, sprintf(
-            'Successfully imported "%s" into %s. Logged %d player placements.',
-            $title,
-            $season->getName(),
-            count($placements),
-        ));
+        return $this->translate($result, $io, $season, null === $season
+            ? sprintf(
+                'Successfully imported "%s" as an unranked tournament. Archived %d placings and scored nothing.',
+                $title,
+                count($placements),
+            )
+            : sprintf(
+                'Successfully imported "%s" into %s. Logged %d player placements.',
+                $title,
+                $season->getName(),
+                count($placements),
+            ));
     }
 
     /**
@@ -359,7 +404,7 @@ final class ImportTournamentCommand extends Command
     private function translate(
         TournamentImportResult $result,
         SymfonyStyle $io,
-        Season $season,
+        ?Season $season,
         string $imported,
     ): int {
         return match ($result) {
@@ -372,7 +417,7 @@ final class ImportTournamentCommand extends Command
 
             TournamentImportResult::SeasonNotFound => $this->showError(
                 $io,
-                sprintf('Season "%s" does not exist.', $season->getSlug()),
+                sprintf('Season "%s" does not exist.', $season?->getSlug() ?? ''),
             ),
 
             /*
