@@ -30,10 +30,13 @@
                 </p>
             </div>
 
-            <div class="whitespace-nowrap rounded-field border border-line bg-canvas px-5 py-2.5 uppercase tracking-wide shadow-inner">
-                <span class="mb-0.5 block text-xs font-bold text-ink-muted">Ruleset engine</span>
-                <span class="text-sm font-black text-brand">F1 structure + top cut bonus</span>
-            </div>
+            <twig:Button
+                href="{{ path('records_board', {'season': current_season.slug}) }}"
+                tone="neutral"
+                class="whitespace-nowrap"
+            >
+                View {{ current_season.name }} records &rarr;
+            </twig:Button>
         </div>
 
         <twig:DataTable bleed>

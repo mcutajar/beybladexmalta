@@ -69,6 +69,18 @@ final class PageRendersTest extends PageTestCase
         $this->assertPageRenders('/season/paid-season');
     }
 
+    #[WithStory(SeasonStory::class)]
+    public function testTheLeaderboardLinksToItsSeasonRecords(): void
+    {
+        $page = $this->createBrowser()->request('GET', '/season/paid-season');
+        $records = $page->filter('a[href="/records?season=paid-season"]');
+
+        self::assertResponseIsSuccessful();
+        self::assertCount(1, $records);
+        self::assertStringContainsString('View Paid Season records', $records->text());
+        self::assertStringNotContainsString('Ruleset engine', $page->text());
+    }
+
     #[WithStory(PaidRegistrationStory::class)]
     public function testAPlayerPageRenders(): void
     {
