@@ -1,0 +1,52 @@
+{#
+    One season, as a card on `/seasons`.
+
+    <twig:SeasonIndex :card="card" />
+
+    Option 6C: switching season is navigation rather than a control, so a
+    season is a destination with a name, a range, what it holds and who is
+    winning it — enough to choose between two of them without opening either.
+
+    One column on a phone, and no compromise in it: the card's figures are read
+    rather than compared across cards, so there is nothing to drop.
+#}
+{% props card %}
+
+{% set season = card.season %}
+
+<a href="{{ path('season_leaderboard', {'slug': season.slug}) }}"
+   {{ attributes.defaults({
+       class: 'group flex flex-col gap-3 rounded-card border border-line bg-surface p-5 transition-all duration-300 hover:-translate-y-1 hover:border-brand-strong hover:bg-surface-raised/30',
+   }) }}
+   data-season="{{ season.slug }}">
+
+    <div class="flex flex-wrap items-center gap-2">
+        <h2 class="text-xl font-black uppercase tracking-tight text-ink transition-colors group-hover:text-brand">{{ season.name }}</h2>
+        {% if card.current %}<twig:Badge tone="positive" size="sm">Current</twig:Badge>{% endif %}
+    </div>
+
+    <p class="font-mono text-xs text-ink-faint">
+        {% if card.from %}
+            {{ card.from|date('Y-m-d') }} → {{ card.to|date('Y-m-d') }}
+        {% else %}
+            no events yet
+        {% endif %}
+    </p>
+
+    <twig:TotalsList :rows="[
+        {label: 'Events', value: card.events},
+        {label: 'Completed matches', value: card.matches},
+    ]" />
+
+    <div class="mt-auto border-t border-line/60 pt-3">
+        {% if card.winner %}
+            <span class="block text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                {{ card.current ? 'Leading' : 'Won by' }}
+            </span>
+            <span class="text-sm font-black text-ink">{{ card.winner }}</span>
+            <span class="font-mono text-xs text-flame">{{ card.points }} pts</span>
+        {% else %}
+            <span class="text-xs italic text-ink-faint">Nobody has scored in this season yet.</span>
+        {% endif %}
+    </div>
+</a>
