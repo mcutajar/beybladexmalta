@@ -35,8 +35,8 @@
                 {% endif %}
             </span>
 
-            {% if match.opponent and seasonSlug %}
-                <a href="{{ path('player_season_details', {'slug': seasonSlug, 'id': match.opponent.id}) }}"
+            {% if match.opponent %}
+                <a href="{{ path('player_page', {'slug': match.opponent.slug, 'season': seasonSlug ?: null}|filter(v => v is not null)) }}"
                    class="truncate font-semibold text-ink-body transition-colors outline-none hover:text-brand focus:text-brand">{{ match.opponent_name }}</a>
             {% else %}
                 <span class="truncate font-semibold text-ink-body">{{ match.opponent_name }}</span>

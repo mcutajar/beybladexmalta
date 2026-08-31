@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Season;
 use App\Repository\PlayerMergeRedirectRepository;
 use App\Repository\PlayerRepository;
 use App\Repository\SeasonRegistrationRepository;
@@ -71,46 +72,143 @@ class LeagueController extends AbstractController
         ]);
     }
 
-    #[Route('/season/{slug}/player/{id}', name: 'player_season_details', methods: ['GET'])]
-    #[Route('/seasons/{slug}/player/{id}', name: 'player_season_details_2', methods: ['GET'])]
-    #[Route('/preseason/player/{id}', name: 'player_season_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
-    public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects, TournamentStageRepository $stages, TournamentResultRepository $results, PlayerCareerPresenter $careerPresenter): Response
+    /**
+     * A blader's profile, at their canonical URL.
+     *
+     * Player identity is independent of seasons, so the route is too. The slug
+     * is persisted rather than derived from the current display name on every
+     * request: a harmless name correction would otherwise silently break a
+     * public URL somebody has shared.
+     *
+     * `?season=` narrows the page, sharing the scope contract with the archive
+     * and the records board. What that does and does not touch is the point of
+     * the whole ticket:
+     *
+     * - **Career figures are match-derived**, so they answer at either scope —
+     *   and they include unranked events, which have matches and no points.
+     * - **Points are grouped by season and never totalled across them.** Best
+     *   14 is a season's cap; applying fourteen to a career would be a number
+     *   nobody agreed to, and summing across seasons is what the contract
+     *   forbids. So Overall shows one block per season with its own subtotal
+     *   and no grand total anywhere on the page.
+     */
+    #[Route('/player/{slug}', name: 'player_page', methods: ['GET'])]
+    public function playerPage(string $slug, Request $request, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects, TournamentStageRepository $stages, TournamentResultRepository $results, PlayerCareerPresenter $careerPresenter): Response
     {
-        $season = $seasonRepository->findOneBy(['slug' => $slug]);
-        $player = $playerRepository->find($id);
-
-        if (!$season) {
-            throw $this->createNotFoundException('Requested contextual profiles do not exist.');
-        }
+        $player = $playerRepository->findOneBy(['slug' => $slug]);
 
         if (!$player) {
-            $survivor = $redirects->survivorFor($id);
-            if (null !== $survivor && null !== $survivor->getId()) {
-                return $this->redirectToRoute('player_season_details', ['slug' => $slug, 'id' => $survivor->getId()], Response::HTTP_MOVED_PERMANENTLY);
+            /*
+             * A merged-away blader keeps their URL. The row is gone, so the
+             * redirect table is the only thing that remembers the slug — and
+             * the season, which was never part of the blader's identity,
+             * travels across as the query parameter it now is.
+             */
+            $survivor = $redirects->survivorForSlug($slug);
+
+            if (null !== $survivor) {
+                return $this->redirectToRoute(
+                    'player_page',
+                    array_filter(['slug' => $survivor->getSlug(), 'season' => $request->query->getString('season')]),
+                    Response::HTTP_MOVED_PERMANENTLY,
+                );
             }
 
+            throw $this->createNotFoundException('No blader answers to that name.');
+        }
+
+        $scope = $request->query->getString('season');
+        $season = null;
+
+        if ('' !== $scope) {
+            $season = $seasonRepository->findBySlug($scope);
+
+            if (!$season) {
+                throw $this->createNotFoundException('No season answers to that name.');
+            }
+        }
+
+        $id = (int) $player->getId();
+
+        return $this->render('league/player_details.html.twig', [
+            'player' => $player,
+            'career' => $careerPresenter->present(
+                $player,
+                $stages->careerOf($player, $season),
+                $results->careerOf($player, $season),
+            ),
+            /*
+             * One shape for both scopes, so the template has one table to
+             * render rather than two. A season scope is that season's block on
+             * its own; Overall is every season's, each with its own best-14
+             * subtotal and no total across them.
+             */
+            'points' => $this->pointsBySeason($playerRepository->getPlayerContributionsBySeason($id), $season),
+            'seasons' => $seasonRepository->ordered(),
+            'current_season' => $season,
+        ]);
+    }
+
+    /**
+     * The season-scoped player URLs, kept alive as permanent redirects.
+     *
+     * The season was never part of a blader's identity, so it moves from the
+     * path to the query string rather than being dropped: an old link that
+     * named one still opens that season's view.
+     */
+    #[Route('/season/{slug}/player/{id}', name: 'player_season_details', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/seasons/{slug}/player/{id}', name: 'player_season_details_2', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/preseason/player/{id}', name: 'player_season_details_legacy', defaults: ['slug' => 'preseason-1'], requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, PlayerMergeRedirectRepository $redirects): Response
+    {
+        $player = $playerRepository->find($id) ?? $redirects->survivorFor($id);
+
+        if (null === $player) {
             throw $this->createNotFoundException('Requested contextual profiles do not exist.');
         }
 
-        $contributions = $playerRepository->getPlayerContributingTournaments($id, $slug);
+        return $this->redirectToRoute(
+            'player_page',
+            ['slug' => $player->getSlug(), 'season' => $slug],
+            Response::HTTP_MOVED_PERMANENTLY,
+        );
+    }
 
-        /*
-         * The career reads every season and the points table below it reads
-         * the one in the URL. That is deliberate rather than an oversight: a
-         * blader's record is not season-scoped and 35 of them have played in
-         * both, so the page states which season each event belonged to instead
-         * of hiding half of somebody's matches behind the route.
-         */
-        return $this->render('league/player_details.html.twig', [
-            'player' => $player,
-            'contributions' => $contributions,
-            'career' => $careerPresenter->present(
-                $player,
-                $stages->careerOf($player),
-                $results->careerOf($player),
-            ),
-            'current_season' => $season,
-        ]);
+    /**
+     * One blader's scoring events, filed under the season each scored in.
+     *
+     * **No total across seasons, here or anywhere the page can reach.** The
+     * subtotal belongs to its season and travels with it, which is also why it
+     * is rendered on the same line as the season's heading — a figure orphaned
+     * from its season is exactly the cross-season total this forbids.
+     *
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array{slug: string, name: string, total: int, events: list<array<string, mixed>>}>
+     */
+    private function pointsBySeason(array $rows, ?Season $scope): array
+    {
+        $blocks = [];
+
+        foreach ($rows as $row) {
+            $slug = (string) $row['season_slug'];
+
+            if (null !== $scope && $slug !== $scope->getSlug()) {
+                continue;
+            }
+
+            $blocks[$slug] ??= [
+                'slug' => $slug,
+                'name' => (string) $row['season_name'],
+                'total' => 0,
+                'events' => [],
+            ];
+
+            $blocks[$slug]['total'] += (int) $row['total_points'];
+            $blocks[$slug]['events'][] = $row;
+        }
+
+        return array_values($blocks);
     }
 
     /**
@@ -243,16 +341,16 @@ class LeagueController extends AbstractController
         $seasons = $seasonRepository->ordered();
 
         /*
-         * A blader's profile still lives under a season, so an Overall board
-         * links through the newest one. #95 replaces this with the canonical
-         * `/player/{slug}` and the argument disappears; until then the link has
-         * to name some season and the current one is the least wrong.
+         * A blader's profile is reached by their own slug now, so an Overall
+         * board links to an Overall profile and a season-scoped one carries
+         * its season across as the query parameter. Nothing has to invent a
+         * season to link through, which is what this used to do.
          */
         return $this->render('league/records.html.twig', [
             'board' => $recordsPresenter->present($stages->acrossTheLeague($season)),
             'seasons' => $seasons,
             'current_season' => $season,
-            'profile_season_slug' => ($season ?? ([] === $seasons ? null : $seasons[count($seasons) - 1]))?->getSlug(),
+            'profile_season_slug' => $season?->getSlug(),
         ]);
     }
 

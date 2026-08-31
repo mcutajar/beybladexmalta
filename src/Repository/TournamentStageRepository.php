@@ -130,9 +130,9 @@ class TournamentStageRepository extends ServiceEntityRepository
      *
      * @return list<TournamentMatch>
      */
-    public function careerOf(Player $player): array
+    public function careerOf(Player $player, ?Season $season = null): array
     {
-        return $this->getEntityManager()->createQueryBuilder()
+        $matches = $this->getEntityManager()->createQueryBuilder()
             ->select('m', 's', 't', 'season', 'p1', 'p2', 'b1', 'b2')
             ->from(TournamentMatch::class, 'm')
             ->join('m.stage', 's')
@@ -151,9 +151,13 @@ class TournamentStageRepository extends ServiceEntityRepository
             ->addOrderBy('s.position', 'ASC')
             ->addOrderBy('m.consolation', 'ASC')
             ->addOrderBy('m.round', 'ASC')
-            ->addOrderBy('m.challongeId', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->addOrderBy('m.challongeId', 'ASC');
+
+        if (null !== $season) {
+            $matches->andWhere('t.season = :season')->setParameter('season', $season);
+        }
+
+        return $matches->getQuery()->getResult();
     }
 
     /**

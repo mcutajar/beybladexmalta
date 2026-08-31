@@ -11,8 +11,15 @@
 
     `route` is the page being scoped, so the same selector serves the records
     board, the tournament archive and anything else that reads `?season=`.
+    `routeParams` carries whatever else that route needs in its path — the
+    player profile's own slug, which is not a scope and does not change when
+    the scope does.
+
+    The leaderboard has no `ScopeSwitch` at all, deliberately. Option 5C: it is
+    the points view and points are season-specific, so it can offer no Overall
+    without manufacturing one. It carries a plain link to `/seasons` instead.
 #}
-{% props route, seasons = [], activeSlug = null, overall = 'Overall' %}
+{% props route, seasons = [], activeSlug = null, overall = 'Overall', routeParams = {} %}
 
 {% set scopes = [{label: overall, slug: null}] %}
 {% for season in seasons %}
@@ -22,7 +29,7 @@
 <nav {{ attributes.defaults({class: 'flex flex-wrap items-center gap-2'}) }} aria-label="Season scope">
     {% for scope in scopes %}
         {% set active = scope.slug == activeSlug %}
-        <a href="{{ scope.slug ? path(route, {'season': scope.slug}) : path(route) }}"
+        <a href="{{ scope.slug ? path(route, routeParams|merge({'season': scope.slug})) : path(route, routeParams) }}"
            {% if active %}aria-current="page"{% endif %}
            class="rounded-control border px-3 py-1.5 text-xs font-bold transition-colors outline-none {{ active
                ? 'border-brand-strong bg-brand-strong/10 text-brand'

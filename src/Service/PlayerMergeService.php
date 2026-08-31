@@ -175,7 +175,13 @@ final class PlayerMergeService
         foreach ($plan->existingRedirects as $redirect) {
             $redirect->pointsTo($plan->into);
         }
-        $this->redirects->save(new PlayerMergeRedirect($plan->from->getId(), $plan->into));
+        /*
+         * Both of the losing blader's public URLs, kept: the id form every
+         * season-scoped route used, and the slug form #95 made canonical. The
+         * row is deleted a line below, so this is the only thing that will
+         * remember either of them.
+         */
+        $this->redirects->save(new PlayerMergeRedirect($plan->from->getId(), $plan->from->getSlug(), $plan->into));
         $this->players->remove($plan->from);
         $this->flusher->flushThen(fn () => $this->ledger->logPlayerMerged($plan->from->getName(), $plan->into->getName()));
 

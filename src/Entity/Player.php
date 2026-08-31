@@ -21,6 +21,22 @@ class Player
     #[ORM\Column(length: 255, unique: true)]
     private string $name;
 
+    /**
+     * The blader's canonical, public URL.
+     *
+     * **Persisted, not recalculated** from the display name on every request.
+     * Player identity is independent of seasons and of spelling: a harmless
+     * name correction — a capital letter, a stray space — would otherwise
+     * silently break a public URL somebody has shared. The slug is assigned
+     * once, when the blader is put on record, and stays.
+     *
+     * Non-nullable, so `PlayerSlugs` assigns one at every site that creates a
+     * blader. The column's nullability and this property's have to agree:
+     * PHPStan reads the real Doctrine mapping.
+     */
+    #[ORM\Column(length: 255, unique: true)]
+    private string $slug;
+
     /** @var Collection<int, TournamentResult> */
     #[ORM\OneToMany(targetEntity: TournamentResult::class, mappedBy: 'player')]
     private Collection $results;
@@ -48,6 +64,21 @@ class Player
     public function setName(string $name): void
     {
         $this->name = $name;
+    }
+
+    public function getSlug(): string
+    {
+        return $this->slug;
+    }
+
+    /**
+     * Only `PlayerSlugs` and the ORM should call this. Changing a slug that is
+     * already public breaks every link to it, which is the thing persisting it
+     * exists to prevent.
+     */
+    public function setSlug(string $slug): void
+    {
+        $this->slug = $slug;
     }
 
     /** @return Collection<int, TournamentResult> */

@@ -35,6 +35,7 @@ class SeasonRegistrationRepository extends ServiceEntityRepository
                 s.slug as season_slug,
                 p.name as player_name,
                 p.id as player_id,
+                p.slug as player_slug,
                 sr.paid
             FROM season_registrations sr
             JOIN players p ON p.id = sr.player_id

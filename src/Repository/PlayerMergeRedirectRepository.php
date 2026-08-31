@@ -27,6 +27,18 @@ final class PlayerMergeRedirectRepository extends ServiceEntityRepository
         return $this->find($oldPlayerId)?->getSurvivor();
     }
 
+    /**
+     * The blader a merged-away slug now belongs to.
+     *
+     * The newest row wins. A blader merged into somebody who is then merged
+     * again leaves two rows, and `merge()` repoints the older one at the final
+     * survivor — but ordering by id makes the answer stable either way.
+     */
+    public function survivorForSlug(string $slug): ?Player
+    {
+        return $this->findOneBy(['oldSlug' => $slug], ['oldPlayerId' => 'DESC'])?->getSurvivor();
+    }
+
     /** @return list<PlayerMergeRedirect> */
     public function pointingTo(Player $survivor): array
     {

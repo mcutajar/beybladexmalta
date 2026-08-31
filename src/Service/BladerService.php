@@ -34,6 +34,7 @@ class BladerService
 {
     public function __construct(
         private PlayerRepositoryInterface $players,
+        private PlayerSlugs $slugs,
         private LedgerService $ledgerService,
         private FlusherInterface $flusher,
         private LoggerInterface $logger,
@@ -54,6 +55,7 @@ class BladerService
 
         $blader = new Player();
         $blader->setName($name);
+        $this->slugs->assign($blader);
 
         $this->players->save($blader);
 

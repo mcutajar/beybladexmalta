@@ -14,9 +14,17 @@
 
 {% block body %}
 
-    <twig:BackLink href="{{ path('season_leaderboard', {'slug': '1'}) }}" class="mb-6">
-        Return to Season 1 leaderboard
-    </twig:BackLink>
+    {# A season-scoped board goes back to that season's table; the Overall
+       board has no season to go back to, so it goes to the index. #}
+    {% if current_season %}
+        <twig:BackLink href="{{ path('season_leaderboard', {'slug': current_season.slug}) }}" class="mb-6">
+            Return to {{ current_season.name }} leaderboard
+        </twig:BackLink>
+    {% else %}
+        <twig:BackLink href="{{ path('seasons_index') }}" class="mb-6">
+            Return to every season
+        </twig:BackLink>
+    {% endif %}
 
     <header class="mb-12 text-center">
         <h1 class="text-3xl font-black uppercase tracking-tight text-ink md:text-4xl">

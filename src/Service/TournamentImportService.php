@@ -54,6 +54,7 @@ class TournamentImportService
         private FlusherInterface $flusher,
         private F1Points $f1Points,
         private AliasNormaliser $normaliser,
+        private PlayerSlugs $slugs,
     ) {
     }
 
@@ -528,6 +529,7 @@ class TournamentImportService
 
         $player = new Player();
         $player->setName(trim($name));
+        $this->slugs->assign($player);
         $this->players->save($player);
 
         $this->logger->info('New player record generated', [

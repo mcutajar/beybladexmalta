@@ -44,7 +44,7 @@
                                 {{ loop.index }}
                             </td>
                             <td class="whitespace-nowrap">
-                                <a href="{{ path('player_season_details', {'slug': p.season_slug, 'id': p.player_id}) }}"
+                                <a href="{{ path('player_page', {'slug': p.player_slug, 'season': p.season_slug}) }}"
                                    class="text-sm font-bold tracking-wide text-ink-strong transition-colors outline-none group-hover:text-brand focus:text-brand">
                                     {{ p.player_name }}
                                 </a>
