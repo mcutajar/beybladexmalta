@@ -27,13 +27,11 @@ use App\Dto\ChallongeStanding;
  * whatsoever — eight rows of a rank and a match history — and a zero would be
  * a claim the bracket never made.
  *
- * Three columns are read by nothing and stay in the snapshot: `Set Wins`,
- * `Set Ties` and `Pts`, which appear in the league's one round-robin stage.
- * `Pts` is that stage's Beyblade-points total and is emphatically not the
+ * Two columns are read by nothing and stay in the snapshot: `Set Wins` and
+ * `Set Ties`, which appear in the league's one round-robin stage. `Pts` is
+ * the entrants' Beyblade-points total and is emphatically not the
  * `Score` of a Swiss table, which counts match wins — mapping one onto the
- * other would be the archive stating something no bracket said. The snapshot
- * still holds all three, so the day they are worth a column they are a
- * re-archive away.
+ * other would be the archive stating something no bracket said.
  */
 class ChallongeRecordReader
 {
@@ -46,6 +44,8 @@ class ChallongeRecordReader
     private const string BUCHHOLZ = 'buchholz';
 
     private const string TIE_BREAK = 'tb';
+
+    private const string POINTS = 'pts';
 
     private const string POINTS_DIFFERENTIAL = 'pts diff';
 
@@ -67,6 +67,7 @@ class ChallongeRecordReader
             score: $this->decimal($columns[self::SCORE] ?? null),
             buchholz: $this->decimal($columns[self::BUCHHOLZ] ?? null),
             tieBreak: $this->decimal($columns[self::TIE_BREAK] ?? null),
+            points: $this->integer($columns[self::POINTS] ?? null),
             pointsDifferential: $this->integer($columns[self::POINTS_DIFFERENTIAL] ?? null),
         );
     }

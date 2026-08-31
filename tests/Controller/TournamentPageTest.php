@@ -192,6 +192,7 @@ final class TournamentPageTest extends PageTestCase
         );
         self::assertCount(1, $byeAStanding);
         self::assertStringContainsString('1-0-1', $byeAStanding->text());
+        self::assertSelectorTextContains('[data-page-section="swiss-standings"] th[title="Total points scored"]', 'Pts');
         self::assertSame(['W', 'B'], $byeAStanding->filter('[data-form-result]')->each(
             static fn (Crawler $result): string => $result->text(),
         ));
@@ -242,7 +243,7 @@ final class TournamentPageTest extends PageTestCase
                 $number + 1,
                 $number + 1,
                 $number < 8,
-                new ChallongeRecord(5 - ($number % 5), $number % 5, 0, 0, 5.0 - ($number % 5), 14.5, 3.25, 20 - $number),
+                new ChallongeRecord(5 - ($number % 5), $number % 5, 0, 0, 5.0 - ($number % 5), 14.5, 3.25, null, 20 - $number),
             );
             $participant->isBlader($swissPlayers[$number]);
             $swissEntrants[] = $participant;
@@ -303,9 +304,9 @@ final class TournamentPageTest extends PageTestCase
         $stage->transcribe(ChallongeStageKind::Group, 'Group A', 'swiss', 2);
 
         $records = [
-            new ChallongeRecord(1, 0, 0, 1, 2.0, 1.0, 0.0, 3),
-            new ChallongeRecord(1, 1, 0, 0, 1.0, 1.0, 0.0, 0),
-            new ChallongeRecord(0, 1, 0, 1, 1.0, 1.0, 0.0, -3),
+            new ChallongeRecord(1, 0, 0, 1, 2.0, 1.0, 0.0, 10, 3),
+            new ChallongeRecord(1, 1, 0, 0, 1.0, 1.0, 0.0, 7, 0),
+            new ChallongeRecord(0, 1, 0, 1, 1.0, 1.0, 0.0, 4, -3),
         ];
         $participants = [];
         foreach ($names as $index => $name) {

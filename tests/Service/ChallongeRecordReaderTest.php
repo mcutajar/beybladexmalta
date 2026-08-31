@@ -36,6 +36,7 @@ final class ChallongeRecordReaderTest extends TestCase
             'Score' => '4.0',
             'Buchholz' => '10.0',
             'TB' => '1',
+            'Pts' => '89',
             'Pts Diff' => '+17',
         ]));
 
@@ -43,6 +44,7 @@ final class ChallongeRecordReaderTest extends TestCase
         self::assertSame(4.0, $record->score);
         self::assertSame(10.0, $record->buchholz);
         self::assertSame(1.0, $record->tieBreak);
+        self::assertSame(89, $record->points);
         self::assertSame(17, $record->pointsDifferential);
     }
 
@@ -116,11 +118,14 @@ final class ChallongeRecordReaderTest extends TestCase
     /**
      * The round robin's `Pts` is a total of Beyblade points and the Swiss
      * `Score` counts match wins. They are not the same number and neither is
-     * read as the other; `Pts` stays in the snapshot until something wants it.
+     * read as the other.
      */
     public function testItDoesNotReadTheRoundRobinsPointsAsAScore(): void
     {
-        self::assertNull($this->reader->read($this->standing(['Pts' => '89', 'Set Wins' => '11']))->score);
+        $record = $this->reader->read($this->standing(['Pts' => '89', 'Set Wins' => '11']));
+
+        self::assertSame(89, $record->points);
+        self::assertNull($record->score);
     }
 
     /**

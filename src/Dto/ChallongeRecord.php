@@ -28,6 +28,7 @@ final readonly class ChallongeRecord
      * @param ?float $score              match points: a win is 1.0 and a tie 0.5, so it is not an integer
      * @param ?float $buchholz           the sum of the opponents' scores, the Swiss tiebreaker
      * @param ?float $tieBreak           Challonge's `TB` column, whatever it was configured to hold
+     * @param ?int   $points             total points scored, from Challonge's `Pts` tiebreaker
      * @param ?int   $pointsDifferential Beyblade points for less against, as `Pts Diff`
      */
     public function __construct(
@@ -38,6 +39,7 @@ final readonly class ChallongeRecord
         public ?float $score = null,
         public ?float $buchholz = null,
         public ?float $tieBreak = null,
+        public ?int $points = null,
         public ?int $pointsDifferential = null,
     ) {
     }

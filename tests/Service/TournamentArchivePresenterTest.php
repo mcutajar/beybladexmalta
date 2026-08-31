@@ -15,6 +15,32 @@ use PHPUnit\Framework\TestCase;
 
 final class TournamentArchivePresenterTest extends TestCase
 {
+    public function testSwissColumnsFollowTheRankingMethodsPresentInTheBracket(): void
+    {
+        $stage = new TournamentStage(new Tournament(), 0, ChallongeStageKind::Group);
+        $stage->transcribe(ChallongeStageKind::Group, null, 'swiss', 1);
+        $first = $this->participant(
+            $stage,
+            1,
+            'Privv',
+            1,
+            new ChallongeRecord(wins: 1, losses: 0, ties: 0, score: 1.0, tieBreak: 1.0, points: 7, pointsDifferential: 4),
+        );
+        $second = $this->participant(
+            $stage,
+            2,
+            'Bankai',
+            2,
+            new ChallongeRecord(wins: 0, losses: 1, ties: 0, score: 0.0, tieBreak: 0.0, points: 3, pointsDifferential: -4),
+        );
+        $this->match($stage, 1, 1, $first, $second, $first);
+
+        $columns = (new TournamentArchivePresenter())->present([$stage])['swiss'][0]['columns'];
+
+        self::assertSame(['score', 'tieBreak', 'points', 'pointsDifferential'], array_column($columns, 'key'));
+        self::assertSame(['Score', 'TB', 'Pts', 'Diff'], array_column($columns, 'label'));
+    }
+
     public function testAFourRoundCutUsesNumberedOpeningRoundsBeforeTheSemifinal(): void
     {
         $stage = new TournamentStage(new Tournament(), 0, ChallongeStageKind::Final);
@@ -44,10 +70,10 @@ final class TournamentArchivePresenterTest extends TestCase
         self::assertSame(['Round 1', 'Round 2', 'Semi-finals', 'Third-place playoff'], array_column($path['steps'], 'label'));
     }
 
-    private function participant(TournamentStage $stage, int $id, string $name, int $rank): TournamentParticipant
+    private function participant(TournamentStage $stage, int $id, string $name, int $rank, ?ChallongeRecord $record = null): TournamentParticipant
     {
         $participant = new TournamentParticipant($stage, $id, $name);
-        $participant->transcribe($name, null, $id, $rank, false, ChallongeRecord::nothing());
+        $participant->transcribe($name, null, $id, $rank, false, $record ?? ChallongeRecord::nothing());
 
         return $participant;
     }

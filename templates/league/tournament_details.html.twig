@@ -129,10 +129,9 @@
                         <th>Blader</th>
                         <th class="text-center">Match history</th>
                         <th class="text-center">W-L-B</th>
-                        <th class="hidden text-center sm:table-cell">Score</th>
-                        <th class="hidden text-center sm:table-cell" title="Median-Buchholz">MB</th>
-                        <th class="hidden text-center sm:table-cell">TB</th>
-                        <th class="hidden text-center sm:table-cell">Diff</th>
+                        {% for column in swiss.columns %}
+                            <th class="hidden text-center sm:table-cell"{% if column.title %} title="{{ column.title }}"{% endif %}>{{ column.label }}</th>
+                        {% endfor %}
                     </tr>
                     </thead>
                     <tbody>
@@ -143,10 +142,10 @@
                             <td class="font-bold text-ink">{{ entrant.player ? entrant.player.name : entrant.name|replace({' (invitation pending)': ''}) }}</td>
                             <td class="text-center"><twig:FormStrip :results="row.form" /></td>
                             <td class="whitespace-nowrap text-center font-mono">{{ entrant.wins ?? '—' }}-{{ entrant.losses ?? '—' }}-{{ entrant.byes ?? 0 }}</td>
-                            <td class="hidden text-center sm:table-cell">{{ entrant.score ?? '—' }}</td>
-                            <td class="hidden text-center sm:table-cell">{{ entrant.buchholz ?? '—' }}</td>
-                            <td class="hidden text-center sm:table-cell">{{ entrant.tieBreak ?? '—' }}</td>
-                            <td class="hidden text-center sm:table-cell">{{ entrant.pointsDifferential is null ? '—' : (entrant.pointsDifferential > 0 ? '+' ~ entrant.pointsDifferential : entrant.pointsDifferential) }}</td>
+                            {% for column in swiss.columns %}
+                                {% set value = attribute(entrant, column.key) %}
+                                <td class="hidden text-center sm:table-cell">{{ column.key == 'pointsDifferential' and value > 0 ? '+' ~ value : value ?? '—' }}</td>
+                            {% endfor %}
                         </tr>
                     {% endfor %}
                     </tbody>
