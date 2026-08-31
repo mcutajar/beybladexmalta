@@ -391,7 +391,7 @@
 
         <twig:Card id="event-feed">
             <twig:SectionHeading title="Event feed" rule />
-            <twig:EventFeed seasonSlug="paid-season" :events="[
+            <twig:EventFeed seasonSlug="paid-season" :initial="2" :events="[
                 {
                     tournament: {id: 1, title: 'Gamebreaker 22-08', heldOn: date('2026-08-22'), season: {slug: 'paid-season', name: 'Season 1'}},
                     archived: true, wins: 7, losses: 1, draws: 0, rank: 3, points: 25,
@@ -414,7 +414,8 @@
                 The career's match history, not a summary of it: every match is inside one of these panels.
                 <code class="font-mono">&lt;details&gt;</code> is native, so the whole history is reachable
                 with JavaScript off. A 2v2 evening archives no matches and says so; an event from another
-                season names it.
+                season names it. The profile shows the newest three and folds the rest away — shown here
+                with <code class="font-mono">initial</code> at two, so the fold has something to hold.
             </p>
         </twig:Card>
 

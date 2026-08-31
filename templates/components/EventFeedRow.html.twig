@@ -1,0 +1,92 @@
+{#
+    One event of a blader's career, opening onto the matches they played at it.
+
+    <twig:EventFeedRow :event="entry" seasonSlug="{{ season.slug }}" />
+
+    Its own component rather than a loop body inside `EventFeed`, for the same
+    reason `H2hBar` is: the events past the first few are rendered inside a
+    `<twig:Disclosure>`, and a component's content is compiled as a block, which
+    can reach neither the macros its template imported nor a second copy of this
+    markup.
+
+    A 2v2 evening has no panel to open. Its entrants were teams and a team match
+    records only the aggregate of its individual matchups, so there is no
+    blader-level match to show; the row says so rather than leaving a hole where
+    the points table below shows a score.
+#}
+{% props event, seasonSlug = null %}
+
+{# A Swiss field runs past twenty, so 23rd cannot be spelled by testing for a
+   literal 3 — and the teens take "th" whatever their last digit is. #}
+{% macro ordinal(rank) %}
+    {%- set teen = rank % 100 >= 11 and rank % 100 <= 13 -%}
+    {{- rank }}{{ teen ? 'th' : {1: 'st', 2: 'nd', 3: 'rd'}[rank % 10]|default('th') -}}
+{% endmacro %}
+{% import _self as row %}
+
+{% set record = event.wins ~ '–' ~ event.losses ~ (event.draws > 0 ? '–' ~ event.draws : '') %}
+{% set winning = event.wins > event.losses %}
+
+<li data-career-event="{{ event.tournament.title }}">
+    {% set summary %}
+        <span class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+            <span class="text-sm font-black text-ink">{{ event.tournament.title }}</span>
+            <span class="font-mono text-[11px] whitespace-nowrap text-ink-faint">
+                {{ event.tournament.heldOn|date('j M Y') }}{% if event.archived %} · <span class="{{ winning ? 'text-positive' : 'text-ink-muted' }}">{{ record }}</span>{% endif %}
+            </span>
+        </span>
+        <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+            {# The stage rank and the league placement are the same number by
+               construction — the standings order *is* the placement list — so
+               only one of them is stated, and the one that is says which it is. #}
+            {% if event.stage_rank %}
+                <span>{{ row.ordinal(event.stage_rank) }} in {{ event.stage_label|lower }}</span>
+            {% elseif event.rank %}
+                <span>{{ row.ordinal(event.rank) }} overall</span>
+            {% endif %}
+            {% if not event.archived %}
+                <span class="italic">2v2 event · matches not archived</span>
+            {% endif %}
+            {# A career crosses seasons and the route names only one, so an
+               event from the other says which it was. #}
+            {% if seasonSlug and event.tournament.season.slug != seasonSlug %}
+                <twig:Badge tone="neutral" size="sm">{{ event.tournament.season.name }}</twig:Badge>
+            {% endif %}
+            {% if event.cut %}<twig:CutPath :steps="event.cut" />{% endif %}
+            {% if event.won_the_cut %}<span class="font-bold text-flame">won the cut</span>{% endif %}
+            {% if event.points %}<span class="font-mono text-flame">{{ event.points }} pts</span>{% endif %}
+        </span>
+    {% endset %}
+
+    {% if event.archived %}
+        {# A *named* group. `group-open:` matches any `group` ancestor, and this
+           panel sits inside the feed's own "earlier events" disclosure — so an
+           unnamed one spins every closed row's chevron open the moment the fold
+           is opened. #}
+        <details class="group/event rounded-field border border-l-2 border-line/80 bg-canvas transition-colors open:border-brand-strong/30
+            {{ winning ? 'border-l-positive/60' : 'border-l-heat/50' }}">
+            <summary class="flex list-none cursor-pointer select-none items-center gap-3 p-3 transition-colors hover:bg-surface/40 sm:p-4">
+                <span class="min-w-0 grow space-y-1">{{ summary }}</span>
+                <span class="shrink-0 text-xs text-ink-faint transition-transform duration-200 group-open/event:rotate-180" aria-hidden="true">&#9660;</span>
+            </summary>
+
+            <div class="space-y-4 border-t border-line/60 px-3 pt-3 pb-4 sm:px-4">
+                {% for stage in event.stages %}
+                    <div data-career-stage="{{ stage.label }}">
+                        <span class="text-[11px] font-bold tracking-wider text-ink-faint uppercase">{{ stage.label }}</span>
+                        <twig:PlayerMatchLog :rows="stage.matches" seasonSlug="{{ seasonSlug }}" class="mt-1" />
+                    </div>
+                {% endfor %}
+
+                {% if seasonSlug %}
+                    <a href="{{ path('tournament_details', {'slug': event.tournament.season.slug, 'id': event.tournament.id}) }}"
+                       class="inline-block text-xs font-bold tracking-wider text-brand uppercase transition-colors outline-none hover:text-brand-bright focus:text-brand-bright">
+                        Open the full event →
+                    </a>
+                {% endif %}
+            </div>
+        </details>
+    {% else %}
+        <div class="space-y-1 rounded-field border border-l-2 border-line/80 border-l-line bg-canvas p-3 sm:p-4">{{ summary }}</div>
+    {% endif %}
+</li>
