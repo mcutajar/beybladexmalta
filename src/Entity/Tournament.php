@@ -31,9 +31,24 @@ class Tournament
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $challongeUrl = null;
 
+    /**
+     * The season this event scores in, or null when it scores nothing.
+     *
+     * **A tournament scores if and only if it belongs to a season.** An
+     * exhibition or international event is archived in full — its snapshot,
+     * stages, entrants and matches all persist, and its entrants still resolve
+     * to `Player` records — and writes no `TournamentResult` row at all. Not a
+     * zero-point one: `TournamentResult` is the scoring record, and a row
+     * paying nothing is still a row `getLeagueLeaderboard()` counts against a
+     * blader's best fourteen.
+     *
+     * There is deliberately no `unranked` boolean beside it. A flag can
+     * disagree with the relation; the relation is the truth, and `isRanked()`
+     * is the only way anything asks the question.
+     */
     #[ORM\ManyToOne(inversedBy: 'tournaments')]
-    #[ORM\JoinColumn(nullable: false)]
-    private Season $season;
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Season $season = null;
 
     /**
      * The bracket, archived: its stages, and through them every entrant and
@@ -160,15 +175,27 @@ class Tournament
         return !$this->teams->isEmpty();
     }
 
-    public function getSeason(): Season
+    public function getSeason(): ?Season
     {
         return $this->season;
     }
 
-    public function setSeason(Season $season): self
+    public function setSeason(?Season $season): self
     {
         $this->season = $season;
 
         return $this;
+    }
+
+    /**
+     * Whether this event awards league points.
+     *
+     * The relation and nothing else. Every caller that used to assume a season
+     * asks this first, so "unranked" is one question with one answer rather
+     * than a null check repeated in eleven places.
+     */
+    public function isRanked(): bool
+    {
+        return null !== $this->season;
     }
 }
