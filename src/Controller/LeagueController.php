@@ -86,39 +86,58 @@ class LeagueController extends AbstractController
         ]);
     }
 
-    #[Route('/preseason/tournament/{id}', name: 'tournament_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
-    #[Route('/season/{slug}/tournament/{id}', name: 'tournament_details', methods: ['GET'])]
-    #[Route('/seasons/{slug}/tournament/{id}', name: 'tournament_details_2', methods: ['GET'])]
-    public function tournamentDetails(string $slug, int $id, TournamentRepository $tournamentRepository, SeasonRepository $seasonRepository, TournamentTeamRepository $teams, TournamentStageRepository $stages, TournamentArchivePresenter $archivePresenter): Response
+    /**
+     * One event, whether or not it belongs to a season.
+     *
+     * Canonical and season-independent, because an unranked tournament has no
+     * season to route through and every previous way into a tournament page
+     * went through one. The three season-scoped forms below redirect here and
+     * stay valid: both shapes are links people have, and redirecting keeps one
+     * page rather than growing a second.
+     */
+    #[Route('/tournament/{id}', name: 'tournament_page', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function tournamentPage(int $id, TournamentRepository $tournamentRepository, TournamentTeamRepository $teams, TournamentStageRepository $stages, TournamentArchivePresenter $archivePresenter): Response
     {
-        // 1. Fetch and validate the active season context
-        $season = $seasonRepository->findOneBy(['slug' => $slug]);
-        if (!$season) {
-            throw $this->createNotFoundException('Season context not found.');
-        }
-
-        // 2. Fetch the tournament metadata
         $tournament = $tournamentRepository->find($id);
-        if (!$tournament || $tournament->getSeason() !== $season) {
-            throw $this->createNotFoundException('The requested tournament does not exist under this season.');
-        }
 
-        // 3. Fetch all placement results for this specific tournament
-        $standings = $tournamentRepository->getTournamentStandings($id);
+        if (!$tournament) {
+            throw $this->createNotFoundException('The requested tournament does not exist.');
+        }
 
         /*
          * Empty for every event but the two 2v2s, where it is what the bracket
          * actually ranked — including the teams nobody has claimed, which have
          * no placement of their own and would otherwise leave no trace on the
          * page at all.
+         *
+         * The standings are read for both kinds and are simply empty for an
+         * unranked event, which has no `TournamentResult` row at all. The
+         * template does not render the League points card for one — absent
+         * rather than empty or zeroed.
          */
         return $this->render('league/tournament_details.html.twig', [
             'tournament' => $tournament,
-            'standings' => $standings,
+            'standings' => $tournament->isRanked() ? $tournamentRepository->getTournamentStandings($id) : [],
             'teams' => $teams->forTournament($tournament),
             'archive' => $archivePresenter->present($stages->forTournament($tournament)),
-            'current_season' => $season,
+            'current_season' => $tournament->getSeason(),
         ]);
+    }
+
+    /**
+     * The season-scoped tournament URLs, kept alive as permanent redirects.
+     *
+     * The season in the path never identified anything — the id did — so it is
+     * dropped rather than validated. A URL naming the wrong season used to
+     * 404; it now lands on the event it named, which is what somebody
+     * following an old link wanted.
+     */
+    #[Route('/preseason/tournament/{id}', name: 'tournament_details_legacy', defaults: ['slug' => 'preseason-1'], requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/season/{slug}/tournament/{id}', name: 'tournament_details', requirements: ['id' => '\d+'], methods: ['GET'])]
+    #[Route('/seasons/{slug}/tournament/{id}', name: 'tournament_details_2', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function tournamentDetails(int $id): Response
+    {
+        return $this->redirectToRoute('tournament_page', ['id' => $id], Response::HTTP_MOVED_PERMANENTLY);
     }
 
     /**

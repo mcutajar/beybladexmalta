@@ -105,7 +105,7 @@ final class PageRendersTest extends PageTestCase
             'tournament' => $tournament,
         ]);
 
-        $this->assertPageRenders(sprintf('/season/paid-season/tournament/%d', $tournament->getId()));
+        $this->assertPageRenders(sprintf('/tournament/%d', $tournament->getId()));
     }
 
     /**

@@ -28,6 +28,7 @@
             'scope-switch': 'Scope switch', 'record-tile': 'Record tile',
             'player-headline': 'Player headline', 'h2h-bars': 'Head-to-head bars',
             'cut-path': 'Cut path', 'player-match-log': 'Player match log', 'event-feed': 'Event feed',
+            'finishing-order': 'Finishing order',
             'artifacts': 'Artifacts & ledger',
         } %}
             <a href="#{{ anchor }}" class="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink">{{ label }}</a>
@@ -446,6 +447,22 @@
                 Links, not a control — the scope lives in the URL, so every scope is reachable and
                 back-buttonable without a line of JavaScript. The active one carries
                 <code class="font-mono">aria-current</code> as well as the tint.
+            </p>
+        </twig:Card>
+
+        <twig:Card id="finishing-order">
+            <twig:SectionHeading title="Finishing order" rule />
+            <twig:FinishingOrder :rows="[
+                {rank: 1, name: 'Giglio', player: null, matches: 5, wins: 5, losses: 0, draws: 0, form: ['W', 'W', 'W', 'W', 'W']},
+                {rank: 2, name: 'Sanya', player: null, matches: 5, wins: 4, losses: 1, draws: 0, form: ['W', 'L', 'W', 'W', 'W']},
+                {rank: 3, name: 'Jape', player: null, matches: 5, wins: 4, losses: 1, draws: 0, form: ['W', 'W', 'L', 'W', 'W']},
+                {rank: 4, name: 'Federico', player: null, matches: 0, wins: 0, losses: 0, draws: 0, form: []},
+            ]" />
+            <p class="mt-4 text-xs text-ink-muted">
+                Where the bracket says everybody finished, on a page where that pays nothing.
+                <strong class="text-ink-muted">No F1, bonus or total column</strong> — an unranked event
+                writes no result row, so there is no such value to put in one. The fourth row is an
+                entrant the archive holds no matches for.
             </p>
         </twig:Card>
 
