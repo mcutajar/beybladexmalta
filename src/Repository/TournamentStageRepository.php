@@ -116,6 +116,11 @@ class TournamentStageRepository extends ServiceEntityRepository
      * 129 of the pairs in the archive are exactly that. Joining through
      * `player` is what makes those two rows one career.
      *
+     * The season is joined on the left rather than the inner, because an
+     * unranked event has none: a career is match-derived and answers at any
+     * scope, so joining through `t.season` would drop exactly the events #90
+     * exists to make possible.
+     *
      * One query rather than the two `forTournament()` needs, because nothing
      * here fetch-joins a collection — the entrants are reached through the
      * match's own two sides, which are to-one — so there is no cartesian
@@ -132,7 +137,7 @@ class TournamentStageRepository extends ServiceEntityRepository
             ->from(TournamentMatch::class, 'm')
             ->join('m.stage', 's')
             ->join('m.tournament', 't')
-            ->join('t.season', 'season')
+            ->leftJoin('t.season', 'season')
             ->leftJoin('m.player1', 'p1')
             ->leftJoin('m.player2', 'p2')
             ->leftJoin('p1.player', 'b1')
