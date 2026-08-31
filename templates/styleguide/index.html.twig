@@ -25,7 +25,7 @@
             'disclosure': 'Disclosure', 'empty-state': 'Empty state',
             'form-strip': 'Form strip', 'match-log': 'Match log', 'top-cut': 'Top cut',
             'kpi-row': 'KPI row', 'totals-list': 'Totals list',
-            'scope-switch': 'Scope switch', 'record-tile': 'Record tile', 'rivalry-list': 'Rivalry list',
+            'scope-switch': 'Scope switch', 'record-tile': 'Record tile',
             'player-headline': 'Player headline', 'h2h-bars': 'Head-to-head bars',
             'cut-path': 'Cut path', 'player-match-log': 'Player match log', 'event-feed': 'Event feed',
             'artifacts': 'Artifacts & ledger',
@@ -452,8 +452,16 @@
         <twig:Card id="record-tile">
             <twig:SectionHeading title="Record tile" rule />
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <twig:RecordTile label="Highest win rate" name="Mezz" value="70.6%" note="24–10 in 34 matches" tone="brand" />
-                <twig:RecordTile label="Most 9-point finishes" name="Markulegend" value="7" note="of the 71 anyone has scored" />
+                <twig:RecordTile label="Highest win rate" name="Mezz" value="70.6%" note="24–10 in 34 matches" tone="brand" :leaders="[
+                    {player: null, name: 'Mezz', value: '70.6%'},
+                    {player: null, name: 'Markinu', value: '68.2%'},
+                    {player: null, name: 'Sk3lli', value: '65.9%'},
+                ]" />
+                <twig:RecordTile label="Most 9-point finishes" name="Markulegend" value="7" note="of the 71 anyone has scored" :leaders="[
+                    {player: null, name: 'Markulegend', value: '7'},
+                    {player: null, name: 'Guzman93', value: '6'},
+                    {player: null, name: 'Mezz', value: '5'},
+                ]" />
                 <twig:RecordTile label="Best points differential" name="Markinu" value="+169" note="555 scored, 386 conceded" tone="positive" />
                 <twig:RecordTile label="Most one-sided rivalry" name="Markinu over Evilbeys" value="5–0" note="met 5 times, never beaten" />
                 <twig:RecordTile label="Longest win streak" value="10 straight" name="Markinu" note="across 2 events" />
@@ -462,19 +470,6 @@
             <p class="mt-4 text-xs text-ink-muted">
                 The last tile is a record nobody in scope holds. It renders rather than disappearing, so a
                 quiet season is the same board as a busy one.
-            </p>
-        </twig:Card>
-
-        <twig:Card id="rivalry-list">
-            <twig:SectionHeading title="Rivalry list" rule />
-            <twig:RivalryList :rivalries="[
-                {leader: {id: 4}, leader_name: 'Markinu', trailer: {id: 7}, trailer_name: 'Markulegend', wins: 7, losses: 3, draws: 0, met: 10},
-                {leader: {id: 9}, leader_name: 'Guzman93', trailer: {id: 7}, trailer_name: 'Markulegend', wins: 3, losses: 3, draws: 0, met: 6},
-                {leader: null, leader_name: 'Giglio', trailer: null, trailer_name: 'Sk3lli', wins: 4, losses: 1, draws: 1, met: 6},
-            ]" seasonSlug="paid-season" />
-            <p class="mt-4 text-xs text-ink-muted">
-                Always stated from the side that is ahead, so the record reads left to right. A pair nobody
-                has resolved to bladers keeps its names and gets no link.
             </p>
         </twig:Card>
 
