@@ -145,7 +145,7 @@ test: phpunit ## Alias for phpunit
 # CI reads the Cobertura report to build the pull request comment, the HTML one
 # is what says which lines are missed, and the text one lands in the log.
 coverage: running $(TAILWIND_CSS) ## Run the test suite and write the coverage reports to var/coverage
-	$(EXEC) php vendor/bin/phpunit \
+	$(EXEC) php -d memory_limit=256M vendor/bin/phpunit \
 		--coverage-text \
 		--coverage-cobertura $(COVERAGE_DIR)/cobertura.xml \
 		--coverage-html $(COVERAGE_DIR)/html \
