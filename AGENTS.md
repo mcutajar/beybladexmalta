@@ -4,6 +4,21 @@ Malta Beyblade League — a Symfony 8.1 / PHP 8.5 app for league rankings, tourn
 imports and seasonal registration payments. Postgres 16, Doctrine ORM, Twig +
 Tailwind, served by FrankenPHP.
 
+## Skills
+
+Detail that only matters inside one subsystem lives in `.claude/skills/`, loaded
+on demand. The rules below are the ones that apply everywhere, or that you have
+to know *before* you would think to go looking.
+
+| Skill | Covers |
+| --- | --- |
+| `dev-stack` | Bringing the stack up, ports and `.env.local`, the browser preview, seeding and resetting the database |
+| `writing-tests` | Base test cases, factories, fixtures, artifact cleanup, coverage |
+| `design-system` | Tokens, the page shell, Twig components and their traps, mobile sizing |
+| `design-proposal` | The format for proposing a layout before it is built |
+| `challonge-import` | Reading, snapshotting, importing and archiving brackets; aliases, teams, the import preview |
+| `release-and-deploy` | Cutting a release, publishing the image, deploying, rolling back |
+
 ## The one rule: everything runs in the container
 
 There is no PHP, Composer or Postgres on the host, and none should be installed.
@@ -51,87 +66,6 @@ the shell. Homebrew's `/opt/homebrew/bin` is not on a non-interactive shell's PA
 so `gh` is symlinked into `/usr/local/bin`, which is. Recreate that on a fresh
 machine with `sudo ln -s /opt/homebrew/bin/gh /usr/local/bin/gh`.
 
-## Container gotchas
-
-- `docker run <image> php ...` is **not** a shortcut. The image's `ENTRYPOINT`
-  (`frankenphp/docker-entrypoint.sh`) intercepts `php`, `frankenphp` and
-  `bin/console`, then runs `composer install`, waits up to 60s for a database and
-  applies migrations before your command. Use `docker compose exec` (what the
-  Makefile does) — `exec` skips the entrypoint entirely.
-- The stack bind-mounts the repository root at `/app`. A **git worktree is not
-  mounted** by a stack started from the main checkout. Working in a worktree means
-  either starting a separate stack from it or making the change in the main checkout.
-- Starting that separate stack needs **less ceremony than it looks**. Compose derives
-  the project name from the directory, so a worktree already gets its own namespace
-  (`<worktree-dir>-php-1`, its own network and volumes) — you do not need to set
-  `COMPOSE_PROJECT_NAME`. Only the **published ports** are shared, and only against
-  another *dev* stack: `compose.override.yaml` publishes 80, 443 and 15432 by
-  default. Check with `docker ps` first; if something already holds them, put
-  `HTTP_PORT`, `HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local` — the Makefile
-  hands Compose `--env-file .env --env-file .env.local` — and every `make` target
-  then works unchanged. Point `.claude/launch.json` at the same `HTTP_PORT`; see
-  "Previewing in a browser" below.
-- That pair of flags is deliberate, and **a single `--env-file .env.local` is a
-  trap**. Compose *replaces* the `.env` it would otherwise read with the file you
-  name rather than layering on top of it, so a ports-only `.env.local` blanks out
-  everything the committed `.env` defines. `compose.override.yaml` interpolates
-  `DATABASE_URL: ${DATABASE_URL}`, which is only set in `.env`, so the container
-  starts with an empty-but-present `DATABASE_URL`; Symfony's Dotenv then sees it as
-  already set and never falls back to the `.env` value. The entrypoint's
-  `dbal:run-sql` dies with "could not find driver", the healthcheck never passes,
-  and `make up` leaves an unhealthy stack. Repeated `--env-file` flags *do* layer,
-  later files winning, which is why the Makefile passes both. Driving Compose by
-  hand needs the same pair.
-- **A production stack may be running on the same host**, started from the main
-  checkout via `compose.yaml` (plus the `production`-profile Cloudflare tunnel). A
-  *worktree* stack cannot collide with it, because Compose keys a project on the
-  directory name and a worktree has its own. **The main checkout does not get that
-  protection**: there, the dev stack and production are the same project, so
-  `make up` recreates production's container with dev config rather than starting
-  one beside it — and the tunnel keeps pointing at it. `make down`, `docker compose
-  down` or a prune run from that directory takes the live site down outright.
-  `make up`, `down` and `build` now refuse when a production container is present
-  (see `not-production` in the Makefile), but check `docker ps` before anything
-  destructive and keep every command scoped the way the Makefile does.
-- `vendor/` is written into the bind mount, so it lands on the host and the IDE can
-  still index it. Keep it that way.
-- On the **first** `make up` of a fresh checkout the entrypoint is running its own
-  `composer install` into that bind mount. Running `make composer` (or anything
-  else) before it finishes corrupts `vendor/` — the two writers fight and the
-  container dies mid-extraction, leaving packages half-installed. Wait for the
-  container to report healthy (`make ps`) before invoking any other target. If it
-  does get into that state, `rm -rf vendor`, restore `composer.json`/`composer.lock`,
-  and let a single `composer install` finish on its own.
-
-## Previewing in a browser
-
-The dev stack serves **plain HTTP** — `http://localhost` by default, or
-`http://localhost:$HTTP_PORT` when `.env.local` overrides the port.
-`compose.override.yaml` sets `SERVER_NAME=:80` to make that the default, and
-production is unaffected because it runs from `compose.yaml`.
-
-That default exists because the alternative bites hard. With a hostname in
-`SERVER_NAME`, Caddy serves HTTPS from an internal CA that nothing trusts
-(`frankenphp/Caddyfile` sets `skip_install_trust`) and 308s port 80 to a
-**port-less** `https://localhost` — so a worktree published on 8082 redirects to
-whatever holds 443, which on a machine running several stacks is a different
-app entirely. Browsers cache a 308 permanently, so the bad redirect outlives the
-fix: the symptom is `ERR_CERT_AUTHORITY_INVALID` on a URL you never typed, for
-one path while its siblings work. Shake it off with a throwaway query string
-(`?x=1`) or by clearing the browser's cache.
-
-`.claude/launch.json` registers the stack with the browser preview, which will
-not open a localhost origin it does not know about. Two things to know:
-
-- **Its `port` and `url` must match the port this checkout publishes.** A stale
-  value does not fail loudly — it previews a different worktree's app.
-- A localhost entry must be a bare origin. Paths and queries are rejected, so
-  open the page you want by navigating after the preview attaches.
-
-It attaches to a running stack rather than starting one, so `make up` first. If
-navigation starts failing with "denied or failed" after a container restart, the
-preview session has gone stale — attach again.
-
 ## Where to run the dev stack
 
 **In a git worktree, not the main checkout.** The main checkout is where production
@@ -141,7 +75,7 @@ there is not a second stack, it is production being replaced.
 ```bash
 git worktree add .claude/worktrees/<name> -b <branch>
 cd .claude/worktrees/<name>
-# ports 80/443/15432 are probably taken; see the .env.local note above
+# ports 80/443/15432 are probably taken; see the `dev-stack` skill
 make setup
 ```
 
@@ -163,325 +97,108 @@ Running the *production* compose file from a worktree is harmless, incidentally:
 would build a separate project named after the worktree and leave the live site
 alone. Only the main checkout reaches production.
 
+The `dev-stack` skill has the rest: the container gotchas, the `--env-file`
+layering trap, the port collisions, and the browser preview. Two things are worth
+knowing without opening it — **`docker run <image> php ...` is not a shortcut**
+(the image's entrypoint intercepts it; use `docker compose exec`, which is what
+the Makefile does), and the dev stack serves **plain HTTP**, so preview it at
+`http://localhost` or `http://localhost:$HTTP_PORT` rather than over HTTPS.
+
 ## Releasing and deploying
 
-A deploy is no longer a build. **A git tag publishes an image; a deploy pulls
-one.** `docs/RELEASING.md` is the full procedure — the short version:
-
-```bash
-make release VERSION=1.1.0   # from the main checkout: tags and pushes
-                             # CI then tests, builds and pushes the image
-make deploy VERSION=1.1.0    # from the main checkout: pulls it and restarts
-make rollback VERSION=1.0.0  # the same thing, pointed at an older version
-```
-
-`make versions` lists the releases and marks the live one; `make prod-version`
-prints what production is running, read from the container's
-`org.opencontainers.image.version` label.
-
-Things that are load-bearing here:
+**A git tag publishes an image; a deploy pulls one.** `make release VERSION=x.y.z`
+tags, CI builds and pushes the image, `make deploy VERSION=x.y.z` pulls it.
+The `release-and-deploy` skill and `docs/RELEASING.md` have the procedure and the
+reasoning. Four rules bind anything that touches this, whether or not you are
+cutting a release:
 
 - **`compose.yaml` has no `build:` key, and must not gain one.** With one, a bare
   `docker compose -f compose.yaml up -d` builds the working copy and stamps a
   release version on it, and production serves something no release produced.
-  Without one, that command fails on a missing manifest. The default tag is
-  `:none` for the same reason — nothing publishes it, so a command that forgot
-  to name a version fails rather than picking one.
 - **Never deploy with a bare `docker compose`.** In this checkout it also reads
-  `compose.override.yaml`, which builds the `frankenphp_dev` target and
-  bind-mounts the working copy over `/app`. Every production command names its
-  file: `-f compose.yaml`. `make deploy` does this for you.
+  `compose.override.yaml`, which builds the dev target and bind-mounts the working
+  copy over `/app`. Every production command names its file: `-f compose.yaml`.
+- **Nothing may be mounted over `/app/var` in production.** It hides the warmed
+  cache the image ships, and the site goes on serving an older build while every
+  release looks like a no-op. Only `var/log` and `var/data/imports` are mounted.
 - **Version numbers are never reused.** A bad release is followed by the next
   number, not a retagged one.
-- **`make release` is cut from the main checkout, not a worktree** -- the one
-  exception to working in a worktree. Git will not check out `main` in a
-  worktree while the main checkout holds it, and a release has to be cut from
-  main. It starts no dev stack, so it is safe to run beside a production
-  container; it does not re-run the suite locally, because CI has already
-  tested the commit it is cutting from and the release workflow tests the tag
-  again before publishing.
-- **The changelog is written before the tag, not after it.** `make release`
-  regenerates `CHANGELOG.md` from the commits, commits it as
-  `chore(release): vX.Y.Z` and pushes to main, and only then tags -- so the
-  tag's tree contains the entry describing it. This cannot move into the
-  release workflow: main's ruleset requires the `PHPUnit` check on any push,
-  only repository admins bypass it, and a push made with `GITHUB_TOKEN` does
-  not trigger the workflows that would report it. The cost is that the tagged
-  commit is one past the one `release-gate` read CI's verdict for.
-- **The image is `linux/arm64` only**, because production is Docker Desktop on
-  Apple Silicon. The release job runs on an arm64 runner so that is a native
-  build rather than a QEMU one.
-- **An image built by hand reports version `0.0.0-dev`.** The label comes from a
-  build argument only the release workflow passes, which is what lets
-  `verify-deploy` tell a release apart from a local build.
 
-### The release notes are the commits
+**Secrets are supplied at run time, not baked into the image**, and an unset admin
+passphrase is an open door rather than a locked one — `hash_equals('', '')` is
+`true`. Any new passphrase-gated flow goes through `AdminPassphraseVerifier`,
+which refuses everything when the configured passphrase is empty, rather than
+calling `hash_equals()` directly.
 
-`cliff.toml` turns the conventional commit types into groups, and both the
-GitHub Release body and `CHANGELOG.md` are rendered from it -- the workflow
-renders the newest section, `make release` renders the file. Nothing is written
-by hand and `--generate-notes` (pull request titles) is gone.
-
-Three consequences worth carrying:
-
-- **A commit subject is published.** It ends up in a release note and in a file
-  people read, so it is worth the same care as the code. The body is not
-  rendered, and is still where the reasoning belongs.
-- **Nothing is dropped.** A commit that does not parse lands in an `Other`
-  group rather than vanishing, on purpose.
-- **Pull requests are rebase-merged.** Squashing is still enabled but would
-  degrade the changelog to a single pull request title with a blank body, which
-  is what this replaced. `docs/RELEASING.md` records the reasoning.
-
-git-cliff is not a PHP tool, so it is not in the dev container; `make changelog`
-runs it from a pinned image, which keeps the host clean the same way the
-container rule does.
-
-### Secrets are supplied at run time, not baked in
-
-They used to be baked in: the build ran on the production host, `.env.local` was
-in the build context, and `composer dump-env prod` compiled it into
-`.env.local.php` inside a layer. A published image is public and CI has no
-`.env.local`, so that route is closed at both ends.
-
-`.dockerignore` excludes `.env.local`, `compose.yaml` passes `APP_SECRET`,
-`DATABASE_URL`, `DEFAULT_URI` and both admin passphrases into the container from
-the host's env files, and Symfony's Dotenv leaves an already-set variable alone
-so those win over the image's committed defaults. `make deploy` runs
-`deploy-preflight` first and refuses to start when one is empty, naming the
-variable and never printing a value.
-
-**An unset admin passphrase is an open door, not a locked one.**
-`hash_equals('', '')` is `true`, so a container that never received
-`PAYMENTS_ADMIN_PASSPHRASE` would accept an empty form field. That became
-reachable the moment passphrases stopped being baked in, so
-`AdminPassphraseVerifier` refuses everything when the configured passphrase is
-empty and logs it as critical. Any new passphrase-gated flow goes through it
-rather than calling `hash_equals()` directly.
-
-### Why `make deploy` verifies rather than just restarting
-
-Three things can go wrong without the site going down, and the first two have:
-
-1. **The image ships code whose dependencies were never installed.** The kernel
-   cannot boot, and the site 502s -- but only once something forces it to boot
-   fresh. `verify-deploy` runs `bin/console about`, which fails loudly instead.
-2. **A compiled cache outlives the code it was compiled from.** Symfony never
-   revalidates the container, the routes or Twig in production, so the site goes
-   on serving an older build and every release looks like a no-op. This happened
-   for a month: `compose.yaml` mounted a volume over `/app/var`, hiding the
-   warmed cache the image ships (the Dockerfile copies `/app/var` in as its own
-   layer) behind one compiled in July. `verify-deploy` fails if any file under
-   `src/`, `config/` or `templates/` is newer than `var/cache/prod`.
-3. **The container that came up is not the version that was asked for.**
-   `verify-deploy` compares the running container's version label against the
-   version the deploy named.
-
-Nothing may be mounted over `/app/var` in production. Only the two directories
-the app writes to at runtime are mounted, and both are named: `LedgerService`
-appends to `var/log`, `ImportFileWriter` writes `var/data/imports`.
-
-If a deploy fails verification, `make prod-logs` is the next stop.
+**A commit subject is published.** `cliff.toml` renders the release notes and
+`CHANGELOG.md` straight from the commits, so a subject is worth the same care as
+the code; the body is not rendered and is still where the reasoning belongs.
+Pull requests are rebase-merged, not squashed, for the same reason.
 
 ## Tests
 
-- PHPUnit 13 with Zenstruck Foundry factories and stories (`tests/Factory`,
-  `tests/Story`, namespaced `App\Tests\`). They live under `tests/` rather than
-  `src/` on purpose: `zenstruck/foundry` is a dev dependency, so anything
-  extending it belongs in `autoload-dev`. In `src/` they were shipped to the
-  production image without the package they extend, and counted against coverage
-  as if they were application code.
-- Tests run against `bbx_malta_test` — a separate database from your real
-  `bbx_malta` data, via `dbname_suffix` in `config/packages/doctrine.yaml`.
-  `#[ResetDatabase]` drops and recreates it on each run.
-- `.env.test` holds the admin passphrases the functional tests submit.
-- `var/data/imports/` and `var/data/challonge/` are **tracked by git** and hold real
-  league data — the placement lists, and the captured Challonge brackets. Tests that
-  write there must clean up after themselves in `tearDown()`.
-- **No test reaches Challonge.** `config/services_test.yaml` hands `ChallongeFetcher`
-  a `MockHttpClient` built by `tests/Support/FakeChallonge`, which answers from
-  `tests/Fixtures/challonge/` and, like the real site, only renders standings when
-  `show_standings=1` was sent. A test needing a new bracket shape adds a fixture
-  there rather than a URL.
-- Nothing else under `var/` belongs in git. `var/tailwind/` holds the built
-  stylesheet and a ~112 MB downloaded Tailwind binary; both are generated.
-- `SymfonyStyle` hard-wraps console output, so normalise whitespace before
-  asserting on a message rather than matching a long raw string.
-  `ConsoleTestCase::assertCommandSaid()` already does this.
-- Shared test plumbing lives in `tests/Support`, and a new test should extend one of
-  the base cases rather than `WebTestCase` or `KernelTestCase` directly:
-  - `AdminPageTestCase` — booting the browser, submitting a page's real form (so the
-    CSRF token is genuine), and `assertFlashSays()`.
-  - `ConsoleTestCase` — `executeCommand()` plus the output and exit-code assertions.
-    Subclasses name their command in `commandName()`.
-  - `InteractsWithTheLedger` — asserts what `var/log/command_ledger.sh` holds by
-    rebuilding the exact replayable command; `blockLedgerWrites()` puts a directory
-    in its place to force a write failure.
-  - `LeagueAssertions` — domain assertions such as `assertPlayerHasPaid()`,
-    `assertResultAtRank()` and `assertPlacementsScoredInOrder()`.
-- **Only what varies belongs in a test body.** The correct passphrase, the payment
-  season and the happy-path form values are helper defaults, so a test that names a
-  passphrase is visibly a test *about* authentication. Reach for a named assertion
-  before inlining factory criteria.
-- `make coverage` measures how much of `src/` the suite exercises. The driver is
-  Xdebug, which the dev image already ships and `compose.override.yaml` already
-  puts in coverage mode, so nothing needs installing — but an `XDEBUG_MODE` in
-  `.env.local` without `coverage` in it produces empty reports and a PHPUnit
-  warning rather than a failure. It writes three views of the same run to the
-  gitignored `var/coverage/`: `cobertura.xml` (what CI turns into the per-file
-  table), `html/` (which lines are missed) and the text summary in the
-  terminal.
-- CI runs the same target on every pull request, writes the per-file table to
-  the job summary and uploads the HTML report as the `coverage-html` artifact.
-  Nothing is sent to a third-party service and no secret is involved. Coverage
-  is reported only — it never fails the build.
-  - **The table is not posted as a pull request comment.** It was, and one row
-    per file landing in the review thread on every push drowned the
-    conversation. The job summary carries the same numbers, so the CI job needs
-    no `pull-requests: write` token and a run from a fork or from Dependabot
-    reports exactly as much as one from a branch.
-  - Files with no executable lines — interfaces, enums, empty exception classes
-    — show as 0%. They are counted as 0/0, so they do not move the total.
-  - The README badge reads a shields.io endpoint JSON on the `badges` orphan
-    branch, which a push to `main` rewrites. That branch holds that one file and
-    nothing else; never merge it into anything.
-- Artifact cleanup is centralised: the base cases delete everything `artifactPaths()`
-  lists, before and after each test. A test that writes somewhere new overrides that
-  method instead of writing its own `tearDown()`.
+`make phpunit` runs the suite; `make phpunit ARGS="--filter FooTest"` runs one
+class. The `writing-tests` skill has the full picture. The core of it:
+
+- PHPUnit 13 with Zenstruck Foundry factories and stories, under `tests/` and
+  namespaced `App\Tests\`. They do not belong in `src/`.
+- A new test extends one of the base cases in `tests/Support` — `AdminPageTestCase`,
+  `ConsoleTestCase`, `InteractsWithTheLedger`, `LeagueAssertions` — rather than
+  `WebTestCase` or `KernelTestCase` directly. Reach for a named assertion before
+  inlining factory criteria; **only what varies belongs in a test body**.
+- Tests run against a separate `bbx_malta_test` database, so they cannot touch
+  your real data. They do write to the real `var/`: artifact cleanup is
+  centralised through `artifactPaths()`, and a test that writes somewhere new
+  overrides that method rather than writing its own `tearDown()`.
+- **No test reaches Challonge.** `config/services_test.yaml` hands
+  `ChallongeFetcher` a `MockHttpClient` answering from `tests/Fixtures/challonge/`.
+  A test needing a new bracket shape adds a fixture there rather than a URL.
+- `var/data/imports/` and `var/data/challonge/` are **tracked by git** and hold
+  real league data. Nothing else under `var/` belongs in git.
 
 ## Mobile-first is not a preference
 
 **Most people reach this site on a phone.** The narrow layout is the design; the
 desktop one is the enhancement. This governs every UI change here.
 
-In practice that means the unprefixed Tailwind utility describes the *phone*, and
-`sm:` / `md:` / `lg:` only ever grow it — a breakpoint is never a patch for
-something authored at desktop width. Concretely:
+The unprefixed Tailwind utility describes the *phone*, and `sm:` / `md:` / `lg:`
+only ever grow it — a breakpoint is never a patch for something authored at
+desktop width. Columns start at one, type scales up rather than down, and
+horizontal room at 375px is the scarcest resource on the site.
 
-- Horizontal room at 375px is the scarcest resource on the site. Padding added to
-  a card is width taken from a table. The leaderboard is six columns on a phone
-  and is the first thing to break.
-- Type scales up, not down: a heading is sized for the phone and given `md:` to
-  grow. `text-4xl md:text-6xl`, never `text-6xl` with a `sm:` shrink.
-- Columns start at one. `grid-cols-1 sm:grid-cols-2` — never the reverse.
-- A column that is dropped on small screens uses `hidden sm:table-cell`, so the
-  phone gets the shorter table and the desktop the fuller one.
-- Do not set `maximum-scale` or `user-scalable=no` on the viewport meta. Pinch
-  zoom is how people read a dense table on a phone.
-
-**Check it before calling UI work done.** A 375px viewport, the leaderboard and
-whichever page you touched. `docs/MOBILE.md` records the measurements the current
-layout was verified against.
+**Check it before calling UI work done**: a 375px viewport, the leaderboard and
+whichever page you touched. The `design-system` skill has the specifics and
+`docs/MOBILE.md` the measurements the current layout was verified against.
 
 ## Design system
 
-There is no JavaScript framework here, and a design system does not need one.
-It is three things:
+There is no JavaScript framework here. The system is design tokens in
+`assets/styles/app.css`, one page shell in `templates/base.html.twig` that every
+route extends, components in `templates/components/` used as `<twig:Badge>`, and
+exactly one script. `/_styleguide` renders every component in every variant and
+`PageRendersTest` requests it. The `design-system` skill covers all of it,
+including the Twig component traps. Three rules that bite from outside it:
 
-1. **Tokens**, in `assets/styles/app.css`. A Tailwind v4 `@theme` block names every
-   colour, radius and glow after the job it does — `bg-surface`, `text-ink-muted`,
-   `rounded-card`, `shadow-brand-glow` — aliasing Tailwind's own scale underneath,
-   so the current look is exact and a repaint is a change in one file. Templates
-   use the token names; `slate-800` should not reappear in one.
-2. **`templates/base.html.twig`**, the one page shell. Every route extends it and
-   overrides `title`, `column`, `accent_bar`, `body_classes` or `html_classes` as
-   needed. No template declares `<!DOCTYPE>` any more.
-3. **Components**, in `templates/components/`, used as `<twig:Badge tone="flame">`
-   through `symfony/ux-twig-component`. `make console ARGS="debug:twig-component"`
-   lists them.
-4. **One script**, `assets/app.js`, loaded on every page by `importmap('app')`
-   in `base.html.twig`. See below — it is small on purpose and it is the only
-   one.
-
-### The site ships exactly one script, and it may not be load-bearing
-
-There used to be none, and the rule that replaced "none" is narrower than it
-looks: **anything the script does must already work without it.**
-
-`ExpandableTable` is the whole of it. A table renders every row it has and the
-"Show more" control is `hidden` in the markup; the script counts the rows,
-hides the ones past `initialRows` and reveals the control. With JavaScript off,
-or before the module runs, the reader gets the full table and no button — which
-is more than the enhancement leaves them, never less.
-
-That is the test to apply to the next one. A control that is the *only* way to
-reach something, a value computed in the browser that the server also computes,
-or a form that will not submit without it, all fail it — and the two rules that
-turn on this being true are still in force and still recorded below: the import
-screen's radio-and-dropdown pair, and its `Update` submit re-deriving the
-preview on the server. Neither may be replaced with a script.
-
-`assets/app.js` does not import the stylesheet. `base.html.twig` links
-`styles/app.css` directly, and importing it from the entrypoint as well makes
-`importmap()` emit a second `<link>` for the same file.
-
-A component gets a PHP class in `src/Twig/Components/` when it has a variant
-vocabulary worth typing or something to derive — `Badge`, `Card`, `Button`,
-`Alert`, `RankMedal`, `BonusPoints`, `PointsMatrix`, `Flashes`. It is an
-anonymous template with `{% props %}` when it is only markup — `PageHeader`,
-`DataTable`, `Field`, `LinkCard`, `FeatureTile`, `Disclosure`, `EmptyState`,
-`SectionHeading`, `BackLink`, `KpiRow`, `TotalsList`, `ArtifactList`,
-`LedgerLine`.
-
-**Tailwind class strings belong in the component's template, never in its PHP
-class.** Tailwind scans `templates/` and not `src/`, so a class named in PHP is
-never compiled — it only appears to work while some template happens to use the
-same utility. The PHP class names the variant; the template maps the variant to
-classes. Form field styling used to break this rule and is now `.field`, applied
-by the form theme in `templates/form/theme.html.twig`, so the form types in
-`src/Form/` carry no presentation at all.
-
-**Component props are plain strings, not HTML.** `title="Points &amp; standings"`
-renders a literal `&amp;`, because Twig escapes the value again on output. Write
-the character. Entities are only correct inside a component's *content*, which is
-markup: `<twig:Button>Verify &amp; process</twig:Button>` is right.
-
-`/_styleguide` renders every component in every variant. It is registered in dev
-and test only, through `config/routes/styleguide.yaml`, and has no controller
-because it shows no data. `PageRendersTest` requests it, so a component that
-breaks fails the suite rather than a page.
+- **The site ships exactly one script and it may not be load-bearing.** Anything
+  it does must already work without it. `ExpandableTable` is the whole of it.
+- **Tailwind class strings belong in a component's template, never in its PHP
+  class.** Tailwind scans `templates/` and not `src/`, so a class named in PHP is
+  never compiled — it only appears to work while some template happens to use the
+  same utility.
+- **Templates use the token names.** `slate-800` should not reappear in one.
 
 ## Proposing a layout
 
 Anything that needs a layout decision — a new page, a rebuild of an existing one
 — goes through a **design proposal** before it is built, and proposals here have
-a fixed shape. `docs/DESIGN-PROPOSALS.md` is the format; the short version:
+a fixed shape: a companion component library started from `/_styleguide`, two or
+three options per page that differ in purpose rather than styling, every mockup
+at 375px and full width, and the choice deferred to the ticket that builds it.
+The `design-proposal` skill and `docs/DESIGN-PROPOSALS.md` have the format.
 
-- **There are two component libraries and only one is real.** `/_styleguide` is
-  the factual one — it renders what is actually in `templates/components/`, and
-  `PageRendersTest` requests it. A proposal's component library is the *proposed*
-  one: mostly drawings of blocks that do not exist yet. Never read a proposal as
-  documentation of the site.
-- **The proposed library is a companion document to the proposal**, not a section
-  inside it, so it can be reviewed on its own and diffed against
-  `/_styleguide` — that diff is the build list. The proposal's section `01` links
-  to it and lists the block names, so the proposal still reads alone.
-- **Both are proposal artifacts and both stop when the proposal does.** When a
-  ticket builds a block it goes into `templates/components/` and `/_styleguide`,
-  and from then on the styleguide describes it. Do not maintain the proposal's
-  library afterwards.
-- **Start the library from `/_styleguide`.** Every entry is marked *in the
-  styleguide*, *extension* or *new*; an existing component keeps its real name
-  (`Card`, not `PANEL`); a block assembled from existing ones says **built from**
-  rather than claiming to be new. Only genuinely new blocks get a
-  `SCREAMING-KEBAB` name, and that name becomes the file when it is built.
-- **Tables are the usual offender.** `DataTable` owns the scroll shell, the
-  `dense` and `bleed` props and the `.data-table` cell rhythm. Six
-  different-looking tables in a proposal are six sets of columns inside one
-  component, not six components.
-- **Two or three options per page**, each a different idea about what the page is
-  *for* rather than a restyle, each tagged with the blocks it uses, each with at
-  least one honest cost.
-- **Every mockup rendered at 375px and at full width from the same markup**,
-  using container queries rather than viewport media queries — so the narrow view
-  is the same component at phone size and not a second drawing of it.
-- **Choices are communicated as a letter per page plus component swaps**:
-  `3A but swap H2H-TABLE for H2H-BARS`.
-- **The choice is made when the ticket starts, not when the proposal is written.**
-  The ticket says so explicitly.
-
-Proposals are published as private artifacts, so a ticket must carry everything a
-contributor needs in its own body. The link is a convenience for whoever owns it.
+**Never read a proposal as documentation of the site.** `/_styleguide` is the
+factual component library; a proposal's is mostly drawings of blocks that do not
+exist yet.
 
 ## Conventions
 
@@ -505,217 +222,14 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   `FlusherInterface::flushThen()`. The ledger must never gain a line for a change
   the database rejected, and a failed ledger write must roll the change back.
   Preserve this when adding any new ledger-writing flow.
-- **Nothing reads a Challonge bracket without the smoke check.** It lives inside
-  `ChallongeFetcher`, ahead of the parse and the write, so an import cannot begin
-  on a page that has changed shape — and a path added later inherits the gate
-  rather than having to remember it. `app:challonge-smoke` runs the same check on
-  its own, against a live bracket, a page saved with `--file`, or on a cron.
-  A consequence worth knowing: a bracket whose ranking stage renders no readable
-  standings can no longer be captured at all. That is deliberate — there is no
-  finishing order to import out of one — and `app:challonge-smoke` is how such a
-  page is looked at instead.
-- **A Challonge snapshot is a transcription, not an interpretation.**
-  `var/data/challonge/<slug>.json` keeps every fact the bracket stated — every
-  match with its per-game scorelines, the entrants, the standings tables column
-  for column — and none of what only the embed needs. What it must never gain is
-  a conclusion: no column renamed into our vocabulary, no display name resolved
-  to one of our players. Those change, and a tracked file cannot. Turning a
-  snapshot into domain objects happens when it is read, where a mistake costs a
-  re-parse rather than a re-fetch of a bracket that may be gone.
-- **The archive is additive, and the scoring record is not part of it.**
-  `TournamentStage`, `TournamentParticipant`, `TournamentMatch` and `MatchGame`
-  hold the nine hundred and fifty-one matches the placement lists threw away —
-  and `TournamentResult` keeps the ranks and the points exactly as it did, so
-  `PlayerRepository::getLeagueLeaderboard()` returns the same rows before and
-  after `app:archive-challonge`. A tournament nobody has archived is not a
-  broken one. Everyone is archived, not only the ten who scored: ranks below
-  eleven pay nothing and are half the matches.
-- **Archiving twice writes the same rows, and that is load-bearing.** Every
-  level has a natural key — a stage is its position, an entrant their Challonge
-  id within the stage, a match its Challonge id within the tournament, a game
-  its number within the match — and each is looked up before it is written, so
-  re-archiving a bracket that was corrected upstream repairs the record rather
-  than layering a second copy over it. `app:import-tournament` has no such
-  guard, which is exactly why a second replay of `repeat.sh` doubles every
-  result it holds.
-- **A game row is written only when a match had more than one game.** Every one
-  of the 947 played solo matches in the corpus is a single game, so a row per
-  game would restate its own match's scoreline 947 times; all fifty-one
-  multi-game matches are team matches, and a team event archives its entrants
-  and nothing else. So `match_games` starts empty on purpose, and the rule
-  lives on `TournamentMatch::transcribeGames()` rather than in the archive
-  service — a path added later inherits it instead of having to remember it. A
-  backfill that produced 947 rows is the sign it was bypassed.
-- **A bracket that changed after it was imported is found by asking, not by
-  noticing.** `app:verify-challonge` re-fetches one and diffs it against the
-  snapshot, everything except `fetched_at` — which every fetch rewrites, so a
-  re-fetch of an unchanged bracket produces one line of `git diff` and looking
-  at that is not the same check. It writes nothing either way; capturing a
-  change is still `app:fetch-challonge`, followed by archiving again.
-- **A bracket is imported through a preview, and the preview writes nothing.**
-  `/admin/import` has two ways in. The textarea is unchanged and stays — it is
-  what you use when a bracket will not parse on an event night. The other pastes
-  a URL, fetches, and renders a screen that proves which bracket came back,
-  turns every name the league cannot read into a required decision, seeds the
-  finishing order from the standings with the F1 matrix already applied, and
-  shows the files and the exact `repeat.sh` lines a confirm will write. The
-  snapshot is held in the session between the two requests, so the bracket that
-  was approved is the bracket that is imported; the passphrase is checked on the
-  confirm, because fetching a public page writes nothing. **Nothing is written
-  until every unresolved name is answered**, and that is checked against a
-  preview rebuilt on the server rather than against what the browser posted —
-  which is why the confirm carries only choices and needs no signature.
-- **Three brackets are refused outright, each by name.** A 2v2 event, whose
-  entrants are teams and which is imported from a roster instead; one an event
-  already names, because `app:import-tournament` has no guard and a second
-  import doubles the evening; and one with no standings, which states no
-  finishing order.
-- **A question with nothing close to it arrives answered; one with a suggestion
-  never does.** The two directions are not the same risk, and the asymmetry is
-  the whole rule. An unnecessary blader is a duplicate row — visible in the
-  list, and #56 merges it away. An unnecessary alias welds two people into one,
-  there is no unmerge, and nothing on any page looks wrong afterwards. Measured
-  against the 23 August bracket: fourteen names needed a decision, ten had
-  nothing close, and of the four suggestions **one was two different people**
-  (`Steve V.` is one edit from `Steve`). So the ten are seeded to *somebody new*
-  and folded into a review disclosure, and the four are offered their suggestion
-  first, loudest and one tap away — still a tap. There is deliberately no
-  "accept all suggestions": at one in four wrong, a batch control would
-  recreate exactly the risk the seeding rule avoids.
-  Seeding is wrong sometimes too and the screen says so: `Orteborn` is three
-  edits from `Otrebor`, past `AliasResolver::CLOSE_ENOUGH`, so nothing is
-  suggested and the default is a duplicate unless somebody uses *Someone else*.
-- **`BracketDecision` owns the default, and `wasSeeded()` is the same rule read
-  backwards.** It is derived rather than transported: the screen renders a
-  seeded row with its answer already selected, so the browser posts it back like
-  any other and a "this was not looked at" flag would be one the browser
-  controls. What is recorded is narrower and true either way — the answer is the
-  default and it was not changed — and it is logged per blader created, because
-  a duplicate that turns up three brackets later is one you want to be able to
-  trace to an unexamined row.
-- **Every decision row is buttons, with the same dropdown collapsed behind
-  them.** The buttons carry the answers that are usually right, so those cost
-  one tap. The dropdown reaches the rest of the league, and every row has it —
-  a seeded row because the shortlist missed (`Orteborn` is three edits from
-  `Otrebor`, past the threshold, and would default to a duplicate), and a
-  suggested row because a confident suggestion can be the wrong person.
-- **The dropdown is a separate field from the buttons, and a radio hands over
-  to it.** A `<select>` sharing the field name posts alongside the radios and,
-  being later in the document, wins — blanking a button somebody already
-  pressed. Document order cannot express "whichever was touched last", and the
-  one script this site ships may not be load-bearing, so the two are separate
-  controls and
-  `AdminBracketImportController::answersIn()` folds them back into one answer.
-  It costs a second tap on the path that is taken rarely, which is the trade
-  chosen deliberately over a control that can silently overwrite an answer.
-- **An unselected button is not tinted.** The suggestion is recommended by being
-  placed first and given the widest target, not by being coloured in before it
-  is chosen — a shortlist that is wrong one time in four must not look already
-  decided. The same rule kills the amber flag that used to sit on a placement
-  whose Challonge spelling differed from the blader's name: that is the alias
-  table working, and painting the normal case as a warning teaches people to
-  ignore warnings.
-- **The finishing order and the knockout winner are read, never asked.** The
-  bracket's standings matched the hand-typed placement list on all eighteen
-  captured events, and the last match of the cut matched the hand-typed
-  `--knockout` on all sixteen that had one — so the screen states both and
-  offers to overrule neither. The decisions are the only input, which is why
-  `BracketAnswers` is the whole of what a confirm posts.
-- **The placements follow the decisions, and `Update` is how you see that.**
-  Resolving a name changes what the table says, and dropping an entrant as
-  "not a person" moves everyone below them up and rescores them — the league's
-  rank is a row's place in the list, not the number Challonge printed. So the
-  confirm bar carries a second submit that re-derives the preview and writes
-  nothing, needs no passphrase, and posts back to `#placements`. Doing it live
-  in the browser would mean a second copy of the F1 rules in JavaScript, and the
-  one script this site ships is the kind that can be switched off without taking
-  anything with it.
-- **The import screen is the only thing that creates a blader deliberately, and
-  it gets a ledger line of its own.** `app:create-blader` exists because
-  `var/data/imports/*.txt` stops at ten and most of the bladers this screen
-  creates finished eleventh or worse — archived, unscored, named nowhere else in
-  `repeat.sh`. Without the line they would exist until the next schema rebuild
-  and then stop existing, taking every match attached to them with them. It
-  replays before the aliases that spell its blader and the import that scores
-  them, and running it twice is a no-op. Creating a blader is offered alongside
-  the suggestions and never pre-selected; the count about to be created is shown
-  before the button.
-- **A spelling more than one blader answers to gets no answer on that screen.**
-  It is the collision `AliasResolver` refuses to break, so the decision list
-  states the problem and the import stays blocked. No alias can settle it: two
-  rows for one person is a merge, and a blader whose name shadows an alias is
-  the alias to remove.
-- **The web import scores at least one place, not exactly ten.** The rule used
-  to be exactly ten, which would have rejected the seven-entrant round robin
-  already in the data. The matrix pays nothing below tenth rather than refusing
-  to be asked, so a short list scores every place it has and a bracket import
-  scores its top ten and archives the rest.
-- **A Challonge display name is never turned into a blader.** Two hundred and
-  seven spellings across the captured brackets belong to about seventy-six
-  people, and `AliasNormaliser` only folds that to a hundred and twenty-nine —
-  case, punctuation and `(invitation pending)`. The rest is `PlayerAlias`, a
-  stored table somebody curates, because `Obelix` and `Obelisk` are two letters
-  apart and are two people. `AliasResolver` returns an unrecognised name as a
-  question with suggestions attached, and no caller may take a suggestion and
-  act on it; `AliasService` is the only thing that writes, it refuses a spelling
-  that folds onto a blader's own name, and it never creates a blader. Two rows
-  for one person is a merge, not an alias.
-- **That last rule guards only the alias side, on purpose.** Bladers also arrive
-  by being invented from a placement list, which `app:import-tournament` still
-  does, so a blader created later can shadow an alias filed before they existed.
-  `AliasResolver` therefore treats a spelling that reaches two people — two
-  blader rows, or a blader and an alias pointing elsewhere — as unresolvable
-  rather than picking a side, because picking would split somebody's career
-  across two rows silently. Closing it at the point of creation is #54's job;
-  until then the collision is meant to be loud.
-- **The table was not typed, it was read out of the imports.** Every event
-  already imported is a labelled example — rank *n* of its captured bracket is
-  line *n* of the placement list somebody typed at the time — so
-  `app:bootstrap-aliases` derives the pairs, prints the lot, and writes only on
-  `--force`. Fifteen rows came out of the sixteen non-team events and they are
-  in `repeat.sh` like every other admin action. It writes nothing two events
-  disagree about and creates nobody.
-- **A team event teaches the alias pass nothing, and that is the phantom rule.**
-  Its entrants are teams, so a name there belongs to two bladers rather than
-  one. The five phantoms this used to produce — `JG1`, `JG2` and the literal
-  `-`, `--` and `---`, padding invented to reach ten lines in the Player A and
-  Player B lists — are gone, because the two 2v2 events are now one tournament
-  each imported from a roster. Nothing is to be learned from a team event,
-  nothing merged into one, and nothing resolved onto one.
-- **A 2v2 event is one tournament, declared at import and expanded through a
-  roster.** `app:import-tournament ... --team` reads a roster file — `team:
-  blader + blader`, one entrant per line in finishing order — and awards the
-  entrant's rank to every blader in it, by the same F1 matrix. No matches, no
-  games, no knockout bonus: a team match records only the aggregate of its
-  individual matchups, so there is no blader-level result to be had. Nothing is
-  lost permanently; the snapshot keeps every match and every set.
-- **An unclaimed team is a record, not a gap, and it is the only place the
-  never-auto-create rule resolves to a row instead of a question.** `JG` and
-  `melhina` finished tenth and eleventh on 11 July and nobody knows who was in
-  either, so `TournamentTeam` holds them with no members: they keep their rank,
-  score nothing, and never stopped the import. `app:team claim` attaches bladers
-  afterwards, writes their placements and awards that rank's points — and it
-  never creates a blader, because unlike an import it is filed long after the
-  evening. A solo entrant nobody recognises in a 1v1 bracket still stops and
-  asks.
-- **A blader in two entrants of one event keeps both places and is scored
-  once, at the better rank.** It is not supposed to happen and the league does
-  not sanction it, but the roster is the record of who played with whom, so
-  dropping half of it would lose that and awarding both would pay somebody
-  twice for one evening. The import says whose name it was rather than
-  deciding quietly. A **claim** refuses instead: it is typed one team at a
-  time by somebody looking at the standing, so moving a placement that already
-  exists is their decision rather than the command's.
-- **`bye` is dropped and nothing renumbers around it.** It is an entrant of
-  `uhxii7az` at rank 12 and the only placeholder entrant in all eighteen
-  brackets. The ranks are Challonge's, so taking a row out never moves the ones
-  below it. That is the line: `bye` goes because it is not an entrant, an
-  unclaimed team stays because it is one.
-- **`LedgerService` builds every command string, and hands them back
-  unappended when asked.** The import preview shows what will land in
-  `repeat.sh` before anything is written, and a screen that composed its own
-  approximation would drift from the real line the moment either changed.
 - Compare admin passphrases with `hash_equals()`.
+- **Nothing reads a Challonge bracket without the smoke check**, **a snapshot is
+  a transcription rather than an interpretation**, and **a Challonge display name
+  is never turned into a blader**. Those three carry a large body of rules about
+  imports, aliases, teams and the archive — read the `challonge-import` skill
+  before touching any of it.
+- **`LedgerService` builds every command string**, and hands them back unappended
+  when asked. Nothing composes its own approximation of a `repeat.sh` line.
 
 ## Things that will surprise you
 
@@ -730,10 +244,6 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   `BracketConfirmData::$knockoutWinner` is nullable.
 - Admin routes are gated by an environment passphrase submitted in the form, not by
   a Symfony security firewall. There is no user entity and no login.
-- `KernelTestCase` ships a **static** `runCommand()` in Symfony 8.1. Declaring an
-  instance helper of that name is a fatal error at class-load time ("Cannot make
-  static method ... non static"), which reads as a broken autoloader rather than a
-  name clash. The project's wrapper is `ConsoleTestCase::executeCommand()`.
 - `PlayerRepository::getLeagueLeaderboard()` is raw SQL with a CTE — it caps scoring
   at each player's best 14 results and applies payment gating. Change it with care;
   it is currently untested.
@@ -745,90 +255,27 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   to "fix" the empty directory: the entrypoint runs `doctrine:migrations:migrate` on
   every boot under `set -e`, so a migration that tries to `CREATE TABLE` over the
   live schema would kill the production container on startup.
-- A consequence of the above: in a **freshly started stack** nothing creates the
-  schema, so `doctrine:schema:validate` reports "The database schema is not in sync
-  with the current mapping file" and `doctrine:schema:update --dump-sql` prints
-  `CREATE TABLE` for every table. That is an empty database, not drift you
-  introduced. To tell the two apart, check whether the dump says `CREATE` (empty) or
-  `ALTER` (real drift). `make setup` or `make db-reset` fills it in.
-- Replaying `repeat.sh` is only safe against an **empty** schema. `app:create-season`
-  reports an existing slug and stops, and `app:register-payment` returns `AlreadyPaid`,
-  but `app:import-tournament` has no such guard — it inserts a fresh tournament and a
-  full set of results every time. A second replay silently doubles all of them, which
-  is why `make seed` is paired with a drop rather than run on its own.
-- A replay also appends its own copy of every command to `var/log/command_ledger.sh`,
-  so a ledger that already held lines ends up holding them twice. In dev that is
-  cosmetic — `repeat.sh` is the record, and the ledger is gitignored.
-- The test suite **deletes** `var/log/command_ledger.sh`. `artifactPaths()` lists it,
-  and the base cases clear every artifact before and after each test, against the real
-  project directory rather than a sandbox. Running `make phpunit` therefore discards
-  whatever the last seed or admin action wrote there.
-- Inside a component's content, **`this` and the component's own props are
-  rebound to that component**. `{% for tone in tones %}<twig:Badge tone="{{ tone }}">{{ tone }}</twig:Badge>`
-  prints the badge's tone enum, not the loop's string, and `this.rows` inside a
-  nested `<twig:DataTable>` resolves against the table. Resolve what you need
-  before opening the child, and name loop variables away from the child's props.
-- A component's root element **cannot be another component with `attributes`
-  forwarded into it** — `<twig:Card {{ attributes }}>` is a parse error — and
-  nesting one defines `content` twice unless the outer component's own content is
-  captured into a variable first. `templates/components/EmptyState.html.twig`
-  shows both workarounds.
-- Renaming or adding a component sometimes needs a **container restart**, not just
-  `make console ARGS="cache:clear --env=dev"`: FrankenPHP runs in worker mode and
-  holds compiled Twig templates in memory, so a stale error will keep pointing at
-  a line number that no longer exists.
+- Replaying `repeat.sh` is only safe against an **empty** schema —
+  `app:import-tournament` has no guard and a second replay silently doubles every
+  tournament it holds, which is why `make seed` is paired with a drop. See
+  `dev-stack`.
 - PHPStan runs at **level 6** with the Symfony, Doctrine and PHPUnit extensions,
-  and there is **no baseline** — the analysis is clean, so keep it that way
-  rather than adding one. `phpstan.dist.neon` points the Symfony extension at the
-  compiled dev container (`make phpstan` warms it first) and the Doctrine
-  extension at `tests/object-manager.php`.
-- That warm-up is an **order-only prerequisite**, so it only runs when the compiled
-  container is missing — exactly like the Tailwind rule above it. Add, rename or
-  rewire a service and the cached XML goes stale, after which phpstan-symfony
-  silently resolves against the old container. Run
-  `make console ARGS="cache:clear --env=dev"` after container changes.
+  and there is **no baseline** — the analysis is clean, so keep it that way rather
+  than adding one. It resolves against a compiled container that goes stale when
+  services change; `dev-stack` has the fix.
 - **`orphanRemoval` schedules the delete the moment a child leaves the
-  collection**, not at flush. `PersistentCollection::removeElement()` calls
-  `scheduleOrphanRemoval()` there and then, and the only thing that cancels it
-  is `PersistentCollection::add()`. An entity constructed in the same run still
-  holds a plain `ArrayCollection`, which has no such hook — so moving a child
-  from a loaded parent to a brand-new one writes the `UPDATE` and then the
-  `DELETE` in one flush, and the code that did it reports success for a row that
-  is gone. `TournamentStage::$matches` therefore cascades a remove rather than
-  orphan-removing, because a bracket restructured upstream moves matches into a
-  stage built moments earlier; `$participants` keeps orphan removal because an
-  entrant never moves between stages.
-- **A test that reads an entity after a flush may be reading the identity map,
-  not the database.** Doctrine hands back the objects it already has, and a
-  fetch-join does not necessarily repopulate a collection it has already
-  initialised — so a row deleted at the last flush can go on answering every
-  question the test puts to it. Where what matters is what *survived*, assert
-  against SQL: `ChallongeArchiveServiceTest::rowIds()` does, and it is the only
-  reason the orphan-removal bug above was visible at all.
+  collection**, not at flush: `PersistentCollection::removeElement()` calls
+  `scheduleOrphanRemoval()` there and then, and the only thing that cancels it is
+  `PersistentCollection::add()` — which a freshly constructed entity's plain
+  `ArrayCollection` has no hook for. So moving a child from a loaded parent to a
+  brand-new one writes the `UPDATE` and then the `DELETE` in one flush, and the
+  code that did it reports success for a row that is gone.
+  `TournamentStage::$matches` cascades a remove for exactly this reason;
+  `$participants` keeps orphan removal because an entrant never moves between
+  stages.
 - Because the Doctrine extension reads the real mapping, **entity property types
   must match the column nullability**. A `NOT NULL` column needs a non-nullable
   property, so new entity fields should not default to `?T ... = null` out of habit.
-- Challonge's human-facing pages return **403** to anything that is not a browser,
-  and so does `/<slug>/standings`. Only `challonge.com/<slug>/module` answers a
-  plain client, and it carries the whole tournament in a
-  `_initialStoreState['TournamentStore']` assignment. Send a User-Agent that names
-  the site — an anonymous client is bounced — and keep `show_standings=1` on the
-  URL, because without it a Swiss bracket renders no standings table at all and
-  nothing fails until something tries to read one.
-- `challonge.com/<slug>` *does* resolve a bracket that lives on a subdomain, by
-  301, but the redirect drops the query string. `ChallongeUrl` therefore keeps the
-  subdomain rather than letting the client follow the hop.
-- The group stage and the final stage of the same bracket use **disjoint id
-  spaces**. A blader who plays both appears under two unrelated ids with only
-  their display name in common, so a snapshot lists participants per stage and
-  never merges them.
-- The **third-place playoff is not in `matches_by_round`**. It hangs off the store
-  as `third_place_match`, and again as `consolation_matches`. Miss it and every
-  bracket with a cut is one match short; merge it in unflagged and it looks like
-  the final, which is how the knockout winner is identified.
-- A standings row does not reliably carry the participant's name: a blader who
-  linked their Challonge account is rendered as **that account instead**. Rows are
-  joined to participants through the match ids in their match-history cell.
 
 `docs/ARCHITECTURE.md` has the fuller picture, including known weak spots.
 `docs/RELEASING.md` covers versioning, publishing and rollback.

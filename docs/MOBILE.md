@@ -1,7 +1,8 @@
 # Mobile layout
 
 Most people reach this site on a phone, so the narrow layout is the design and
-the desktop one is the enhancement. `AGENTS.md` states the rule; this file is the
+the desktop one is the enhancement. `AGENTS.md` states the rule and the
+`design-system` skill has the sizing specifics; this file is the
 record of what the current layout actually measures, so a regression is visible
 rather than argued about.
 

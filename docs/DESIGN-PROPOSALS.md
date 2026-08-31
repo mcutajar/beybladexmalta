@@ -9,8 +9,8 @@ This file is the format. It exists so a layout decision can be made once,
 communicated in three words, and — crucially — **deferred until the ticket that
 builds it actually starts**, without the proposal going stale in the meantime.
 
-`docs/MOBILE.md` is the measurement record and `AGENTS.md` holds the design
-system rules. This is the process that sits on top of both.
+`docs/MOBILE.md` is the measurement record and the `design-system` skill holds
+the design system rules. This is the process that sits on top of both.
 
 ## Why the format is what it is
 
