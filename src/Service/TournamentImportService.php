@@ -60,13 +60,16 @@ class TournamentImportService
     /**
      * Imports an ordered placement list, awarding F1 points by finishing rank.
      *
+     * @param ?string                   $seasonSlug     null for an unranked event: the tournament is
+     *                                                  opened with no season and **no** `TournamentResult`
+     *                                                  row is written for any placement
      * @param list<TournamentPlacement> $placements     in finishing order, best first
      * @param ?string                   $sourceFilePath the replayable placement file, generated when absent
      */
     public function import(
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         array $placements,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
@@ -87,12 +90,13 @@ class TournamentImportService
      * The web flows need the exact event they have just opened so they can
      * continue to its public page without guessing from a non-unique title.
      *
+     * @param ?string                   $seasonSlug null for an unranked event
      * @param list<TournamentPlacement> $placements
      */
     public function importWithTournament(
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         array $placements,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
@@ -105,7 +109,7 @@ class TournamentImportService
         }
 
         $title = trim($title);
-        $seasonSlug = trim($seasonSlug);
+        $seasonSlug = $this->scope($seasonSlug);
 
         $this->flusher->flushThen(
             fn () => $this->writeRecoveryArtifacts(
@@ -125,22 +129,45 @@ class TournamentImportService
     /**
      * Stages a solo tournament and its scoring rows without flushing.
      *
+     * **The invariant lives here.** A tournament scores if and only if it
+     * belongs to a season, so an unranked event returns after `open()` with
+     * every entrant archived and not one `TournamentResult` written. Not a
+     * zero-point row either: `getLeagueLeaderboard()` counts rows against each
+     * blader's best fourteen, and a row paying nothing would displace one that
+     * pays.
+     *
+     * The placement list still travels, because it is what the replayable
+     * `var/data/imports/*.txt` holds and what `--unranked` reads back. Nothing
+     * scores it — and nothing invents a blader from it either. A ranked import
+     * creates one for every unknown name because it has to write a result
+     * against somebody; an unranked import writes no result and so has no
+     * reason to, which leaves the rule that a name nobody recognises is a
+     * question rather than a new row intact. The bladers of an unranked event
+     * come from the `app:create-blader` and `app:alias` lines the preview
+     * appends before it, and the archive after it is what attaches its
+     * entrants to them.
+     *
+     * @param ?string                   $seasonSlug null for an unranked event
      * @param list<TournamentPlacement> $placements
      */
     public function prepare(
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         array $placements,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
     ): Tournament|TournamentImportResult {
         $title = trim($title);
-        $seasonSlug = trim($seasonSlug);
+        $seasonSlug = $this->scope($seasonSlug);
 
         $opened = $this->open($title, $heldOn, $seasonSlug, $challongeUrl, [] === $placements);
 
         if ($opened instanceof TournamentImportResult) {
+            return $opened;
+        }
+
+        if (!$opened->isRanked()) {
             return $opened;
         }
 
@@ -195,6 +222,8 @@ class TournamentImportService
         ?string $challongeUrl = null,
         ?string $sourceFilePath = null,
     ): TeamImportOutcome {
+        // A 2v2 event is ranked-only: its rosters are typed by hand and the
+        // finishing order is the only thing the league can use from it.
         $prepared = $this->prepareTeamEvent($title, $heldOn, $seasonSlug, $teams, $challongeUrl);
 
         if (!$prepared instanceof PreparedTeamImport) {
@@ -341,7 +370,7 @@ class TournamentImportService
     private function open(
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         ?string $challongeUrl,
         bool $nothingToScore,
     ): Tournament|TournamentImportResult {
@@ -363,14 +392,18 @@ class TournamentImportService
             return TournamentImportResult::NoPlacements;
         }
 
-        $season = $this->seasons->findBySlug($seasonSlug);
+        $season = null;
 
-        if (null === $season) {
-            $this->logger->error('Season not found', [
-                'slug' => $seasonSlug,
-            ]);
+        if (null !== $seasonSlug) {
+            $season = $this->seasons->findBySlug($seasonSlug);
 
-            return TournamentImportResult::SeasonNotFound;
+            if (null === $season) {
+                $this->logger->error('Season not found', [
+                    'slug' => $seasonSlug,
+                ]);
+
+                return TournamentImportResult::SeasonNotFound;
+            }
         }
 
         $tournament = new Tournament();
@@ -390,7 +423,7 @@ class TournamentImportService
     private function writeRecoveryArtifacts(
         string $title,
         \DateTimeImmutable $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         array $placements,
         ?string $challongeUrl,
         ?string $knockoutWinner,
@@ -513,6 +546,18 @@ class TournamentImportService
         }
 
         return 0 === strcasecmp($playerName, trim($knockoutWinner));
+    }
+
+    /**
+     * The season slug, trimmed, with "unranked" left as null.
+     *
+     * Trimming a null is not the same as trimming an empty string, and the two
+     * must not converge: `''` is a slug nothing answers to and is refused as
+     * `SeasonNotFound`, while `null` is a deliberate choice to score nothing.
+     */
+    private function scope(?string $seasonSlug): ?string
+    {
+        return null === $seasonSlug ? null : trim($seasonSlug);
     }
 
     /**

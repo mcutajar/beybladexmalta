@@ -54,6 +54,7 @@ class BracketPreviewer
 
     public function __construct(
         private ChallongeStandingsResolver $standings,
+        private ChallongeRecordReader $records,
         private AliasResolver $aliases,
         private AliasNormaliser $normaliser,
         private ChallongeEventFinder $events,
@@ -66,12 +67,17 @@ class BracketPreviewer
     ) {
     }
 
+    /**
+     * @param ?string $seasonSlug null previews an unranked import: the same
+     *                            bracket, the same decisions, the same archive,
+     *                            and no F1, bonus or total anywhere on the screen
+     */
     public function preview(
         ChallongeSnapshot $snapshot,
         string $challongeUrl,
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         BracketAnswers $answers = new BracketAnswers(),
     ): BracketPreview {
         // FrankenPHP keeps services alive between requests. This cache is only
@@ -105,7 +111,7 @@ class BracketPreviewer
             }
         }
 
-        $placements = $this->placements($snapshot, $order, $readings);
+        $placements = $this->placements($snapshot, $order, $readings, null !== $seasonSlug);
         $importPath = $this->importFiles->pathFor($title, $this->heldOn($heldOn));
 
         return BracketPreview::ready(
@@ -370,6 +376,7 @@ class BracketPreviewer
      *
      * @param list<ChallongePlacing>                                                          $order
      * @param array<string, array{name: string, blader: ?string, isNew: bool, dropped: bool}> $readings
+     * @param bool                                                                            $ranked   false for an unranked import: every row is worth zero, and the screen shows no points column at all
      *
      * @return list<BracketPlacement>
      */
@@ -377,8 +384,15 @@ class BracketPreviewer
         ChallongeSnapshot $snapshot,
         array $order,
         array $readings,
+        bool $ranked,
     ): array {
-        $winner = $snapshot->knockoutWinner();
+        /*
+         * An unranked event awards no knockout bonus, so the winner of the cut
+         * is not looked for at all rather than found and then paid nothing. The
+         * bracket still records who won it — the archive holds every match —
+         * but nothing on the page turns it into a number.
+         */
+        $winner = $ranked ? $snapshot->knockoutWinner() : null;
         $knockout = null === $winner
             ? null
             : ($readings[$this->normaliser->normalise($winner->name)]['blader'] ?? null);
@@ -410,9 +424,10 @@ class BracketPreviewer
                 challongeName: $name,
                 bladerName: $blader,
                 isNewBlader: $reading['isNew'],
-                f1Points: $this->f1Points->forRank($position),
+                f1Points: $ranked ? $this->f1Points->forRank($position) : 0,
                 bonusPoints: $wonTheKnockout ? TournamentImportService::KNOCKOUT_WINNER_BONUS : 0,
                 wonTheKnockout: $wonTheKnockout,
+                record: $this->records->read($placing->standing),
             );
         }
 
@@ -529,7 +544,7 @@ class BracketPreviewer
         string $bracketUrl,
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
         string $importPath,
     ): array {
         $lines = [];

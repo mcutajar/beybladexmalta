@@ -61,22 +61,27 @@ trait InteractsWithTheLedger
         ));
     }
 
+    /**
+     * @param ?string $seasonSlug null for an unranked event, which replays as
+     *                            `--unranked` — the two are mutually exclusive
+     *                            and one of them is always present
+     */
     protected static function assertLedgerRecordsImport(
         string $title,
         string $heldOn,
         string $sourcePath,
-        string $seasonSlug,
+        ?string $seasonSlug,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
         ?string $snapshotPath = null,
     ): void {
         $commandLine = sprintf(
-            'php bin/console app:import-tournament %s %s %s --season=%s',
+            'php bin/console app:import-tournament %s %s %s %s',
             escapeshellarg($title),
             escapeshellarg($heldOn),
             escapeshellarg($sourcePath),
-            escapeshellarg($seasonSlug),
+            null === $seasonSlug ? '--unranked' : '--season='.escapeshellarg($seasonSlug),
         );
 
         if ($teamEvent) {

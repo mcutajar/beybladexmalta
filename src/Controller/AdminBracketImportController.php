@@ -85,7 +85,18 @@ final class AdminBracketImportController extends AbstractController
 
         $title = trim($data->title);
         $heldOn = trim($data->date);
-        $seasonSlug = $data->season?->getSlug() ?? '';
+
+        /*
+         * Three states, and the first is a refusal rather than a decision. A
+         * `ChoiceType` with a placeholder hands back null when nothing was
+         * picked, and that must never quietly become "unranked" — it would
+         * archive a scored evening as one that pays nobody.
+         */
+        if (null === $data->season) {
+            return $this->refuse('Validation Error: Choose the season this event scores in, or say it is unranked.');
+        }
+
+        $seasonSlug = BracketImportData::UNRANKED === $data->season ? null : $data->season;
 
         if ('' === $title) {
             return $this->refuse('Validation Error: The event needs a title. Challonge does not carry the name the league calls it.');
@@ -220,10 +231,7 @@ final class AdminBracketImportController extends AbstractController
         $this->drafts->forget();
         $this->addFlash('success', $this->said($outcome));
 
-        return $this->redirectToRoute('tournament_details', [
-            'slug' => $outcome->tournament?->getSeason()->getSlug(),
-            'id' => $outcome->tournament?->getId(),
-        ]);
+        return $this->redirectToRoute('tournament_page', ['id' => $outcome->tournament?->getId()]);
     }
 
     /**
@@ -352,7 +360,7 @@ final class AdminBracketImportController extends AbstractController
 
             BracketImportResult::SeasonNotFound => 'Target season context variant not found.',
 
-            BracketImportResult::NoPlacements => 'Validation Error: Every entrant was dropped, so there is no finishing order left to score.',
+            BracketImportResult::NoPlacements => 'Validation Error: Every entrant was dropped, so there is no finishing order left to archive.',
 
             BracketImportResult::DuplicatePlacements => 'Nothing was written. More than one scoring place resolves to the same blader.',
         };
@@ -360,13 +368,21 @@ final class AdminBracketImportController extends AbstractController
 
     private function said(BracketImportOutcome $outcome): string
     {
-        $message = sprintf(
-            'Imported "%s" from %s: %d %s scored',
-            $outcome->preview->title,
-            $outcome->preview->slug,
-            $outcome->scored,
-            1 === $outcome->scored ? 'placement' : 'placements',
-        );
+        $message = $outcome->preview->isRanked()
+            ? sprintf(
+                'Imported "%s" from %s: %d %s scored',
+                $outcome->preview->title,
+                $outcome->preview->slug,
+                $outcome->scored,
+                1 === $outcome->scored ? 'placement' : 'placements',
+            )
+            : sprintf(
+                'Imported "%s" from %s as an unranked tournament: %d %s archived and nothing scored',
+                $outcome->preview->title,
+                $outcome->preview->slug,
+                $outcome->archived,
+                1 === $outcome->archived ? 'placing' : 'placings',
+            );
 
         if (null !== $outcome->archive && $outcome->archive->wasArchived()) {
             $message .= sprintf(

@@ -39,7 +39,7 @@ class BracketDraftStore
         string $challongeUrl,
         string $title,
         string $heldOn,
-        string $seasonSlug,
+        ?string $seasonSlug,
     ): void {
         $this->requests->getSession()->set(self::KEY, [
             'snapshot' => $snapshot->toArray(),
@@ -47,6 +47,7 @@ class BracketDraftStore
             'title' => $title,
             'heldOn' => $heldOn,
             'season' => $seasonSlug,
+            'unranked' => null === $seasonSlug,
         ]);
     }
 
@@ -79,7 +80,12 @@ class BracketDraftStore
             challongeUrl: (string) ($draft['url'] ?? ''),
             title: (string) ($draft['title'] ?? ''),
             heldOn: (string) ($draft['heldOn'] ?? ''),
-            seasonSlug: (string) ($draft['season'] ?? ''),
+            /*
+             * The flag rather than the slug's emptiness. "Unranked" and "the
+             * session lost the field" are different things, and only one of
+             * them may open a tournament that scores nothing.
+             */
+            seasonSlug: true === ($draft['unranked'] ?? null) ? null : (string) ($draft['season'] ?? ''),
         );
     }
 

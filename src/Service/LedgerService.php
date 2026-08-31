@@ -44,15 +44,17 @@ class LedgerService
     }
 
     /**
-     * @param bool $teamEvent a 2v2 event, whose file is a roster rather than a
-     *                        placement list — declared rather than detected, so
-     *                        the replay has to be told the same way
+     * @param ?string $seasonSlug null for an unranked event, which replays as
+     *                            `--unranked` and scores nothing
+     * @param bool    $teamEvent  a 2v2 event, whose file is a roster rather than a
+     *                            placement list — declared rather than detected, so
+     *                            the replay has to be told the same way
      */
     public function logTournamentImport(
         string $title,
         string $heldOn,
         string $sourceFilePath,
-        string $seasonSlug,
+        ?string $seasonSlug,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
@@ -78,23 +80,30 @@ class LedgerService
      * approximation of the command would drift from the one that is written
      * the moment either changed. So the construction stays here — this class
      * owns it — and the preview borrows it.
+     *
+     * **An unranked event is written as usual and says so**, with `--unranked`
+     * where a ranked line carries `--season`. The two are mutually exclusive
+     * and one of them is always present: a line with neither would replay into
+     * an empty schema as something the command refuses, which is the honest
+     * failure, but a line that *defaulted* to unranked would quietly rebuild a
+     * scored event as an unscored one.
      */
     public function tournamentImportCommand(
         string $title,
         string $heldOn,
         string $sourceFilePath,
-        string $seasonSlug,
+        ?string $seasonSlug,
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         bool $teamEvent = false,
         ?string $snapshotPath = null,
     ): string {
         $commandLine = sprintf(
-            'php bin/console app:import-tournament %s %s %s --season=%s',
+            'php bin/console app:import-tournament %s %s %s %s',
             escapeshellarg($title),
             escapeshellarg($heldOn),
             escapeshellarg($sourceFilePath),
-            escapeshellarg($seasonSlug),
+            null === $seasonSlug ? '--unranked' : '--season='.escapeshellarg($seasonSlug),
         );
 
         if ($teamEvent) {

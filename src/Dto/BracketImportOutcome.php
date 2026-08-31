@@ -20,7 +20,9 @@ use App\Service\BracketImportResult;
 final readonly class BracketImportOutcome
 {
     /**
-     * @param int          $scored   placements written as results, which is the top ten at most
+     * @param int          $scored   placements written as results, which is the top ten at
+     *                               most — and zero for an unranked event, which writes none
+     * @param int          $archived places in the finishing order the event holds, scored or not
      * @param int          $created  bladers this screen invented, being the only thing that does
      * @param int          $seeded   how many of those answers were the screen's rather than
      *                               somebody's — said out loud, because a default that was
@@ -32,6 +34,7 @@ final readonly class BracketImportOutcome
         public BracketImportResult $result,
         public BracketPreview $preview,
         public int $scored = 0,
+        public int $archived = 0,
         public int $created = 0,
         public int $seeded = 0,
         public int $aliased = 0,
@@ -44,6 +47,7 @@ final readonly class BracketImportOutcome
     public static function imported(
         BracketPreview $preview,
         int $scored,
+        int $archived,
         int $created,
         int $seeded,
         int $aliased,
@@ -54,6 +58,7 @@ final readonly class BracketImportOutcome
             BracketImportResult::Imported,
             $preview,
             $scored,
+            $archived,
             $created,
             $seeded,
             $aliased,
