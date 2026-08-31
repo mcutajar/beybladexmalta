@@ -161,6 +161,16 @@ final class ArchivedRecordsBoardTest extends PageTestCase
         self::assertSame('Free Season', trim($current->text()));
     }
 
+    public function testTheBoardReturnsToTheSeasonOneLeaderboard(): void
+    {
+        $back = $this->board()->filter('a')->reduce(
+            static fn (Crawler $link): bool => str_contains($link->text(), 'Return to Season 1 leaderboard'),
+        );
+
+        self::assertCount(1, $back);
+        self::assertSame('/season/1', $back->attr('href'));
+    }
+
     private function archiveBothEvenings(): void
     {
         $giglio = PlayerFactory::createOne(['name' => 'Giglio']);
