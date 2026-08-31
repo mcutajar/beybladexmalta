@@ -10,6 +10,7 @@ use App\Entity\Tournament;
 use App\Entity\TournamentMatch;
 use App\Entity\TournamentParticipant;
 use App\Entity\TournamentStage;
+use App\Service\BracketRoundLabels;
 use App\Service\TournamentArchivePresenter;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +36,7 @@ final class TournamentArchivePresenterTest extends TestCase
         );
         $this->match($stage, 1, 1, $first, $second, $first);
 
-        $columns = (new TournamentArchivePresenter())->present([$stage])['swiss'][0]['columns'];
+        $columns = (new TournamentArchivePresenter(new BracketRoundLabels()))->present([$stage])['swiss'][0]['columns'];
 
         self::assertSame(['score', 'tieBreak', 'points', 'pointsDifferential'], array_column($columns, 'key'));
         self::assertSame(['Score', 'TB', 'Pts', 'Diff'], array_column($columns, 'label'));
@@ -58,7 +59,7 @@ final class TournamentArchivePresenterTest extends TestCase
         $this->match($stage, 3, 3, $rizzler, $opponents[2], $opponents[2]);
         $this->match($stage, 4, 4, $rizzler, $opponents[3], $rizzler, consolation: true);
 
-        $cut = (new TournamentArchivePresenter())->present([$stage])['cuts'][0];
+        $cut = (new TournamentArchivePresenter(new BracketRoundLabels()))->present([$stage])['cuts'][0];
         $path = array_values(array_filter(
             $cut['paths'],
             static fn (array $candidate): bool => 'Rizzler' === $candidate['participant']->getName(),
