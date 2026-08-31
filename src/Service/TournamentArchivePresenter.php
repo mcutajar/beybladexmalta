@@ -25,14 +25,9 @@ use App\Entity\TournamentStage;
  */
 final class TournamentArchivePresenter
 {
-    /**
-     * Challonge's own word for a knockout stage.
-     *
-     * The branch is on the format rather than on `ChallongeStageKind`,
-     * because a one-stage event that *is* a knockout should read as one. The
-     * kind only says whether a stage has a sibling.
-     */
-    private const string SINGLE_ELIMINATION = 'single elimination';
+    public function __construct(private readonly BracketRoundLabels $labels)
+    {
+    }
 
     /**
      * @param list<TournamentStage> $stages
@@ -54,7 +49,7 @@ final class TournamentArchivePresenter
 
             usort($matches, self::matchesInBracketOrder(...));
 
-            if (self::SINGLE_ELIMINATION === $stage->getFormat()) {
+            if ($this->labels->isCut($stage)) {
                 $cuts[] = [
                     'stage' => $stage,
                     'match_count' => count($matches),
@@ -73,7 +68,7 @@ final class TournamentArchivePresenter
 
             $swiss[] = [
                 'stage' => $stage,
-                'label' => $this->stageLabel($stage),
+                'label' => $this->labels->stage($stage),
                 'standings' => array_map(static fn (TournamentParticipant $participant): array => [
                     'participant' => $participant,
                     'form' => $timeline['forms'][$participant->getChallongeId()] ?? [],
@@ -149,12 +144,12 @@ final class TournamentArchivePresenter
                 if (null !== $player1) {
                     $id = $player1->getChallongeId();
                     $seen[$id] = true;
-                    $forms[$id][] = $this->resultFor($player1, $match);
+                    $forms[$id][] = $match->outcomeFor($player1);
                 }
                 if (null !== $player2) {
                     $id = $player2->getChallongeId();
                     $seen[$id] = true;
-                    $forms[$id][] = $this->resultFor($player2, $match);
+                    $forms[$id][] = $match->outcomeFor($player2);
                 }
 
                 $matchRows[] = [
@@ -209,82 +204,18 @@ final class TournamentArchivePresenter
                     'match_id' => $match->getChallongeId(),
                     'consolation' => $match->isConsolation(),
                     'forfeited' => $match->isForfeited(),
-                    'result' => $this->resultFor($participant, $match),
+                    'result' => $match->outcomeFor($participant),
                     'own_score' => $isPlayer1 ? $match->getPlayer1Score() : $match->getPlayer2Score(),
                     'opponent_score' => $isPlayer1 ? $match->getPlayer2Score() : $match->getPlayer1Score(),
                     'opponent' => $isPlayer1 ? $match->getPlayer2() : $match->getPlayer1(),
-                    'label' => $this->cutRoundLabel($stage, $match),
-                    'short_label' => $this->cutRoundShortLabel($stage, $match),
-                    'column_label' => $this->cutRoundColumnLabel($stage, $match),
+                    'label' => $this->labels->long($stage, $match),
+                    'short_label' => $this->labels->short($stage, $match),
+                    'column_label' => $this->labels->column($stage, $match),
                 ];
             }
 
             return ['participant' => $participant, 'steps' => $steps];
         }, $participants);
-    }
-
-    /**
-     * What to call a stage that is not a cut, in Challonge's own vocabulary.
-     *
-     * The league has played Swiss every week and one round robin, and a
-     * heading reading "Swiss" over a round robin would be the page stating
-     * something the bracket never said.
-     */
-    private function stageLabel(TournamentStage $stage): string
-    {
-        return match ($stage->getFormat()) {
-            'swiss' => 'Swiss',
-            'round robin' => 'Round-robin',
-            default => ucfirst($stage->getFormat()),
-        };
-    }
-
-    private function resultFor(TournamentParticipant $participant, TournamentMatch $match): string
-    {
-        if ($match->getWinner() === $participant) {
-            return 'W';
-        }
-
-        if ($match->getLoser() === $participant) {
-            return 'L';
-        }
-
-        return 'T';
-    }
-
-    private function cutRoundLabel(TournamentStage $stage, TournamentMatch $match): string
-    {
-        if ($match->isConsolation()) {
-            return 'Third-place playoff';
-        }
-
-        return match ($stage->getRounds() - $match->getRound()) {
-            0 => 'Final',
-            1 => 'Semi-finals',
-            2 => 3 === $stage->getRounds() ? 'Quarter-finals' : sprintf('Round %d', $match->getRound()),
-            default => sprintf('Round %d', $match->getRound()),
-        };
-    }
-
-    private function cutRoundShortLabel(TournamentStage $stage, TournamentMatch $match): string
-    {
-        if ($match->isConsolation()) {
-            return '3P';
-        }
-
-        return match ($stage->getRounds() - $match->getRound()) {
-            0 => 'F',
-            1 => 'SF',
-            2 => 3 === $stage->getRounds() ? 'QF' : sprintf('R%d', $match->getRound()),
-            default => sprintf('R%d', $match->getRound()),
-        };
-    }
-
-    private function cutRoundColumnLabel(TournamentStage $stage, TournamentMatch $match): string
-    {
-        $label = $this->cutRoundShortLabel($stage, $match);
-
-        return in_array($label, ['F', '3P'], true) ? 'F/3P' : $label;
     }
 
     /**
@@ -297,7 +228,7 @@ final class TournamentArchivePresenter
         $columns = [];
 
         foreach ($matches as $match) {
-            $columns[] = $this->cutRoundColumnLabel($stage, $match);
+            $columns[] = $this->labels->column($stage, $match);
         }
 
         return array_values(array_unique($columns));

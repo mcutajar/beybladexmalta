@@ -180,6 +180,27 @@ class TournamentMatch
     }
 
     /**
+     * How this match went for one of the two entrants: `W`, `L` or `T`.
+     *
+     * A tie is what is left rather than a thing the bracket states. There is
+     * exactly one drawn match in the corpus — 0-0 with neither entrant
+     * recorded as winner or loser — and reading it as a loss for both is the
+     * bug that reached review once already.
+     */
+    public function outcomeFor(TournamentParticipant $participant): string
+    {
+        if ($this->winner === $participant) {
+            return 'W';
+        }
+
+        if ($this->loser === $participant) {
+            return 'L';
+        }
+
+        return 'T';
+    }
+
+    /**
      * Writes the per-game scorelines, and **only when there is more than one**.
      *
      * The rule lives here rather than in the archive service so that every
