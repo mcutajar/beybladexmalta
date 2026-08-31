@@ -1,0 +1,32 @@
+{% props rows = [], byes = [], strikeLoser = false %}
+
+<ol {{ attributes.defaults({class: 'divide-y divide-line/70'}) }}>
+    {% for row in rows %}
+        {% set match = row.match %}
+        <li class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 py-3 text-sm" data-match-id="{{ match.challongeId }}"{% if match.consolation %} data-consolation{% endif %}>
+            <span class="flex min-w-0 flex-row-reverse flex-wrap items-center justify-start gap-x-1 gap-y-0.5">
+                <span class="max-w-full truncate text-right {{ match.winner is same as(match.player1) ? 'font-black text-ink-bright' : 'text-ink-muted' }}{{ strikeLoser and match.loser is same as(match.player1) ? ' line-through decoration-flame/70' : '' }}" title="{{ match.player1 ? ((match.player1.player ?? null) ? match.player1.player.name : match.player1.name|replace({' (invitation pending)': ''})) : 'Bye' }}">
+                    {{ match.player1 ? ((match.player1.player ?? null) ? match.player1.player.name : match.player1.name|replace({' (invitation pending)': ''})) : 'Bye' }}
+                </span>
+                <twig:FormStrip :results="row.player1_form" size="xs" class="shrink-0" data-match-history="player-1" />
+            </span>
+            {% set notableScore = (match.player1Score ?? 0) >= 8 or (match.player2Score ?? 0) >= 8 %}
+            <span class="min-w-12 rounded-control border px-1.5 py-1 text-center font-mono font-bold {{ notableScore ? 'border-flame/45 bg-surface-raised text-flame-bright' : 'border-transparent bg-surface-raised text-ink' }}">
+                {% if match.forfeited %}FF{% elseif match.player1Score is not null and match.player2Score is not null %}{{ match.player1Score }}–{{ match.player2Score }}{% else %}—{% endif %}
+            </span>
+            <span class="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                <span class="max-w-full truncate {{ match.winner is same as(match.player2) ? 'font-black text-ink-bright' : 'text-ink-muted' }}{{ strikeLoser and match.loser is same as(match.player2) ? ' line-through decoration-flame/70' : '' }}" title="{{ match.player2 ? ((match.player2.player ?? null) ? match.player2.player.name : match.player2.name|replace({' (invitation pending)': ''})) : 'Bye' }}">
+                    {{ match.player2 ? ((match.player2.player ?? null) ? match.player2.player.name : match.player2.name|replace({' (invitation pending)': ''})) : 'Bye' }}
+                </span>
+                <twig:FormStrip :results="row.player2_form" size="xs" class="shrink-0" data-match-history="player-2" />
+            </span>
+        </li>
+    {% endfor %}
+    {% for bye in byes %}
+        {% set participantName = (bye.participant.player ?? null) ? bye.participant.player.name : bye.participant.name|replace({' (invitation pending)': ''}) %}
+        <li class="flex items-center justify-center gap-2 py-3 text-sm" data-bye>
+            <span class="font-black text-ink-bright">{{ participantName }}</span>
+            <twig:FormStrip :results="bye.form" size="xs" data-match-history="bye" />
+        </li>
+    {% endfor %}
+</ol>

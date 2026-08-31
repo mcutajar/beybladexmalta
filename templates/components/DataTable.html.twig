@@ -8,13 +8,13 @@
         <tbody>…</tbody>
     </twig:DataTable>
 #}
-{% props dense = false, bleed = false %}
+{% props dense = false, bleed = false, compact = false %}
 
 {# `bleed` cancels a Card's mobile padding so the widest tables get the full
    card width to scroll in, and re-pads the content inside the scroller. #}
 
 <div {{ attributes.defaults({class: 'overflow-x-auto' ~ (bleed ? ' -mx-4 px-4 sm:mx-0 sm:px-0' : '')}) }}>
-    <table class="data-table{{ dense ? ' is-dense' : '' }}">
+    <table class="data-table{{ dense ? ' is-dense' : '' }}{{ compact ? ' is-compact' : '' }}">
         {% block content %}{% endblock %}
     </table>
 </div>

@@ -20,9 +20,10 @@
         {% for anchor, label in {
             'tokens': 'Tokens', 'radii': 'Radii', 'badge': 'Badge', 'button': 'Button',
             'alert': 'Alert', 'card': 'Card', 'section-heading': 'Section heading',
-            'form-controls': 'Form controls', 'data-table': 'Data table',
+            'form-controls': 'Form controls', 'data-table': 'Data table', 'expandable-table': 'Expandable table',
             'feature-tiles': 'Feature tiles', 'link-cards': 'Link cards',
             'disclosure': 'Disclosure', 'empty-state': 'Empty state',
+            'form-strip': 'Form strip', 'match-log': 'Match log', 'top-cut': 'Top cut',
             'kpi-row': 'KPI row', 'totals-list': 'Totals list',
             'artifacts': 'Artifacts & ledger',
         } %}
@@ -173,7 +174,7 @@
 
         <twig:Card id="data-table">
             <twig:SectionHeading title="Data table" rule />
-            <twig:DataTable>
+            <twig:DataTable compact>
                 <thead>
                 <tr>
                     <th class="w-16 text-center">Rank</th>
@@ -198,6 +199,25 @@
                 {% endfor %}
                 </tbody>
             </twig:DataTable>
+        </twig:Card>
+
+        <twig:Card id="expandable-table">
+            <twig:SectionHeading title="Expandable table" rule />
+            <twig:ExpandableTable :initialRows="2">
+                <twig:DataTable dense>
+                    <thead><tr><th>Blader</th><th class="text-right">Points</th></tr></thead>
+                    <tbody>
+                    {% for row in [
+                        {name: 'Derius', points: 231},
+                        {name: 'Giglio', points: 198},
+                        {name: 'Kemical', points: 176},
+                        {name: 'Obelix', points: 154},
+                    ] %}
+                        <tr><td class="font-bold text-ink">{{ row.name }}</td><td class="text-right">{{ row.points }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </twig:DataTable>
+            </twig:ExpandableTable>
         </twig:Card>
 
         <twig:Card id="feature-tiles">
@@ -229,6 +249,9 @@
                 <twig:Disclosure summary="Quiet, for a panel with nothing to act on" tone="neutral">
                     <p class="text-xs text-ink-muted">Brand cyan is the interactive accent, so a settled section takes <code class="font-mono">neutral</code>.</p>
                 </twig:Disclosure>
+                <twig:Disclosure summary="Compact, for dense match rounds" tone="neutral" compact>
+                    <p class="text-xs text-ink-muted">Reduced inner padding preserves player-name width on phones.</p>
+                </twig:Disclosure>
                 <twig:Disclosure summary="Without medals" icon="📊">
                     <twig:PointsMatrix :awards="[
                         '25 points', '20 points *', '15 points', '12 points', '10 points',
@@ -248,13 +271,48 @@
             ]" />
         </twig:Card>
 
+        <twig:Card id="form-strip">
+            <twig:SectionHeading title="Form strip" rule />
+            <div class="flex flex-wrap items-center gap-4">
+                <twig:FormStrip :results="['W', 'W', 'L', 'T', 'W']" />
+                <twig:FormStrip :results="['W', 'L', 'B', 'W', 'L']" size="xs" />
+                <twig:FormStrip :results="[]" />
+            </div>
+        </twig:Card>
+
+        {% set matchDemo = [
+            {match: {challongeId: 1, player1: {name: 'Guzman93'}, player2: {name: 'Sanya'}, player1Score: 8, player2Score: 4, winner: {name: 'Guzman93'}, loser: {name: 'Sanya'}, forfeited: false, consolation: false}, player1_form: ['W', 'W'], player2_form: ['L', 'L']},
+            {match: {challongeId: 2, player1: {name: 'Giglio'}, player2: {name: 'Il-Karm'}, player1Score: null, player2Score: null, winner: null, loser: null, forfeited: true, consolation: true}, player1_form: ['W', 'T'], player2_form: ['L', 'T']},
+        ] %}
+        <twig:Card id="match-log">
+            <twig:SectionHeading title="Match log" rule />
+            <twig:MatchLog :rows="matchDemo" :byes="[{participant: {name: 'Bankai'}, form: ['W', 'B']}]" />
+            <div class="mt-4">
+                <twig:MatchLog :rows="matchDemo" strikeLoser />
+            </div>
+        </twig:Card>
+
+        <twig:Card id="top-cut">
+            <twig:SectionHeading title="Top cut" rule />
+            <twig:TopCut :matchCount="3" :columns="['QF', 'SF', 'F/3P']" :paths="[
+                {participant: {name: 'Guzman93', stageRank: 1}, steps: [
+                    {match_id: 1, consolation: false, result: 'W', own_score: 7, opponent_score: 0, opponent: {name: 'Sk3lli'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
+                    {match_id: 2, consolation: false, result: 'W', own_score: 7, opponent_score: 1, opponent: {name: 'Sanya'}, label: 'Semi-finals', short_label: 'SF', column_label: 'SF'},
+                    {match_id: 3, consolation: false, result: 'W', own_score: 8, opponent_score: 6, opponent: {name: 'Giglio'}, label: 'Final', short_label: 'F', column_label: 'F/3P'},
+                ]},
+                {participant: {name: 'Sk3lli', stageRank: 5}, steps: [
+                    {match_id: 1, consolation: false, result: 'L', own_score: 0, opponent_score: 7, opponent: {name: 'Guzman93'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
+                ]},
+            ]" />
+        </twig:Card>
+
         <twig:Card id="totals-list">
             <twig:SectionHeading title="Totals list" rule />
             <twig:TotalsList :rows="[
                 {label: 'Group stage', note: 'Group A · swiss · 5 rounds · 22 entrants', value: '55 matches'},
                 {label: 'Top cut', note: 'single elimination · 3 rounds · 8 entrants', value: '8 matches'},
                 {label: 'Standings rows', value: '30'},
-                {label: 'Byes and forfeits', note: 'kept, rendered nowhere yet', value: '0 · 0'},
+                {label: 'Byes and forfeits', note: 'shown as B in Swiss history · awarded matches use FF', value: 'B · FF'},
             ]" />
         </twig:Card>
 

@@ -9,7 +9,9 @@ use App\Repository\PlayerRepository;
 use App\Repository\SeasonRegistrationRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\TournamentRepository;
+use App\Repository\TournamentStageRepository;
 use App\Repository\TournamentTeamRepository;
+use App\Service\TournamentArchivePresenter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -71,7 +73,7 @@ class LeagueController extends AbstractController
     #[Route('/preseason/tournament/{id}', name: 'tournament_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     #[Route('/season/{slug}/tournament/{id}', name: 'tournament_details', methods: ['GET'])]
     #[Route('/seasons/{slug}/tournament/{id}', name: 'tournament_details_2', methods: ['GET'])]
-    public function tournamentDetails(string $slug, int $id, TournamentRepository $tournamentRepository, SeasonRepository $seasonRepository, TournamentTeamRepository $teams): Response
+    public function tournamentDetails(string $slug, int $id, TournamentRepository $tournamentRepository, SeasonRepository $seasonRepository, TournamentTeamRepository $teams, TournamentStageRepository $stages, TournamentArchivePresenter $archivePresenter): Response
     {
         // 1. Fetch and validate the active season context
         $season = $seasonRepository->findOneBy(['slug' => $slug]);
@@ -98,6 +100,7 @@ class LeagueController extends AbstractController
             'tournament' => $tournament,
             'standings' => $standings,
             'teams' => $teams->forTournament($tournament),
+            'archive' => $archivePresenter->present($stages->forTournament($tournament)),
             'current_season' => $season,
         ]);
     }
