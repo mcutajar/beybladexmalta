@@ -67,13 +67,12 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
 
         $this->submitImport($client);
 
-        self::assertResponseRedirects(self::PAGE);
-
         TournamentFactory::assert()->count(1);
         TournamentResultFactory::assert()->count(10);
         PlayerFactory::assert()->count(10);
 
         $tournament = self::findTournament(self::TITLE);
+        self::assertResponseRedirects(sprintf('/season/%s/tournament/%d', self::SEASON, $tournament->getId()));
 
         self::assertSame(
             SeasonStory::paymentSeason()->getId(),
@@ -102,7 +101,7 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
 
         $this->submitImport($client, placements: $shortlist);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         TournamentResultFactory::assert()->count(7);
         self::assertPlacementsScoredInOrder(self::findTournament(self::TITLE), $shortlist);
@@ -119,7 +118,7 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
 
         $this->submitImport($client, knockoutWinner: '  eVILbeys  ');
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         $tournament = self::findTournament(self::TITLE);
 
@@ -148,7 +147,7 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
             knockoutWinner: 'Evilbeys',
         );
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         self::assertFileExists($this->importPath());
 
@@ -178,7 +177,7 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
             ...array_slice(self::PLACEMENTS, 1),
         ]);
 
-        self::assertResponseRedirects(self::PAGE);
+        $this->assertRedirectsToImportedTournament();
 
         PlayerFactory::assert()->count(10);
         PlayerFactory::assert()->exists(['name' => 'Giglio']);
@@ -269,6 +268,13 @@ final class ImportTournamentControllerTest extends AdminPageTestCase
     protected function artifactPaths(): array
     {
         return [...parent::artifactPaths(), $this->importPath()];
+    }
+
+    private function assertRedirectsToImportedTournament(): void
+    {
+        $tournament = self::findTournament(self::TITLE);
+
+        self::assertResponseRedirects(sprintf('/season/%s/tournament/%d', self::SEASON, $tournament->getId()));
     }
 
     /**

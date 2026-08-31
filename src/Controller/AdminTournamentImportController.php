@@ -98,7 +98,7 @@ final class AdminTournamentImportController extends AbstractController
         }
 
         try {
-            $result = $this->importService->import(
+            $outcome = $this->importService->importWithTournament(
                 title: $data->title,
                 heldOn: $data->date,
                 seasonSlug: $seasonSlug,
@@ -107,7 +107,14 @@ final class AdminTournamentImportController extends AbstractController
                 knockoutWinner: $data->knockoutWinner,
             );
 
-            $this->addResultFlash($result, $data->title, $placementCount);
+            $this->addResultFlash($outcome->result, $data->title, $placementCount);
+
+            if (TournamentImportResult::Imported === $outcome->result && null !== $outcome->tournament) {
+                return $this->redirectToRoute('tournament_details', [
+                    'slug' => $outcome->tournament->getSeason()->getSlug(),
+                    'id' => $outcome->tournament->getId(),
+                ]);
+            }
         } catch (LedgerWriteException|ImportFileWriteException $exception) {
             $this->logger->critical(
                 'Tournament import cancelled: recovery artifact write failed',

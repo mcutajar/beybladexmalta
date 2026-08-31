@@ -101,7 +101,7 @@ class BracketImportService
 
         $placements = $this->scoringPlacements($preview);
 
-        $imported = $this->imports->import(
+        $imported = $this->imports->importWithTournament(
             title: $title,
             heldOn: $heldOn,
             seasonSlug: $seasonSlug,
@@ -110,8 +110,8 @@ class BracketImportService
             knockoutWinner: $preview->knockoutWinner()?->bladerName,
         );
 
-        if (TournamentImportResult::Imported !== $imported) {
-            return BracketImportOutcome::refused($this->mapped($imported), $preview);
+        if (TournamentImportResult::Imported !== $imported->result || null === $imported->tournament) {
+            return BracketImportOutcome::refused($this->mapped($imported->result), $preview);
         }
 
         return BracketImportOutcome::imported(
@@ -121,6 +121,7 @@ class BracketImportService
             seeded: $preview->seeded(),
             aliased: count($this->linked($preview)),
             archive: $this->archiveAgainstTheEvent($snapshot),
+            tournament: $imported->tournament,
         );
     }
 
