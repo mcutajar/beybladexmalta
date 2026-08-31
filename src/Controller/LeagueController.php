@@ -14,6 +14,7 @@ use App\Repository\TournamentStageRepository;
 use App\Repository\TournamentTeamRepository;
 use App\Service\LeagueRecordsPresenter;
 use App\Service\PlayerCareerPresenter;
+use App\Service\SeasonIndexPresenter;
 use App\Service\TournamentArchivePresenter;
 use App\Service\TournamentShelfPresenter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,8 +24,33 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class LeagueController extends AbstractController
 {
+    /**
+     * Every season the league has held — option 6C.
+     *
+     * Switching season is navigation rather than a control, which is what
+     * lets the leaderboard carry no scope chrome at all. The cost, accepted:
+     * two taps every time, permanently.
+     *
+     * **No total across seasons anywhere on it.** League points are
+     * season-specific and are never summed, so this page carries a card per
+     * season and links out to the two all-time views that are match-derived.
+     *
+     * Declared first, and `/seasons/{slug}` has lost the default that used to
+     * make a bare `/seasons` fall through to the preseason leaderboard. Both
+     * matter: Symfony matches in declaration order, and a placeholder with a
+     * default matches the shorter path too, so leaving either alone would have
+     * kept `/seasons` pointing at one season's table.
+     */
+    #[Route('/seasons', name: 'seasons_index', methods: ['GET'])]
+    public function seasonsIndex(SeasonRepository $seasonRepository, TournamentRepository $tournaments, SeasonIndexPresenter $index): Response
+    {
+        return $this->render('league/seasons.html.twig', [
+            'cards' => $index->present($seasonRepository->ordered(), $tournaments->archiveIndex()),
+        ]);
+    }
+
     #[Route('/season/{slug}', name: 'season_leaderboard', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
-    #[Route('/seasons/{slug}', name: 'season_leaderboard_2', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
+    #[Route('/seasons/{slug}', name: 'season_leaderboard_2', methods: ['GET'])]
     #[Route('/preseason', name: 'season_leaderboard_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
     public function seasonLeaderboard(string $slug, PlayerRepository $playerRepository, SeasonRepository $seasonRepository): Response
     {

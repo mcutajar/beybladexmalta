@@ -1,3 +1,21 @@
+{#
+    One season's league table — option 5C.
+
+    **The leaderboard offers no Overall scope at all.** It is the points view,
+    and points are season-specific: they are never summed across seasons, so an
+    all-time points table could only be manufactured. Choosing "all seasons"
+    here opens `/seasons`, and the genuinely all-time destinations are the
+    records board and the tournament archive, both of which are match-derived.
+
+    **And the standings table is never collapsed.** Every ranked blader in the
+    season is listed, always — no `ExpandableTable`, no "show more", no fold.
+    This is the page people come to the site for, and a blader in 18th place
+    finding their own name is the point of it.
+
+    That rule is scoped to this table. The archive's per-season grouping and
+    the tournament page's `ExpandableTable` are not covered by it and stay as
+    they are; extending it to those would be a separate decision.
+#}
 {% extends 'base.html.twig' %}
 
 {% block title %}Malta Beyblade Community League | {{ current_season.name }} Leaderboard{% endblock %}
@@ -30,13 +48,23 @@
                 </p>
             </div>
 
-            <twig:Button
-                href="{{ path('records_board', {'season': current_season.slug}) }}"
-                tone="neutral"
-                class="whitespace-nowrap"
-            >
-                View {{ current_season.name }} records &rarr;
-            </twig:Button>
+            {# No scope selector: this page has exactly one scope it can
+               honestly offer. The links out are where "everything" lives. #}
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <twig:Button
+                    href="{{ path('records_board', {'season': current_season.slug}) }}"
+                    tone="neutral"
+                    class="whitespace-nowrap"
+                >
+                    View {{ current_season.name }} records &rarr;
+                </twig:Button>
+
+                <a href="{{ path('seasons_index') }}"
+                   class="inline-flex min-h-11 items-center justify-center rounded-control px-3 text-xs font-bold uppercase tracking-wider text-brand transition-colors outline-none hover:text-brand-bright focus:text-brand-bright"
+                   data-page-section="all-seasons">
+                    All seasons &rarr;
+                </a>
+            </div>
         </div>
 
         <twig:DataTable bleed>

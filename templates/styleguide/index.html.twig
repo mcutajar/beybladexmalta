@@ -29,6 +29,7 @@
             'player-headline': 'Player headline', 'h2h-bars': 'Head-to-head bars',
             'cut-path': 'Cut path', 'player-match-log': 'Player match log', 'event-feed': 'Event feed',
             'finishing-order': 'Finishing order', 'archive-row': 'Archive row',
+            'season-index': 'Season index',
             'artifacts': 'Artifacts & ledger',
         } %}
             <a href="#{{ anchor }}" class="rounded-control border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink-muted transition-colors hover:text-ink">{{ label }}</a>
@@ -485,6 +486,36 @@
                 a column empty on nineteen rows in twenty is a column spent badly at 375px. A 2v2
                 evening archives no matches, and an unranked one has no result row to name a
                 knockout winner from.
+            </p>
+        </twig:Card>
+
+        <twig:Card id="season-index">
+            <twig:SectionHeading title="Season index" rule />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <twig:SeasonIndex :card="{
+                    season: {slug: '1', name: 'Season 1'},
+                    events: 16, matches: 945,
+                    from: date('2026-07-04'), to: date('2026-08-23'),
+                    winner: 'Markinu', points: 150, current: true,
+                }" />
+                <twig:SeasonIndex :card="{
+                    season: {slug: 'preseason-1', name: 'Preseason 1'},
+                    events: 4, matches: 197,
+                    from: date('2026-06-20'), to: date('2026-06-28'),
+                    winner: 'Markinu', points: 60, current: false,
+                }" />
+                <twig:SeasonIndex :card="{
+                    season: {slug: '2', name: 'Season 2'},
+                    events: 0, matches: 0,
+                    from: null, to: null,
+                    winner: null, points: null, current: false,
+                }" />
+            </div>
+            <p class="mt-4 text-xs text-ink-muted">
+                Switching season is navigation rather than a control, so a card carries enough to
+                choose between two seasons without opening either. The running season says
+                <em>Leading</em> where a finished one says <em>Won by</em>; a season nobody has
+                scored in yet names nobody rather than a zero-point leader.
             </p>
         </twig:Card>
 
