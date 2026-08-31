@@ -294,16 +294,24 @@
 
         <twig:Card id="top-cut">
             <twig:SectionHeading title="Top cut" rule />
-            <twig:TopCut :matchCount="3" :columns="['QF', 'SF', 'F/3P']" :paths="[
+            <twig:TopCut :matchCount="4" :columns="['QF', 'SF', 'F/3P']" :paths="[
                 {participant: {name: 'Guzman93', stageRank: 1}, steps: [
-                    {match_id: 1, consolation: false, result: 'W', own_score: 7, opponent_score: 0, opponent: {name: 'Sk3lli'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
-                    {match_id: 2, consolation: false, result: 'W', own_score: 7, opponent_score: 1, opponent: {name: 'Sanya'}, label: 'Semi-finals', short_label: 'SF', column_label: 'SF'},
-                    {match_id: 3, consolation: false, result: 'W', own_score: 8, opponent_score: 6, opponent: {name: 'Giglio'}, label: 'Final', short_label: 'F', column_label: 'F/3P'},
+                    {match_id: 1, consolation: false, forfeited: false, result: 'W', own_score: 7, opponent_score: 0, opponent: {name: 'Sk3lli'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
+                    {match_id: 2, consolation: false, forfeited: false, result: 'W', own_score: 7, opponent_score: 1, opponent: {name: 'Sanya'}, label: 'Semi-finals', short_label: 'SF', column_label: 'SF'},
+                    {match_id: 3, consolation: false, forfeited: false, result: 'W', own_score: 8, opponent_score: 6, opponent: {name: 'Giglio'}, label: 'Final', short_label: 'F', column_label: 'F/3P'},
                 ]},
                 {participant: {name: 'Sk3lli', stageRank: 5}, steps: [
-                    {match_id: 1, consolation: false, result: 'L', own_score: 0, opponent_score: 7, opponent: {name: 'Guzman93'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
+                    {match_id: 1, consolation: false, forfeited: false, result: 'L', own_score: 0, opponent_score: 7, opponent: {name: 'Guzman93'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
+                ]},
+                {participant: {name: 'Sanya', stageRank: 3}, steps: [
+                    {match_id: 4, consolation: false, forfeited: true, result: 'W', own_score: null, opponent_score: null, opponent: {name: 'Kemical'}, label: 'Quarter-finals', short_label: 'QF', column_label: 'QF'},
+                    {match_id: 2, consolation: false, forfeited: false, result: 'L', own_score: 1, opponent_score: 7, opponent: {name: 'Guzman93'}, label: 'Semi-finals', short_label: 'SF', column_label: 'SF'},
                 ]},
             ]" />
+            <p class="mt-4 text-xs text-ink-muted">
+                An awarded match reads <code class="font-mono">FF</code>, which is the bracket's own word for
+                it. A round somebody never reached is an em dash, and the two are not the same thing.
+            </p>
         </twig:Card>
 
         <twig:Card id="totals-list">

@@ -109,6 +109,18 @@
     .data-table.is-compact td {
         @apply px-1.5 py-3 sm:px-4;
     }
+
+    /*
+       This is the variant a pinned first column scrolls under, and a pinned
+       cell has to be opaque or the rows slide through it. The default header
+       is `bg-canvas/40` — a translucency composited over the card — and no
+       single solid token restates that, so the first cell would always read
+       lighter or darker than the rest of its own row. The compact header is
+       therefore solid, and the pinned cell paints the same token.
+    */
+    .data-table.is-compact thead tr {
+        @apply bg-surface;
+    }
 }
 
 /*

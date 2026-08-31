@@ -1,5 +1,8 @@
-import './styles/app.css';
-
+/*
+ * No stylesheet import here: `base.html.twig` links `styles/app.css` itself,
+ * and importing it from the entrypoint too makes `importmap()` emit a second
+ * <link> for the same file.
+ */
 document.querySelectorAll('[data-expandable-table]').forEach((table) => {
     const rows = [...table.querySelectorAll('tbody > tr')];
     const initialRows = Number.parseInt(table.dataset.initialRows, 10);

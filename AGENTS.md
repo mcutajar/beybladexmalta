@@ -389,6 +389,31 @@ It is three things:
 3. **Components**, in `templates/components/`, used as `<twig:Badge tone="flame">`
    through `symfony/ux-twig-component`. `make console ARGS="debug:twig-component"`
    lists them.
+4. **One script**, `assets/app.js`, loaded on every page by `importmap('app')`
+   in `base.html.twig`. See below — it is small on purpose and it is the only
+   one.
+
+### The site ships exactly one script, and it may not be load-bearing
+
+There used to be none, and the rule that replaced "none" is narrower than it
+looks: **anything the script does must already work without it.**
+
+`ExpandableTable` is the whole of it. A table renders every row it has and the
+"Show more" control is `hidden` in the markup; the script counts the rows,
+hides the ones past `initialRows` and reveals the control. With JavaScript off,
+or before the module runs, the reader gets the full table and no button — which
+is more than the enhancement leaves them, never less.
+
+That is the test to apply to the next one. A control that is the *only* way to
+reach something, a value computed in the browser that the server also computes,
+or a form that will not submit without it, all fail it — and the two rules that
+turn on this being true are still in force and still recorded below: the import
+screen's radio-and-dropdown pair, and its `Update` submit re-deriving the
+preview on the server. Neither may be replaced with a script.
+
+`assets/app.js` does not import the stylesheet. `base.html.twig` links
+`styles/app.css` directly, and importing it from the entrypoint as well makes
+`importmap()` emit a second `<link>` for the same file.
 
 A component gets a PHP class in `src/Twig/Components/` when it has a variant
 vocabulary worth typing or something to derive — `Badge`, `Card`, `Button`,
@@ -577,8 +602,9 @@ contributor needs in its own body. The link is a convenience for whoever owns it
 - **The dropdown is a separate field from the buttons, and a radio hands over
   to it.** A `<select>` sharing the field name posts alongside the radios and,
   being later in the document, wins — blanking a button somebody already
-  pressed. Document order cannot express "whichever was touched last" and there
-  is no JavaScript on this site to ask, so the two are separate controls and
+  pressed. Document order cannot express "whichever was touched last", and the
+  one script this site ships may not be load-bearing, so the two are separate
+  controls and
   `AdminBracketImportController::answersIn()` folds them back into one answer.
   It costs a second tap on the path that is taken rarely, which is the trade
   chosen deliberately over a control that can silently overwrite an answer.
@@ -601,8 +627,9 @@ contributor needs in its own body. The link is a convenience for whoever owns it
   rank is a row's place in the list, not the number Challonge printed. So the
   confirm bar carries a second submit that re-derives the preview and writes
   nothing, needs no passphrase, and posts back to `#placements`. Doing it live
-  in the browser would mean a second copy of the F1 rules in JavaScript, on a
-  site that ships none.
+  in the browser would mean a second copy of the F1 rules in JavaScript, and the
+  one script this site ships is the kind that can be switched off without taking
+  anything with it.
 - **The import screen is the only thing that creates a blader deliberately, and
   it gets a ledger line of its own.** `app:create-blader` exists because
   `var/data/imports/*.txt` stops at ten and most of the bladers this screen

@@ -6,10 +6,15 @@
         <twig:Badge tone="neutral" size="sm">{{ matchCount }} matches</twig:Badge>
     </div>
 
-    <twig:DataTable compact bleed>
+    {# No `bleed` here, deliberately. It cancels the card's padding by pulling the
+       scroller out with `-mx-4 px-4`, which puts a 16px band between the scrollport
+       edge and where the content starts — and a column pinned with `left-0` pins to
+       the scrollport, so the rows scroll through that band and show to the left of
+       the blader name. The pinned column is worth more than the 32px. #}
+    <twig:DataTable compact>
         <thead>
         <tr>
-            <th class="sticky left-0 z-10 min-w-28 bg-canvas text-left">Blader</th>
+            <th class="sticky left-0 z-10 min-w-28 bg-surface text-left">Blader</th>
             {% for column in columns %}
                 <th class="min-w-16 bg-flame/5 text-center text-flame-bright">{{ column }}</th>
             {% endfor %}
@@ -26,7 +31,7 @@
                     {% set step = path.steps|filter(candidate => candidate.column_label == column)|first %}
                     <td class="bg-flame/5 text-center font-mono text-xs font-bold {{ step ? (step.result == 'W' ? 'text-positive' : 'text-flame-bright') : 'text-ink-ghost' }}"{% if step %} data-cut-match-id="{{ step.match_id }}"{% if step.consolation %} data-consolation{% endif %} title="{{ step.label }}{% if step.opponent %} against {{ (step.opponent.player ?? null) ? step.opponent.player.name : step.opponent.name|replace({' (invitation pending)': ''}) }}{% endif %}"{% endif %}>
                         {% if step %}
-                            {% if step.own_score is not null and step.opponent_score is not null %}{{ step.own_score }}–{{ step.opponent_score }}{% else %}FF{% endif %}
+                            {% if step.forfeited %}FF{% elseif step.own_score is not null and step.opponent_score is not null %}{{ step.own_score }}–{{ step.opponent_score }}{% else %}—{% endif %}
                         {% else %}—{% endif %}
                     </td>
                 {% endfor %}
