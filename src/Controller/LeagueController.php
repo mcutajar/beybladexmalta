@@ -9,8 +9,10 @@ use App\Repository\PlayerRepository;
 use App\Repository\SeasonRegistrationRepository;
 use App\Repository\SeasonRepository;
 use App\Repository\TournamentRepository;
+use App\Repository\TournamentResultRepository;
 use App\Repository\TournamentStageRepository;
 use App\Repository\TournamentTeamRepository;
+use App\Service\PlayerCareerPresenter;
 use App\Service\TournamentArchivePresenter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,7 +45,7 @@ class LeagueController extends AbstractController
     #[Route('/season/{slug}/player/{id}', name: 'player_season_details', methods: ['GET'])]
     #[Route('/seasons/{slug}/player/{id}', name: 'player_season_details_2', methods: ['GET'])]
     #[Route('/preseason/player/{id}', name: 'player_season_details_legacy', defaults: ['slug' => 'preseason-1'], methods: ['GET'])]
-    public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects): Response
+    public function playerDetails(string $slug, int $id, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects, TournamentStageRepository $stages, TournamentResultRepository $results, PlayerCareerPresenter $careerPresenter): Response
     {
         $season = $seasonRepository->findOneBy(['slug' => $slug]);
         $player = $playerRepository->find($id);
@@ -63,9 +65,21 @@ class LeagueController extends AbstractController
 
         $contributions = $playerRepository->getPlayerContributingTournaments($id, $slug);
 
+        /*
+         * The career reads every season and the points table below it reads
+         * the one in the URL. That is deliberate rather than an oversight: a
+         * blader's record is not season-scoped and 35 of them have played in
+         * both, so the page states which season each event belonged to instead
+         * of hiding half of somebody's matches behind the route.
+         */
         return $this->render('league/player_details.html.twig', [
             'player' => $player,
             'contributions' => $contributions,
+            'career' => $careerPresenter->present(
+                $player,
+                $stages->careerOf($player),
+                $results->careerOf($player),
+            ),
             'current_season' => $season,
         ]);
     }

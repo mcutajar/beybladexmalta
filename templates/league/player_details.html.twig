@@ -8,11 +8,76 @@
         Return to {{ current_season.name }} leaderboard
     </twig:BackLink>
 
-    <twig:PageHeader eyebrow="Blader performance profile" title="{{ player.name }}" size="md">
-        Reviewing individual tournament contributions (top 14 limit)
-    </twig:PageHeader>
+    <twig:PlayerHeadline
+        name="{{ player.name }}"
+        :played="career.matches"
+        :wins="career.wins"
+        :losses="career.losses"
+        :draws="career.draws"
+        :opponents="career.opponents"
+    />
 
-    <twig:Card>
+    {% if career.archived %}
+        <twig:KpiRow class="mb-6" :tiles="[
+            {value: career.win_rate ~ '%', label: 'win rate', highlight: true},
+            {value: career.points_for, label: 'points scored'},
+            {value: career.strong_wins, label: 'wins at 8 or 9'},
+            {value: career.best_streak, label: 'best streak'},
+        ]" />
+
+        {# Ahead and behind sit side by side with room and stack on a phone,
+           in that order: a losing record being the first thing on the page is
+           the point of this layout, not an accident of the grid. #}
+        <div class="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+            <twig:Card data-page-section="rivals-ahead">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <twig:SectionHeading title="Ahead on the head to head" size="sm" tone="positive" class="mb-0" />
+                    <twig:Badge tone="neutral" size="sm">{{ career.rivals.ahead|length }} rivals</twig:Badge>
+                </div>
+                <twig:H2hBars :rivals="career.rivals.ahead" tone="positive" seasonSlug="{{ current_season.slug }}" />
+            </twig:Card>
+
+            <twig:Card data-page-section="rivals-behind">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <twig:SectionHeading title="Behind on the head to head" size="sm" tone="heat" class="mb-0" />
+                    <twig:Badge tone="neutral" size="sm">{{ career.rivals.behind|length }} rivals</twig:Badge>
+                </div>
+                <twig:H2hBars :rivals="career.rivals.behind" tone="heat" seasonSlug="{{ current_season.slug }}" />
+            </twig:Card>
+        </div>
+
+        {% if career.rivals.even %}
+            <twig:Card class="mb-6" data-page-section="rivals-even">
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <twig:SectionHeading title="Even" size="sm" tone="neutral" class="mb-0" />
+                    <twig:Badge tone="neutral" size="sm">Could go either way</twig:Badge>
+                </div>
+                <twig:H2hBars :rivals="career.rivals.even" tone="neutral" seasonSlug="{{ current_season.slug }}" />
+            </twig:Card>
+        {% endif %}
+
+        <twig:Card class="mb-6" data-page-section="career-timeline">
+            <twig:SectionHeading title="Every event, newest first" size="md" tone="flame" />
+            <p class="mb-4 text-xs text-ink-muted">
+                Every match this blader has played, across every season. Open an event to see its rounds.
+                {% if career.unarchived_events > 0 %}
+                    The {{ career.unarchived_events }} 2v2 {{ career.unarchived_events == 1 ? 'event' : 'events' }} below archive no matches, so they carry a placement and no record.
+                {% endif %}
+            </p>
+            <twig:EventFeed :events="career.timeline" seasonSlug="{{ current_season.slug }}" />
+        </twig:Card>
+    {% else %}
+        <div class="mb-6" data-page-section="career-empty">
+            <twig:EmptyState icon="🗂️" title="No archived matches">
+                Nothing this blader played has been archived from a bracket yet, so there is no career record to show.
+                The league points below are unaffected.
+            </twig:EmptyState>
+        </div>
+    {% endif %}
+
+    {# Unchanged, and deliberately last: nothing above this line feeds scoring. #}
+    <twig:Card data-page-section="league-points">
+        <twig:SectionHeading title="League points · best 14" size="md" tone="brand" />
         <twig:DataTable>
             <thead>
             <tr>

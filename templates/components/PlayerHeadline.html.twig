@@ -1,0 +1,31 @@
+{#
+    A blader's name with their career stated beside it.
+
+    <twig:PlayerHeadline name="{{ player.name }}" :played="career.matches"
+                         :wins="career.wins" :losses="career.losses"
+                         :draws="career.draws" :opponents="career.opponents" />
+
+    The line belongs to the name: "Markinu 99 matches · 69–30 · 35 opponents
+    faced" reads as one statement, and `PageHeader` cannot carry it because a
+    component prop is a plain string and this needs markup of its own.
+
+    **"opponents faced" is dropped whole below `sm:`, never abbreviated.** No
+    CSS reacts to a line having wrapped, so the phone is given the short line
+    and the wider viewport the full one — which is the mobile-first way round
+    in any case. The alternative, measuring the line in the browser, would make
+    the one script this site ships load-bearing.
+#}
+{% props name, played = 0, wins = 0, losses = 0, draws = 0, opponents = 0%}
+
+<header {{ attributes.defaults({class: 'mb-8 space-y-3'}) }}>
+    <h1 class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+        <span class="text-2xl font-black tracking-tight text-ink uppercase sm:text-3xl md:text-4xl">{{ name }}</span>
+
+        {% if played > 0 %}
+            <span class="font-mono text-[11px] font-medium tracking-normal text-ink-muted normal-case sm:text-xs md:text-sm"
+                  data-career-summary>
+                {{ played }} matches · {{ wins }}–{{ losses }}{{ draws > 0 ? '–' ~ draws : '' }}<span class="hidden sm:inline"> · {{ opponents }} opponents faced</span>
+            </span>
+        {% endif %}
+    </h1>
+</header>

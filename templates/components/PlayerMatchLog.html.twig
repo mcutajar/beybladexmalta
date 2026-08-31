@@ -1,0 +1,48 @@
+{#
+    A match log told from one blader's side: round, result, opponent.
+
+    <twig:PlayerMatchLog :rows="stage.matches" seasonSlug="{{ season.slug }}" />
+
+    `MatchLog` is the neutral version — two entrants, a scoreline between them
+    and a running form strip on each side — and it is what a tournament page
+    wants, because nobody there is the subject. A career page has a subject,
+    and at 375px a row that names both bladers spends half its width repeating
+    whose page it is.
+
+    An awarded match reads `FF`: it carries no scoreline at all, and an em dash
+    would say the score was not captured.
+#}
+{% props rows = [], seasonSlug = null %}
+
+<ol {{ attributes.defaults({class: 'divide-y divide-line/60'}) }}>
+    {% for match in rows %}
+        <li class="grid grid-cols-[2.5rem_auto_minmax(0,1fr)] items-center gap-2 py-2.5 text-sm sm:gap-3"
+            data-career-match="{{ match.label }}"
+            data-outcome="{{ match.outcome }}">
+            <span class="font-mono text-[11px] font-bold text-ink-faint">{{ match.label }}</span>
+
+            {% set strong = not match.forfeited and match.own_score is not null and (match.own_score >= 8 or match.opponent_score >= 8) %}
+            <span class="min-w-16 rounded-control border px-1.5 py-1 text-center font-mono text-xs font-bold whitespace-nowrap
+                {{ match.outcome == 'L' ? 'border-heat/30 bg-surface-raised text-heat'
+                 : (match.outcome == 'W' ? (strong ? 'border-flame/45 bg-surface-raised text-flame-bright' : 'border-positive/30 bg-surface-raised text-positive')
+                 : 'border-line bg-surface-raised text-ink-muted') }}">
+                {% if match.forfeited %}
+                    {{ match.outcome }} FF
+                {% elseif match.own_score is not null and match.opponent_score is not null %}
+                    {{ match.outcome }} {{ match.own_score }}–{{ match.opponent_score }}
+                {% else %}
+                    {{ match.outcome }}
+                {% endif %}
+            </span>
+
+            {% if match.opponent and seasonSlug %}
+                <a href="{{ path('player_season_details', {'slug': seasonSlug, 'id': match.opponent.id}) }}"
+                   class="truncate font-semibold text-ink-body transition-colors outline-none hover:text-brand focus:text-brand">{{ match.opponent_name }}</a>
+            {% else %}
+                <span class="truncate font-semibold text-ink-body">{{ match.opponent_name }}</span>
+            {% endif %}
+        </li>
+    {% else %}
+        <li class="py-3 text-xs italic text-ink-faint">No matches recorded.</li>
+    {% endfor %}
+</ol>

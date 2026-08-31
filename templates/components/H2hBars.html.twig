@@ -1,0 +1,35 @@
+{#
+    A group of opponents as bars, with the long tail folded away.
+
+    <twig:H2hBars :rivals="career.rivals.ahead" tone="positive" seasonSlug="{{ season.slug }}" />
+
+    Rivals arrive ordered by how often the two have met, because a 1–0 against
+    somebody met once is a bar with nothing to say. The group shows its first
+    few and the rest sit behind a `<details>` rather than the "Show more"
+    button: that button is the one script this site ships, and a rival nobody
+    could reach without JavaScript would make it load-bearing.
+#}
+{% props rivals = [], tone = 'neutral', seasonSlug = null, initial = 5 %}
+
+<div {{ attributes.defaults({class: 'space-y-3'}) }}>
+    <ul class="space-y-3">
+        {# Named away from the child's own `rival` prop: inside a component's
+           content its props are rebound, and a loop variable sharing the name is
+           the collision AGENTS.md warns about. #}
+        {% for opponent in rivals|slice(0, initial) %}
+            <twig:H2hBar :rival="opponent" tone="{{ tone }}" seasonSlug="{{ seasonSlug }}" />
+        {% else %}
+            <li class="text-xs italic text-ink-faint">Nobody yet.</li>
+        {% endfor %}
+    </ul>
+
+    {% if rivals|length > initial %}
+        <twig:Disclosure summary="{{ rivals|length - initial }} more" tone="neutral" compact>
+            <ul class="space-y-3 py-2">
+                {% for opponent in rivals|slice(initial) %}
+                    <twig:H2hBar :rival="opponent" tone="{{ tone }}" seasonSlug="{{ seasonSlug }}" />
+                {% endfor %}
+            </ul>
+        </twig:Disclosure>
+    {% endif %}
+</div>

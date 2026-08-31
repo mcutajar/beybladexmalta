@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Player;
 use App\Entity\Tournament;
 use App\Entity\TournamentMatch;
 use App\Entity\TournamentStage;
@@ -103,5 +104,47 @@ class TournamentStageRepository extends ServiceEntityRepository
             ->getResult();
 
         return $stages;
+    }
+
+    /**
+     * Every archived match one blader played, newest event first.
+     *
+     * Keyed on the blader rather than on any single entrant, because the group
+     * stage and the cut number their entrants in disjoint spaces: a blader who
+     * made the cut is two `TournamentParticipant` rows for one evening, and
+     * 129 of the pairs in the archive are exactly that. Joining through
+     * `player` is what makes those two rows one career.
+     *
+     * One query rather than the two `forTournament()` needs, because nothing
+     * here fetch-joins a collection — the entrants are reached through the
+     * match's own two sides, which are to-one — so there is no cartesian
+     * product to avoid. The games are left out on purpose: `match_games` is
+     * empty for every solo bracket in the corpus, and a career log states the
+     * match's scoreline rather than the sets inside it.
+     *
+     * @return list<TournamentMatch>
+     */
+    public function careerOf(Player $player): array
+    {
+        return $this->getEntityManager()->createQueryBuilder()
+            ->select('m', 's', 't', 'season', 'p1', 'p2', 'b1', 'b2')
+            ->from(TournamentMatch::class, 'm')
+            ->join('m.stage', 's')
+            ->join('m.tournament', 't')
+            ->join('t.season', 'season')
+            ->leftJoin('m.player1', 'p1')
+            ->leftJoin('m.player2', 'p2')
+            ->leftJoin('p1.player', 'b1')
+            ->leftJoin('p2.player', 'b2')
+            ->where('b1 = :player OR b2 = :player')
+            ->setParameter('player', $player)
+            ->orderBy('t.heldOn', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->addOrderBy('s.position', 'ASC')
+            ->addOrderBy('m.consolation', 'ASC')
+            ->addOrderBy('m.round', 'ASC')
+            ->addOrderBy('m.challongeId', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }
