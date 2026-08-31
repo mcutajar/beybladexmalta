@@ -119,6 +119,34 @@ final class TournamentArchiveTest extends PageTestCase
         self::assertStringNotContainsString('Malta International Exhibition', $page->text());
     }
 
+    /**
+     * The turnout is what somebody scans an archive for, and only one number
+     * fits beside the date and the name at 375px. So Players is the column
+     * that stays and Matches is the one that drops — asserted through the
+     * `hidden sm:table-cell` pair, which is the mechanism rather than a proxy
+     * for it.
+     */
+    public function testThePlayerCountOutranksTheMatchCountOnAPhone(): void
+    {
+        $this->event('Gamesplus 16-08', '2026-08-16', SeasonStory::paymentSeason());
+
+        $page = $this->createBrowser()->request('GET', '/tournaments');
+        $headers = $page->filter('[data-archive-shelf] thead th')->each(
+            static fn (Crawler $cell): array => [trim($cell->text()), str_contains((string) $cell->attr('class'), 'hidden')],
+        );
+
+        self::assertSame(
+            [['Date', false], ['Event', false], ['Players', false], ['Matches', true], ['Won the cut', true]],
+            $headers,
+        );
+
+        self::assertStringNotContainsString('Field', $page->text());
+
+        // And the figures land in the columns they are headed by.
+        self::assertSame('2', trim($page->filter('[data-event-players]')->text()));
+        self::assertSame('1', trim($page->filter('[data-event-matches]')->text()));
+    }
+
     public function testAnUnknownSeasonIsNotFound(): void
     {
         $this->createBrowser()->request('GET', '/tournaments?season=season-nine');
