@@ -126,9 +126,10 @@ These values should be set in a local environment file, and the app should be ha
 
 - `AGENTS.md` — working conventions: where to run the stack, the rules that
   apply everywhere, and the traps that are easy to lose an hour to.
-- `.claude/skills/` — the detail that only matters inside one subsystem, loaded
-  on demand: `dev-stack`, `writing-tests`, `design-system`, `design-proposal`,
-  `challonge-import`, `release-and-deploy`.
+- `.claude/skills/` (also exposed at `.agents/skills/` for Codex) — the detail
+  that only matters inside one subsystem, loaded on demand: `dev-stack`,
+  `writing-tests`, `design-system`, `design-proposal`, `challonge-import`,
+  `release-and-deploy`.
 - `docs/ARCHITECTURE.md` — architecture overview, domain model, and
   refactor/security recommendations.
 - `docs/MOBILE.md` — the mobile-first rule and the measurements the current
