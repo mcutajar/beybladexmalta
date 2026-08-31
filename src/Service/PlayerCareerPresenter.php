@@ -7,7 +7,6 @@ namespace App\Service;
 use App\Entity\Player;
 use App\Entity\Tournament;
 use App\Entity\TournamentMatch;
-use App\Entity\TournamentParticipant;
 use App\Entity\TournamentResult;
 
 /**
@@ -22,16 +21,11 @@ use App\Entity\TournamentResult;
  * points table is season-scoped, but 35 bladers have played in both, so
  * everything here counts every event and the page says so.
  *
- * Three counting rules were settled on #58 and are applied in this one place,
- * because #59's records board will read the same aggregation:
- *
- * - **A forfeit is a win and a loss, and no points either way.** Four matches
- *   in the corpus were awarded rather than played and carry no scoreline at
- *   all. Counting them at 0-0 would quietly drag every rate down.
- * - **A third-place playoff is a match like any other.** Sixteen of them. The
- *   corpus figure that excludes them was describing the corpus.
- * - **A draw is a third outcome, never half a loss.** There is exactly one,
- *   and reading it as a loss is the bug that reached review on #57.
+ * The three counting rules settled on #58 — a forfeit is a win and a loss with
+ * no points either way, a third-place playoff is a match like any other, and a
+ * draw is a third outcome rather than half a loss — now live on
+ * `ArchivedMatchReader`, because #59's records board reads the same
+ * aggregation across every blader at once.
  *
  * @phpstan-type CareerMatch array{label: string, outcome: string, own_score: ?int, opponent_score: ?int, forfeited: bool, opponent: ?Player, opponent_name: string, cut: bool}
  * @phpstan-type StageGroup array{label: string, matches: list<CareerMatch>}
@@ -41,8 +35,10 @@ use App\Entity\TournamentResult;
  */
 final class PlayerCareerPresenter
 {
-    public function __construct(private readonly BracketRoundLabels $labels)
-    {
+    public function __construct(
+        private readonly BracketRoundLabels $labels,
+        private readonly ArchivedMatchReader $reader,
+    ) {
     }
 
     /**
@@ -64,7 +60,7 @@ final class PlayerCareerPresenter
         $strongWins = 0;
 
         foreach ($matches as $match) {
-            $side = $this->sideOf($player, $match);
+            $side = $this->reader->sideOf($player, $match);
             if (null === $side) {
                 continue;
             }
@@ -76,8 +72,8 @@ final class PlayerCareerPresenter
                 default => ++$draws,
             };
 
-            $own = $this->scoreFor($match, $side);
-            $against = $this->scoreAgainst($match, $side);
+            $own = $this->reader->scoreFor($match, $side);
+            $against = $this->reader->scoreAgainst($match, $side);
             if (null === $own || null === $against) {
                 continue;
             }
@@ -185,7 +181,7 @@ final class PlayerCareerPresenter
         $stages = [];
 
         foreach ($matches as $match) {
-            $side = $this->sideOf($player, $match);
+            $side = $this->reader->sideOf($player, $match);
             if (null === $side) {
                 continue;
             }
@@ -202,11 +198,11 @@ final class PlayerCareerPresenter
             $row = [
                 'label' => $this->labels->inStage($stage, $match),
                 'outcome' => $outcome,
-                'own_score' => $this->scoreFor($match, $side),
-                'opponent_score' => $this->scoreAgainst($match, $side),
+                'own_score' => $this->reader->scoreFor($match, $side),
+                'opponent_score' => $this->reader->scoreAgainst($match, $side),
                 'forfeited' => $match->isForfeited(),
-                'opponent' => $this->opponentOf($match, $side)?->getPlayer(),
-                'opponent_name' => $this->nameOf($this->opponentOf($match, $side)),
+                'opponent' => $this->reader->opponentOf($match, $side)?->getPlayer(),
+                'opponent_name' => $this->reader->nameOf($this->reader->opponentOf($match, $side)),
                 'cut' => $isCut,
             ];
 
@@ -264,21 +260,21 @@ final class PlayerCareerPresenter
         $tally = [];
 
         foreach ($matches as $match) {
-            $side = $this->sideOf($player, $match);
+            $side = $this->reader->sideOf($player, $match);
             if (null === $side) {
                 continue;
             }
 
-            $opponent = $this->opponentOf($match, $side);
+            $opponent = $this->reader->opponentOf($match, $side);
             if (null === $opponent) {
                 continue;
             }
 
             $blader = $opponent->getPlayer();
-            $key = null === $blader ? 'name:'.$this->nameOf($opponent) : 'blader:'.$blader->getId();
+            $key = null === $blader ? 'name:'.$this->reader->nameOf($opponent) : 'blader:'.$blader->getId();
             $tally[$key] ??= [
                 'opponent' => $blader,
-                'name' => null === $blader ? $this->nameOf($opponent) : $blader->getName(),
+                'name' => null === $blader ? $this->reader->nameOf($opponent) : $blader->getName(),
                 'wins' => 0,
                 'losses' => 0,
                 'draws' => 0,
@@ -328,7 +324,7 @@ final class PlayerCareerPresenter
         $running = 0;
 
         foreach (array_reverse($matches) as $match) {
-            $side = $this->sideOf($player, $match);
+            $side = $this->reader->sideOf($player, $match);
             if (null === $side) {
                 continue;
             }
@@ -344,70 +340,5 @@ final class PlayerCareerPresenter
         }
 
         return $best;
-    }
-
-    /**
-     * Which of the match's two entrants is this blader.
-     *
-     * Not cached across matches: the group stage and the cut number their
-     * entrants in unrelated spaces, so a blader who made the cut is a
-     * different `TournamentParticipant` in the second half of their own
-     * evening.
-     */
-    private function sideOf(Player $player, TournamentMatch $match): ?TournamentParticipant
-    {
-        foreach ([$match->getPlayer1(), $match->getPlayer2()] as $side) {
-            if (null !== $side && $side->getPlayer() === $player) {
-                return $side;
-            }
-        }
-
-        return null;
-    }
-
-    private function opponentOf(TournamentMatch $match, TournamentParticipant $side): ?TournamentParticipant
-    {
-        return $match->getPlayer1() === $side ? $match->getPlayer2() : $match->getPlayer1();
-    }
-
-    /**
-     * An awarded match has no scoreline, so it reports none.
-     *
-     * The guard is on the flag rather than on the values, because a forfeit
-     * that ever arrives carrying a 0-0 is still a match nobody bladed.
-     */
-    private function scoreFor(TournamentMatch $match, TournamentParticipant $side): ?int
-    {
-        if ($match->isForfeited()) {
-            return null;
-        }
-
-        return $match->getPlayer1() === $side ? $match->getPlayer1Score() : $match->getPlayer2Score();
-    }
-
-    private function scoreAgainst(TournamentMatch $match, TournamentParticipant $side): ?int
-    {
-        if ($match->isForfeited()) {
-            return null;
-        }
-
-        return $match->getPlayer1() === $side ? $match->getPlayer2Score() : $match->getPlayer1Score();
-    }
-
-    /**
-     * The name to print for an entrant nobody has resolved to a blader.
-     *
-     * Every entrant in the replayed data does resolve, so this is reached only
-     * by an archive written without going through the import screen. It still
-     * has to say something rather than print an empty cell.
-     */
-    private function nameOf(?TournamentParticipant $participant): string
-    {
-        if (null === $participant) {
-            return 'Bye';
-        }
-
-        return $participant->getPlayer()?->getName()
-            ?? str_replace(' (invitation pending)', '', $participant->getName());
     }
 }
