@@ -117,6 +117,20 @@ final class ArchivedPlayerProfileTest extends PageTestCase
     }
 
     /**
+     * The unfinished bracket assigns Irmied u Gebel and Mafia to an open
+     * match, but records no result. Merely knowing both entrants must not turn
+     * that future match into the drawn match `outcomeFor()` uses as its
+     * fallback when a completed match has neither a winner nor a loser.
+     */
+    public function testAnOpenMatchIsNotCountedAsAPlayedDraw(): void
+    {
+        $page = $this->profileFor('irmied u gebel', 'uhxii7az', ['mafia']);
+
+        self::assertCount(5, $page->filter('[data-career-match]'));
+        self::assertStringContainsString('5 matches · 5–0', $page->filter('[data-career-summary]')->text());
+    }
+
+    /**
      * Archives one captured bracket the way the backfill does, having first
      * created the bladers it should resolve to.
      *
