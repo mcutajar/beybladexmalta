@@ -67,12 +67,36 @@ description: How this project's test suite is put together — the base test cas
     suite takes 45s under Xdebug and 18s under PCOV, for line rates within
     0.2pp. `XDEBUG_MODE` is `off` for the whole stack, which is what lets
     PHPUnit pick PCOV up — setting it to anything with `coverage` in it in
-    `.env.local` puts Xdebug back in charge and quietly undoes that — it also
-    costs the plain suite 35s against 9s, for a report it was never asked for.
-    Use `XDEBUG_MODE=debug` when you want to step through something.
+    `.env.local` puts Xdebug back in charge and quietly undoes that, and costs
+    the plain suite 35s against 9s for a report it was never asked for.
+  - **Xdebug is still there, it is just not armed.** Its mode is a container
+    environment variable, so `.env.local` would mean recreating the container.
+    Pass it to a single command instead — the Makefile forwards it:
+
+    ```bash
+    make phpunit XDEBUG_MODE=debug ARGS="--filter ImportTournamentCommandTest"
+    ```
+
+    `debug` is the step debugger (`20-app.dev.ini` already points it at the
+    host), `develop` the richer errors and `var_dump`. Both extensions stay
+    loaded and both are inert by default, so having the choice costs nothing:
+    with neither armed the suite is the same 9s.
   - **PCOV measures lines and nothing else.** There is no branch or path
-    coverage, which is why CI hides that column. Getting it back would mean
-    Xdebug under `--path-coverage`, slower again than the plain Xdebug run.
+    coverage, which is why CI hides that column. Getting it back means
+    `XDEBUG_MODE=coverage make coverage`, which hands the reports back to
+    Xdebug — slower again, and rarely what you want. The two drivers do not
+    conflict: with both armed PHPUnit takes PCOV for lines and Xdebug for
+    branch and path.
+  - **PCOV flatters an untaken branch of a multi-line conditional.** The two
+    drivers agree exactly on which lines are *executable* — zero differences
+    across all 171 files — but PCOV attributes coverage by the line of each
+    executed opcode, so the final arm of a `match` or the true branch of a
+    ternary can be marked hit when it never ran. Xdebug tracks statements and
+    tells them apart. Today that is nine lines in three files out of 5,739, and
+    Xdebug is right in every one of them. It is not worth changing driver over,
+    but do not trust a per-line PCOV report on a `match`-heavy file — check it
+    with `XDEBUG_MODE=coverage make coverage` before concluding a branch is
+    covered.
 - CI runs the same target on every pull request, writes the per-file table to
   the job summary and uploads the HTML report as the `coverage-html` artifact.
   Nothing is sent to a third-party service and no secret is involved. Coverage
