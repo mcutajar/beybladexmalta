@@ -52,6 +52,34 @@ description: How this project's test suite is put together — the base test cas
     in its place to force a write failure.
   - `LeagueAssertions` — domain assertions such as `assertPlayerHasPaid()`,
     `assertResultAtRank()` and `assertPlacementsScoredInOrder()`.
+  - `ReadsTheLeaguesCorpus` — reads `repeat.sh` as the record of every blader,
+    alias and import, for the two tests that check the real corpus. Its
+    `corpusRoot()` is deliberately not called `projectDir()`: `InteractsWithTheLedger`
+    declares that one `protected static`, and a private non-static of the same
+    name in a class that inherits it is a fatal error rather than an override.
+
+**The corpus tests must not count the corpus.** `CapturedBracketsTest` and
+`ArchivedBracketsTest` check the tracked snapshots in `var/data/challonge/`
+against the placement lists and ledger lines somebody typed at the time. They
+used to assert totals — twenty brackets, 1150 matches, 552 standings rows, and
+a hand-written list of every spelling difference — on the reasoning that a
+derived number would agree with anything.
+
+That reasoning is right about derived numbers and was wrong about the trade.
+Results are imported twice a week, and every one of those evenings failed
+eleven tests that nothing was wrong with, which teaches everybody to re-run the
+census and paste whatever it prints. A suite that cries wolf on an ordinary
+Tuesday is not protecting anything.
+
+So a new assertion there needs **two independent sides**: archived rows against
+the snapshot they were written from, the resolver's output against the standings
+it was handed, the ledger's import lines against the snapshot directory, a
+bracket's spelling of somebody against the alias table in `repeat.sh`. Those
+disagree the moment the code between the two sides changes and stay quiet when
+the league plays another tournament. A single-sided total does the opposite of
+both. In particular, **the alias table is not restated in a test** — an
+`app:alias add` line is somebody declaring that two spellings are one blader,
+and the import screen already writes it.
 - **Only what varies belongs in a test body.** The correct passphrase, the payment
   season and the happy-path form values are helper defaults, so a test that names a
   passphrase is visibly a test *about* authentication. Reach for a named assertion

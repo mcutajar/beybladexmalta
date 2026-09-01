@@ -144,7 +144,8 @@ class. The `writing-tests` skill has the full picture. The core of it:
 - PHPUnit 13 with Zenstruck Foundry factories and stories, under `tests/` and
   namespaced `App\Tests\`. They do not belong in `src/`.
 - A new test extends one of the base cases in `tests/Support` — `AdminPageTestCase`,
-  `ConsoleTestCase`, `InteractsWithTheLedger`, `LeagueAssertions` — rather than
+  `ConsoleTestCase`, `InteractsWithTheLedger`, `LeagueAssertions`,
+  `ReadsTheLeaguesCorpus` — rather than
   `WebTestCase` or `KernelTestCase` directly. Reach for a named assertion before
   inlining factory criteria; **only what varies belongs in a test body**.
 - Tests run against a separate `bbx_malta_test` database, so they cannot touch
@@ -158,6 +159,14 @@ class. The `writing-tests` skill has the full picture. The core of it:
   Xdebug back into coverage mode in `.env.local` takes `make coverage` from 18s
   to 45s, and the plain suite from 9s to 35s for a report nobody asked for.
   `writing-tests` has the detail.
+- **The corpus tests must not count the corpus.** `CapturedBracketsTest` and
+  `ArchivedBracketsTest` read the real snapshots in `var/data/challonge/`, and
+  results are imported twice a week — so an assertion there needs two
+  independent sides (archived rows against the snapshot they came from, the
+  ledger against the snapshot directory, a bracket's spelling against the
+  alias table) rather than a written-out total, which fails every ordinary
+  Tuesday and teaches everybody to paste the new number in. `writing-tests`
+  has the reasoning.
 - **No test reaches Challonge.** `config/services_test.yaml` hands
   `ChallongeFetcher` a `MockHttpClient` answering from `tests/Fixtures/challonge/`.
   A test needing a new bracket shape adds a fixture there rather than a URL.
