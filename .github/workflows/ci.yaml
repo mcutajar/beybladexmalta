@@ -21,6 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Compose derives its project namespace, and the tag of any image it
+    # builds, from the checkout directory. Pinning it here lets the build step
+    # below tag the image Compose will go looking for.
+    env:
+      COMPOSE_PROJECT_NAME: beybladexmalta
+
     # Read by the badge job below, which has no test run of its own.
     outputs:
       coverage: ${{ steps.coverage.outputs.percent }}
@@ -42,16 +48,47 @@ jobs:
           path: var/tailwind/*/tailwindcss-*
           key: tailwind-${{ hashFiles('config/packages/symfonycasts_tailwind.yaml') }}
 
+      - name: Set up buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Built here rather than by `compose up --build`, which drives buildx
+      # through the "docker" driver and so cannot export a layer cache. The dev
+      # image's two apt layers are ~85s of a ~95s cold build and depend on
+      # nothing but the Dockerfile, so caching them across runs is most of it.
+      #
+      # The tag is the name Compose derives for a built service image,
+      # <project>-<service>; the COMPOSE_PROJECT_NAME on this job pins it so it
+      # cannot drift with the checkout directory. `up` without `--build` then
+      # finds this image already loaded. If the name ever stops matching,
+      # Compose builds it itself -- slower, but still the right image.
+      - name: Build the dev image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: frankenphp_dev
+          tags: beybladexmalta-php:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       # The same stack a developer runs, so a Dockerfile or base image bump is
       # tested as well as composer.lock. The entrypoint installs the proposed
       # dependencies and waits for Postgres before the container reports healthy.
       - name: Start the dev stack
-        run: docker compose -f compose.override.yaml up -d --build --wait
+        run: docker compose -f compose.override.yaml up -d --wait
 
-      # Xdebug is already in the image and compose.override.yaml already runs it
-      # in coverage mode, so measuring costs this job nothing it was not already
-      # paying. A failing suite stops here and the reporting steps below are
-      # skipped with it -- coverage from a red run says nothing useful.
+      # This step used to be 4:51 of a 7:07 job. Two things account for nearly
+      # all of it, neither of them the tests themselves:
+      #
+      #   - Foundry's ResetDatabase dropped and recreated the whole schema
+      #     before every one of the 531 tests. dama/doctrine-test-bundle now
+      #     wraps each test in a transaction and rolls it back instead.
+      #   - Coverage was measured by Xdebug, which instruments every opcode.
+      #     `make coverage` uses PCOV, which the dev image ships disabled.
+      #
+      # Locally that is 116s -> 18s, for a line rate within 0.2pp. A failing
+      # suite stops here and the reporting steps below are skipped with it --
+      # coverage from a red run says nothing useful.
       - name: Run the test suite with coverage
         run: make coverage
 
@@ -65,8 +102,10 @@ jobs:
           output: file
           badge: true
           indicators: true
-          # PHPUnit only records branches under --path-coverage, which Xdebug
-          # makes several times slower, so the column would read a flat 0%.
+          # PCOV measures lines and nothing else, so the column would read a
+          # flat 0%. Branch coverage would mean going back to Xdebug under
+          # --path-coverage, which is slower again than the plain Xdebug run
+          # this replaced.
           hide_branch_rate: true
           hide_complexity: true
           thresholds: '60 80'

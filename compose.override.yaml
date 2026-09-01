@@ -16,7 +16,13 @@ services:
       # permanently, so it outlives the fix. Production uses compose.yaml and is
       # unaffected. Set SERVER_NAME in .env.local to opt back into HTTPS.
       SERVER_NAME: ${SERVER_NAME:-:80}
-      XDEBUG_MODE: "${XDEBUG_MODE:-coverage}"
+      # Off, not "coverage". Coverage is PCOV's job now (see the `coverage`
+      # target), and leaving Xdebug in coverage mode costs a plain `make
+      # phpunit` nearly four times over for a report it never asked for -- 35s
+      # against 9s here. Set XDEBUG_MODE in .env.local to "debug" to step through
+      # something; anything with "coverage" in it puts Xdebug back in charge of
+      # the reports and undoes the PCOV switch.
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
       DATABASE_URL: ${DATABASE_URL}
       FRANKENPHP_WORKER_CONFIG: watch
       CADDY_SERVER_LOG_OPTIONS: "output discard"
