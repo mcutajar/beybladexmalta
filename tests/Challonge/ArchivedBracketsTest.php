@@ -17,55 +17,39 @@ use App\Service\ChallongeSnapshotReader;
 use App\Tests\Factory\TournamentFactory;
 use App\Tests\Factory\TournamentTeamFactory;
 use App\Tests\Story\SeasonStory;
+use App\Tests\Support\ReadsTheLeaguesCorpus;
 use App\Tests\Support\ServiceTestCase;
 use Zenstruck\Foundry\Attribute\ResetDatabase;
 use Zenstruck\Foundry\Attribute\WithStory;
 
 /**
- * The archive, put to the twenty brackets the league actually played.
+ * The archive, put to every bracket the league actually played.
  *
  * `ChallongeArchiveServiceTest` builds the shapes it wants; this one reads the
  * tracked snapshots in `var/data/challonge/` and writes all of them, which is
- * the only way to know what a backfill will actually produce. The numbers are
- * written out rather than derived, because a number that derived itself from
- * the same files would agree with anything — capturing a twenty-first bracket
- * will fail this test, and updating the counts is the point at which somebody
- * looks at what changed.
+ * the only way to know what a backfill will actually produce.
+ *
+ * The totals it used to assert — 34 stages, 525 entrants, 1091 matches — are
+ * gone, and what stands in their place is the comparison they were an
+ * indirect way of making: the rows the archive wrote against the snapshot it
+ * wrote them from. That is a stronger check than a number, because a number
+ * agrees with a backfill that dropped one bracket and gained another, and it
+ * costs nothing on the two evenings a week the league imports results. See
+ * `ReadsTheLeaguesCorpus` for the reasoning in full.
  */
 #[ResetDatabase]
 #[WithStory(SeasonStory::class)]
 final class ArchivedBracketsTest extends ServiceTestCase
 {
-    /**
-     * The two 2v2 events. Nothing in a snapshot says which they are —
-     * `is_team` is false in all twenty — so a team event is declared at
-     * import, and holding teams is that declaration's persisted trace.
-     */
-    private const TEAM_EVENTS = ['uhxii7az', 'ivanixk6'];
-
-    private const EVENTS_ARCHIVED = 18;
-
-    private const STAGES = 34;
-
-    private const PARTICIPANTS = 525;
-
-    private const MATCHES = 1091;
+    use ReadsTheLeaguesCorpus;
 
     /**
-     * Zero, on purpose. Every one of the 1087 played solo matches in the corpus
-     * is a single game, and all fifty-one multi-game matches are team matches
-     * — which are not archived. A backfill that produced 1087 rows would be the
-     * sign the rule had been bypassed.
+     * Zero, on purpose, and a genuine constant rather than a census: every
+     * played solo match in the corpus is a single game, and every multi-game
+     * match is a team match, which is not archived. A backfill that produced
+     * a games row at all would be the sign the rule had been bypassed.
      */
     private const GAMES = 0;
-
-    private const FORFEITS = 4;
-
-    /**
-     * The eight rows of each cut's standings table, which is what `Advanced`
-     * is a badge for on the stage before it.
-     */
-    private const ADVANCED = 128;
 
     private ChallongeArchiveService $archive;
 
@@ -98,13 +82,14 @@ final class ArchivedBracketsTest extends ServiceTestCase
 
         $archived = $this->archiveEverything();
 
-        self::assertCount(self::EVENTS_ARCHIVED, $archived);
+        self::assertSame($this->soloSlugs(), $archived, 'Every bracket that is not a 2v2 event should archive.');
 
         $stages = $this->everyStage();
+        $expected = $this->snapshotTotals($archived);
 
-        self::assertCount(self::STAGES, $stages);
-        self::assertSame(self::PARTICIPANTS, $this->total($stages, static fn (TournamentStage $stage): int => $stage->getParticipants()->count()));
-        self::assertSame(self::MATCHES, $this->total($stages, static fn (TournamentStage $stage): int => $stage->getMatches()->count()));
+        self::assertCount($expected['stages'], $stages);
+        self::assertSame($expected['participants'], $this->total($stages, static fn (TournamentStage $stage): int => $stage->getParticipants()->count()));
+        self::assertSame($expected['matches'], $this->total($stages, static fn (TournamentStage $stage): int => $stage->getMatches()->count()));
         self::assertCount(count($bladers), $this->service(PlayerRepository::class)->findAll());
     }
 
@@ -138,7 +123,7 @@ final class ArchivedBracketsTest extends ServiceTestCase
      */
     public function testATeamEventArchivesNothing(): void
     {
-        foreach (self::TEAM_EVENTS as $slug) {
+        foreach ($this->teamEventSlugs() as $slug) {
             self::assertSame(
                 ChallongeArchiveResult::TeamEvent,
                 $this->archiveOne($slug)->result,
@@ -146,7 +131,7 @@ final class ArchivedBracketsTest extends ServiceTestCase
             );
         }
 
-        foreach (self::TEAM_EVENTS as $slug) {
+        foreach ($this->teamEventSlugs() as $slug) {
             self::assertSame(
                 [],
                 $this->stages($this->eventFor($slug)),
@@ -182,15 +167,17 @@ final class ArchivedBracketsTest extends ServiceTestCase
             }
         }
 
-        self::assertSame(self::PARTICIPANTS, $ranked);
-        self::assertSame(self::ADVANCED, $advanced);
+        $expected = $this->snapshotTotals($this->soloSlugs());
+
+        self::assertSame($expected['participants'], $ranked, 'Every archived entrant should carry the rank its standings row gave it.');
+        self::assertSame($expected['advanced'], $advanced, 'The entrants badged Advanced should be exactly the ones the cut stage holds.');
 
         $forfeits = array_values(array_filter(
             $this->everyMatch(),
             static fn (TournamentMatch $match): bool => $match->isForfeited(),
         ));
 
-        self::assertCount(self::FORFEITS, $forfeits);
+        self::assertCount($expected['forfeits'], $forfeits);
 
         foreach ($forfeits as $forfeit) {
             self::assertFalse($forfeit->wasPlayed());
@@ -210,7 +197,7 @@ final class ArchivedBracketsTest extends ServiceTestCase
         $checked = 0;
 
         foreach ($this->slugs() as $slug) {
-            if (in_array($slug, self::TEAM_EVENTS, true)) {
+            if (in_array($slug, $this->teamEventSlugs(), true)) {
                 continue;
             }
 
@@ -261,7 +248,58 @@ final class ArchivedBracketsTest extends ServiceTestCase
             }
         }
 
-        self::assertSame(self::MATCHES, $checked);
+        self::assertSame($this->snapshotTotals($this->soloSlugs())['matches'], $checked);
+    }
+
+    /**
+     * What the snapshots say the archive should have produced.
+     *
+     * The other side of every count in this file. Reading it off the same
+     * snapshots the archive was handed is the point: the two sides are the
+     * bracket as transcribed and the bracket as stored, and the archive is
+     * the code between them.
+     *
+     * @param list<string> $slugs
+     *
+     * @return array{stages: int, participants: int, matches: int, forfeits: int, advanced: int}
+     */
+    private function snapshotTotals(array $slugs): array
+    {
+        $totals = ['stages' => 0, 'participants' => 0, 'matches' => 0, 'forfeits' => 0, 'advanced' => 0];
+        $reader = $this->service(ChallongeSnapshotReader::class);
+
+        foreach ($slugs as $slug) {
+            $snapshot = $reader->read($slug);
+
+            $totals['stages'] += count($snapshot->stages);
+            $totals['participants'] += $snapshot->participantCount();
+            $totals['matches'] += $snapshot->matchCount();
+            $totals['forfeits'] += $snapshot->forfeitedMatchCount();
+
+            /*
+             * `Advanced` is a badge on the stage before a cut, so the
+             * entrants carrying it are exactly the entrants the cut holds.
+             * A bracket with no cut badges nobody.
+             */
+            $cut = $snapshot->cutStage();
+            $totals['advanced'] += null === $cut ? 0 : count($cut->participants);
+        }
+
+        return $totals;
+    }
+
+    /**
+     * Every captured bracket that is not a 2v2 event, which is what a backfill
+     * writes rows for.
+     *
+     * @return list<string>
+     */
+    private function soloSlugs(): array
+    {
+        return array_values(array_filter(
+            $this->slugs(),
+            fn (string $slug): bool => !in_array($slug, $this->teamEventSlugs(), true),
+        ));
     }
 
     /**
@@ -325,7 +363,7 @@ final class ArchivedBracketsTest extends ServiceTestCase
             'challongeUrl' => 'https://challonge.com/'.$slug,
         ]);
 
-        if (in_array($slug, self::TEAM_EVENTS, true)) {
+        if (in_array($slug, $this->teamEventSlugs(), true)) {
             TournamentTeamFactory::createOne(['tournament' => $event, 'name' => 'a team', 'rank' => 1]);
         }
 
