@@ -103,7 +103,13 @@ class BracketImportService
             return BracketImportOutcome::refused(BracketImportResult::AliasRefused, $preview, $problems);
         }
 
-        $this->snapshotWriter->write($snapshot);
+        /*
+         * The path is kept because the ledger line has to name it. An import
+         * that replays `--challonge` without `--snapshot` goes back to
+         * Challonge over the network on the next replay, which is exactly what
+         * a tracked snapshot exists to avoid.
+         */
+        $snapshotPath = $this->snapshotWriter->write($snapshot);
 
         $placements = $this->placementsToWrite($preview);
 
@@ -114,6 +120,7 @@ class BracketImportService
             placements: $placements,
             challongeUrl: $preview->bracketUrl,
             knockoutWinner: $preview->knockoutWinner()?->bladerName,
+            snapshotPath: $snapshotPath,
         );
 
         if (TournamentImportResult::Imported !== $imported->result) {
