@@ -583,6 +583,7 @@ class BracketPreviewer
             seasonSlug: $seasonSlug,
             challongeUrl: $bracketUrl,
             knockoutWinner: $winner,
+            snapshotPath: $this->snapshotFiles->pathFor($snapshot->slug),
         );
 
         $lines[] = $this->ledgerService->challongeArchiveCommand($snapshot->slug);

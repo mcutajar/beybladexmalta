@@ -75,15 +75,17 @@ class TournamentImportService
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         ?string $sourceFilePath = null,
+        ?string $snapshotPath = null,
     ): TournamentImportResult {
         return $this->importWithTournament(
-            $title,
-            $heldOn,
-            $seasonSlug,
-            $placements,
-            $challongeUrl,
-            $knockoutWinner,
-            $sourceFilePath,
+            title: $title,
+            heldOn: $heldOn,
+            seasonSlug: $seasonSlug,
+            placements: $placements,
+            challongeUrl: $challongeUrl,
+            knockoutWinner: $knockoutWinner,
+            sourceFilePath: $sourceFilePath,
+            snapshotPath: $snapshotPath,
         )->result;
     }
 
@@ -102,6 +104,7 @@ class TournamentImportService
         ?string $challongeUrl = null,
         ?string $knockoutWinner = null,
         ?string $sourceFilePath = null,
+        ?string $snapshotPath = null,
     ): TournamentImportOutcome {
         $opened = $this->prepare($title, $heldOn, $seasonSlug, $placements, $challongeUrl, $knockoutWinner);
 
@@ -121,6 +124,7 @@ class TournamentImportService
                 challongeUrl: $challongeUrl,
                 knockoutWinner: $knockoutWinner,
                 sourceFilePath: $sourceFilePath,
+                snapshotPath: $snapshotPath,
             ),
         );
 
@@ -429,6 +433,7 @@ class TournamentImportService
         ?string $challongeUrl,
         ?string $knockoutWinner,
         ?string $sourceFilePath,
+        ?string $snapshotPath = null,
     ): void {
         $sourceFilePath ??= $this->importFileWriter->write(
             $title,
@@ -443,6 +448,7 @@ class TournamentImportService
             seasonSlug: $seasonSlug,
             challongeUrl: $challongeUrl,
             knockoutWinner: $knockoutWinner,
+            snapshotPath: $snapshotPath,
         );
     }
 
