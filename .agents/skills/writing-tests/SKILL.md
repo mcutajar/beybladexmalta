@@ -13,7 +13,20 @@ description: How this project's test suite is put together — the base test cas
   as if they were application code.
 - Tests run against `bbx_malta_test` — a separate database from your real
   `bbx_malta` data, via `dbname_suffix` in `config/packages/doctrine.yaml`.
-  `#[ResetDatabase]` drops and recreates it on each run.
+- **`#[ResetDatabase]` rolls a test back; it no longer rebuilds the schema.**
+  `dama/doctrine-test-bundle` wraps every test in a transaction and rolls it
+  back at the end, and Foundry defers to it when it is installed. Without it
+  Foundry's own resetter runs `doctrine:schema:drop --full-database` and
+  `doctrine:schema:update` *before every single test* — 531 of them — which was
+  the whole of the suite's runtime (58s against 9s) and bloated the test
+  database's catalog until later runs took minutes. Two things follow from the
+  transaction:
+  - **A test cannot see another connection's data, and cannot commit.** Nothing
+    here opens a second connection, and the nested transactions
+    `FlusherInterface::flushThen()` opens become savepoints, so the ledger's
+    rollback behaviour is unchanged. A test that genuinely needs committed data
+    would have to opt out.
+  - **Schema changes made inside a test are not undone.** Nothing does this.
 - `.env.test` holds the admin passphrases the functional tests submit.
 - `var/data/imports/` and `var/data/challonge/` are **tracked by git** and hold real
   league data — the placement lists, and the captured Challonge brackets. Tests that
@@ -44,13 +57,22 @@ description: How this project's test suite is put together — the base test cas
   passphrase is visibly a test *about* authentication. Reach for a named assertion
   before inlining factory criteria.
 - `make coverage` measures how much of `src/` the suite exercises. The driver is
-  Xdebug, which the dev image already ships and `compose.override.yaml` already
-  puts in coverage mode, so nothing needs installing — but an `XDEBUG_MODE` in
-  `.env.local` without `coverage` in it produces empty reports and a PHPUnit
-  warning rather than a failure. It writes three views of the same run to the
-  gitignored `var/coverage/`: `cobertura.xml` (what CI turns into the per-file
-  table), `html/` (which lines are missed) and the text summary in the
-  terminal.
+  **PCOV**, which the dev image ships alongside Xdebug and which
+  `20-app.dev.ini` leaves disabled, so only that target pays for it. It writes
+  three views of the same run to the gitignored `var/coverage/`:
+  `cobertura.xml` (what CI turns into the per-file table), `html/` (which lines
+  are missed) and the text summary in the terminal.
+  - **Xdebug is the step debugger here, not the coverage driver.** It can
+    measure coverage, and used to, but it instruments every opcode: the same
+    suite takes 45s under Xdebug and 18s under PCOV, for line rates within
+    0.2pp. `XDEBUG_MODE` is `off` for the whole stack, which is what lets
+    PHPUnit pick PCOV up — setting it to anything with `coverage` in it in
+    `.env.local` puts Xdebug back in charge and quietly undoes that — it also
+    costs the plain suite 35s against 9s, for a report it was never asked for.
+    Use `XDEBUG_MODE=debug` when you want to step through something.
+  - **PCOV measures lines and nothing else.** There is no branch or path
+    coverage, which is why CI hides that column. Getting it back would mean
+    Xdebug under `--path-coverage`, slower again than the plain Xdebug run.
 - CI runs the same target on every pull request, writes the per-file table to
   the job summary and uploads the HTML report as the `coverage-html` artifact.
   Nothing is sent to a third-party service and no secret is involved. Coverage

@@ -148,9 +148,16 @@ class. The `writing-tests` skill has the full picture. The core of it:
   `WebTestCase` or `KernelTestCase` directly. Reach for a named assertion before
   inlining factory criteria; **only what varies belongs in a test body**.
 - Tests run against a separate `bbx_malta_test` database, so they cannot touch
-  your real data. They do write to the real `var/`: artifact cleanup is
+  your real data. `dama/doctrine-test-bundle` wraps each test in a transaction
+  and rolls it back, so **`#[ResetDatabase]` no longer rebuilds the schema per
+  test** — a test cannot commit, and cannot see another connection's writes.
+  They do write to the real `var/`: artifact cleanup is
   centralised through `artifactPaths()`, and a test that writes somewhere new
   overrides that method rather than writing its own `tearDown()`.
+- **Coverage is PCOV's job, and `XDEBUG_MODE` defaults to `off`.** Putting
+  Xdebug back into coverage mode in `.env.local` takes `make coverage` from 18s
+  to 45s, and the plain suite from 9s to 35s for a report nobody asked for.
+  `writing-tests` has the detail.
 - **No test reaches Challonge.** `config/services_test.yaml` hands
   `ChallongeFetcher` a `MockHttpClient` answering from `tests/Fixtures/challonge/`.
   A test needing a new bracket shape adds a fixture there rather than a URL.

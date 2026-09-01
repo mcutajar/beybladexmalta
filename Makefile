@@ -136,16 +136,21 @@ phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="
 
 test: phpunit ## Alias for phpunit
 
-# The driver is Xdebug, which the dev image already ships and which
-# compose.override.yaml already puts in coverage mode, so there is nothing to
-# install and nothing to pass. Setting XDEBUG_MODE to anything without
-# "coverage" in it turns the reports into empty ones, with a PHPUnit warning
-# rather than a failure.
+# The driver is PCOV, which the dev image ships alongside Xdebug and which
+# 20-app.dev.ini leaves disabled, so only this target pays for it. Xdebug can
+# measure coverage as well, and used to, but it instruments every opcode: the
+# same suite takes 45s under Xdebug and 18s under PCOV, for line rates within
+# 0.2pp of each other.
 #
-# CI reads the Cobertura report to build the pull request comment, the HTML one
-# is what says which lines are missed, and the text one lands in the log.
+# XDEBUG_MODE is "off" for the whole stack, which is what lets PHPUnit pick PCOV
+# up; a mode with "coverage" in it would put Xdebug back in charge and undo this.
+# PCOV only measures lines -- it has no branch or path coverage -- which is what
+# the reports were already limited to.
+#
+# CI reads the Cobertura report to build the job summary, the HTML one is what
+# says which lines are missed, and the text one lands in the log.
 coverage: running $(TAILWIND_CSS) ## Run the test suite and write the coverage reports to var/coverage
-	$(EXEC) php -d memory_limit=256M vendor/bin/phpunit \
+	$(EXEC) php -d memory_limit=256M -d pcov.enabled=1 vendor/bin/phpunit \
 		--coverage-text \
 		--coverage-cobertura $(COVERAGE_DIR)/cobertura.xml \
 		--coverage-html $(COVERAGE_DIR)/html \
