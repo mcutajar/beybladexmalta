@@ -33,7 +33,20 @@ HEALTH_TIMEOUT ?= 300
 ENV_FILES := $(foreach f,$(ENV_FILE) $(LOCAL_ENV_FILE),$(if $(wildcard $(f)),--env-file $(f)))
 
 DC   := docker compose $(ENV_FILES) -f $(COMPOSE_FILE)
-EXEC := $(DC) exec -T $(SERVICE)
+
+# Xdebug is still in the image; it is just not armed. Its mode is a container
+# environment variable, so switching it in .env.local means recreating the
+# container with "make up" -- too much ceremony to step through one test. Set it
+# on the command line instead and it is passed to that one exec:
+#
+#   make phpunit XDEBUG_MODE=debug ARGS="--filter ImportTournamentCommandTest"
+#
+# "debug" is the step debugger (20-app.dev.ini already points it at the host),
+# "develop" the richer errors and var_dump. "coverage" puts Xdebug back in
+# charge of the reports, which is how to get the branch and path coverage PCOV
+# cannot measure -- slower again, and rarely what you want.
+XDEBUG_MODE ?=
+EXEC := $(DC) exec -T $(if $(XDEBUG_MODE),-e XDEBUG_MODE=$(XDEBUG_MODE),) $(SERVICE)
 
 # Extra flags for the tool being wrapped, e.g.
 #   make phpunit ARGS="--filter ImportTournamentCommandTest"
