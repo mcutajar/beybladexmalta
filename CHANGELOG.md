@@ -5,6 +5,29 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.4.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.4.0) - 2026-09-02
+
+### Fixes
+
+- Name the tracked snapshot on an import the admin screen wrote ([d8c9742](https://github.com/mcutajar/beybladexmalta/commit/d8c97426e93f9d970ed037e6084ad65e7c658cfb))
+
+### Performance
+
+- Stop rebuilding the test schema once per test ([8f18c96](https://github.com/mcutajar/beybladexmalta/commit/8f18c96b320e236268dc239b528d834e6c3edbdb))
+
+### Documentation
+
+- Keep Xdebug a command away, and note where PCOV flatters a branch ([f5e24e8](https://github.com/mcutajar/beybladexmalta/commit/f5e24e8778801bc226aab9259e84e5364d2f6346))
+- Say what Challonge's TB column actually counts ([4b1c6ec](https://github.com/mcutajar/beybladexmalta/commit/4b1c6ecf1c8e789a16769755c2e2198bf21c5b7f))
+
+### Testing
+
+- Check the bracket corpus against itself instead of counting it ([2c150f3](https://github.com/mcutajar/beybladexmalta/commit/2c150f30ee382af7b99f0813a5ddf83f6629a9dc))
+
+### Maintenance
+
+- Update latest imports ([c402350](https://github.com/mcutajar/beybladexmalta/commit/c4023508ae18117d67203d1e94267de726c9839b))
+
 ## [1.3.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.3.0) - 2026-08-31
 
 ### Features
