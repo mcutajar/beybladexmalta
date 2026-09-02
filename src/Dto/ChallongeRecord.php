@@ -31,7 +31,12 @@ final readonly class ChallongeRecord
      *                                   Measured against `nppk0890`, twelve of twelve rows match that
      *                                   and none match the plain sum — Guzman's opponents scored
      *                                   2, 3, 3, 4 and 4 for a stated 10.0, not 16.0.
-     * @param ?float $tieBreak           Challonge's `TB` column, whatever it was configured to hold
+     * @param ?float $tieBreak           Challonge's `TB` column: wins against the bladers tied with you
+     *                                   on score *and* Buchholz, rather than against everyone on the
+     *                                   same score. The narrower reading matches the column in 96.2%
+     *                                   of 9,020 rows against 62.9% for the looser one, which cannot
+     *                                   be right anyway — the column is zero in nine rows out of ten
+     *                                   and never exceeds three.
      * @param ?int   $points             total points scored, from Challonge's `Pts` tiebreaker
      * @param ?int   $pointsDifferential Beyblade points for less against, as `Pts Diff`
      */
