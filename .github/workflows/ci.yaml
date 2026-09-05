@@ -62,7 +62,7 @@ jobs:
       # finds this image already loaded. If the name ever stops matching,
       # Compose builds it itself -- slower, but still the right image.
       - name: Build the dev image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: frankenphp_dev

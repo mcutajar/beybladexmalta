@@ -126,7 +126,7 @@ jobs:
       # With it on, the registry gains an "unknown/unknown" entry beside the
       # real image, which reads as a broken listing on the packages page.
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: frankenphp_prod
