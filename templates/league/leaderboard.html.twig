@@ -20,6 +20,17 @@
 
 {% block title %}Malta Beyblade Community League | {{ current_season.name }} Leaderboard{% endblock %}
 
+{% block description %}{{ current_season.name }} standings for Malta's Beyblade X league: points, placings and every ranked tournament, updated after each event.{% endblock %}
+
+{#
+    Four routes render this page — `/season/{slug}`, `/seasons/{slug}`,
+    `/preseason`, and the bare `/season` that the first one's default collapses
+    to for the preseason. The explicit `/seasons/{slug}` is the one Google
+    should keep, because it is the only form that names the season for every
+    season; the others say so here.
+#}
+{% block canonical %}{{ site_url }}{{ path('season_leaderboard_2', {'slug': current_season.slug}) }}{% endblock %}
+
 {% block body %}
 
     <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-6">Return to league framework</twig:BackLink>

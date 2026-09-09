@@ -143,6 +143,32 @@ class TournamentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Every event's id and date, and the season it belongs to.
+     *
+     * `everyEventInOrder()` eager-loads results and bladers because its
+     * callers walk them; the sitemap wants one row per event and would pay for
+     * a graph it never reads. The season slug rides along so the builder can
+     * date a season page from its latest event without a second query.
+     *
+     * The join is left, for the same reason it is in `archiveIndex()`: an
+     * unranked event has no season and is exactly what a sitemap should not
+     * drop.
+     *
+     * @return list<array{id: int, heldOn: \DateTimeImmutable, seasonSlug: string|null}>
+     */
+    public function everyEventDated(): array
+    {
+        /* @var list<array{id: int, heldOn: \DateTimeImmutable, seasonSlug: string|null}> */
+        return $this->createQueryBuilder('t')
+            ->select('t.id', 't.heldOn', 's.slug AS seasonSlug')
+            ->leftJoin('t.season', 's')
+            ->orderBy('t.heldOn', 'DESC')
+            ->addOrderBy('t.id', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Fetches all player results for a single tournament.
      *
      * The rank is selected rather than counted off the rows, because a team

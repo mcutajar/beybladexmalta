@@ -18,6 +18,10 @@
 
 {% block title %}{{ player.name }} | Tournament Breakdown{% endblock %}
 
+{% block description %}{{ player.name }}'s record in Malta's Beyblade X league: tournament finishes, league points and every match played.{% endblock %}
+
+{% block canonical %}{{ site_url }}{{ path('player_page', current_season ? {'slug': player.slug, 'season': current_season.slug} : {'slug': player.slug}) }}{% endblock %}
+
 {% block body %}
 
     {% if current_season %}

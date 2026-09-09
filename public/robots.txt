@@ -1,0 +1,23 @@
+# Malta Beyblade Community League — https://beybladexmalta.com
+#
+# Caddy serves this file directly: the site's rewrite sends a request to
+# index.php only when the path is not a real file, so anything added to
+# public/ answers before Symfony sees it.
+#
+# The sitemap is the opposite case and is a route, not a file — the league
+# gains tournaments and bladers twice a week, so a checked-in sitemap.xml
+# would be stale by Wednesday. See src/Controller/SitemapController.php.
+#
+# NOTE: Cloudflare is configured to serve a managed robots.txt for this zone
+# (the "content signals" policy). Confirm it appends to this file rather than
+# replacing it after the next deploy — if the Sitemap line below is missing
+# from the live response, that setting is the reason.
+
+User-agent: *
+Allow: /
+
+# Passphrase-gated tools, not content. Excluded from the sitemap for the same
+# reason.
+Disallow: /admin/
+
+Sitemap: https://beybladexmalta.com/sitemap.xml

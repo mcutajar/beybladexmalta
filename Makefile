@@ -288,7 +288,7 @@ APP_IMAGE ?= ghcr.io/mcutajar/beybladexmalta
 # from a checkout with no .env.local, so these have to come from this host at
 # run time -- see the environment block in compose.yaml.
 REQUIRED_PROD_VARS := APP_SECRET DATABASE_URL PAYMENTS_ADMIN_PASSPHRASE \
-	TOURNAMENTS_ADMIN_PASSPHRASE
+	TOURNAMENTS_ADMIN_PASSPHRASE SITE_URL
 
 # The generated changelog, and the pinned image that generates it. git-cliff is
 # not a PHP tool, so it has no place in the dev container, and the one rule

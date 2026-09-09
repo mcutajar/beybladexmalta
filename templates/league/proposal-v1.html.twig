@@ -2,6 +2,15 @@
 
 {% block title %}Malta Beyblade Community League | Season 1 Framework{% endblock %}
 
+{#
+    A superseded draft of the homepage, kept because its URL has been shared.
+    Near-identical content on a second URL is exactly what a crawler reads as a
+    duplicate, so it stays reachable and stays out of the index. `follow`
+    rather than `nofollow`: the links on it point at pages that should be
+    crawled.
+#}
+{% block robots %}noindex, follow{% endblock %}
+
 {% block body %}
 
     <twig:PageHeader

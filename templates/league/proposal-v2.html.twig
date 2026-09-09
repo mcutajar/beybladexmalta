@@ -1,13 +1,30 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Malta Beyblade Community League | Season 1 Framework{% endblock %}
+{% block title %}Beyblade X in Malta | Malta Beyblade Community League{% endblock %}
+
+{% block description %}Malta's competitive Beyblade X league: the Season 1 format, the points system, entry details and the live standings.{% endblock %}
+
+{# `/v2` renders this same page. The homepage is the URL that should carry it. #}
+{% block canonical %}{{ site_url }}{{ path('app_league_proposal_v2') }}{% endblock %}
 
 {% block body %}
 
+    {#
+        The h1 says what the league is, not just what it is called.
+
+        "Malta Beyblade Community League" is the name and it stays — it is the
+        eyebrow now, and the title tag still carries it. But nobody searches
+        for it: they search for the game and the island, and the page used to
+        contain the phrase "Beyblade X" exactly nowhere, which is a large part
+        of why it ranked for nothing.
+
+        The name is not being changed to suit a search engine. The heading
+        describes the league; the badge above it names it.
+    #}
     <twig:PageHeader
-        eyebrow="Official league framework"
-        title="Malta Beyblade Community"
-        highlight="League Season 1"
+        eyebrow="Malta Beyblade Community League"
+        title="Malta's Beyblade X League"
+        highlight="Season 1"
         highlightTone="brand"
         class="mb-16 space-y-4 text-center"
     >

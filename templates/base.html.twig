@@ -11,7 +11,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {#
+        Search and share metadata.
+
+        Every value here is a block, so a page overrides the one it cares about
+        and inherits the rest. `og:` and `twitter:` re-render those same blocks
+        rather than restating them — there is one description per page, not
+        three that drift apart.
+
+        `|raw` on the re-rendered blocks is not a hole. `block()` returns
+        output that Twig has *already* escaped once, including the quotes, so
+        printing it again would double-escape an ampersand in a blader's name.
+        The value is attribute-safe by the time it gets here.
+
+        The canonical URL is built from `site_url` and the path, never from the
+        request's own scheme and host. Cloudflare terminates TLS and speaks
+        plain HTTP to the origin, so a request-derived canonical would tell
+        Google every page lives at http:// — a second, duplicate site.
+
+        It defaults to the path with the query string dropped, which is right
+        for the pages that have no meaningful parameters and wrong for the ones
+        scoped by `?season=`. Those override the block. So do the pages reached
+        by more than one route: `/seasons/{slug}` and `/preseason` are the
+        leaderboard again and `/v2` is the homepage again, and each says so
+        here rather than letting Google pick a winner.
+    #}
     <title>{% block title %}Malta Beyblade Community League{% endblock %}</title>
+    <meta name="description" content="{% block description %}Standings, tournament results and blader records from Malta's Beyblade X league.{% endblock %}">
+    <meta name="robots" content="{% block robots %}index, follow{% endblock %}">
+    <link rel="canonical" href="{% block canonical %}{{ site_url }}{{ app.request.pathInfo }}{% endblock %}">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Malta Beyblade Community League">
+    <meta property="og:locale" content="en_MT">
+    <meta property="og:title" content="{{ block('title')|raw }}">
+    <meta property="og:description" content="{{ block('description')|raw }}">
+    <meta property="og:url" content="{{ block('canonical')|raw }}">
+
+    {# `summary` rather than `summary_large_image`: there is no og:image yet,
+       and a large-image card with no image renders worse than a small one. #}
+    <meta name="twitter:card" content="summary">
+
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 
     {% block stylesheets %}

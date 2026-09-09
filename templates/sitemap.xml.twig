@@ -1,0 +1,25 @@
+{#-
+    The sitemap document.
+
+    Every `<loc>` is `site_url` plus a router-generated path, so the origin is
+    the canonical one rather than whatever scheme the request reached the
+    container on. Behind the Cloudflare tunnel those differ: the origin is
+    spoken to over plain HTTP, and a sitemap built from the request context
+    would hand Google an `http://` URL for every page and invite it to treat
+    the site as a second, duplicate one.
+
+    `<changefreq>` and `<priority>` are deliberately absent. Google has said
+    for years that it ignores both, and a field nobody reads is a field that
+    goes wrong quietly.
+-#}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{% for url in urls %}
+    <url>
+        <loc>{{ site_url }}{{ url.path }}</loc>
+{% if url.lastModified %}
+        <lastmod>{{ url.lastModified|date('Y-m-d') }}</lastmod>
+{% endif %}
+    </url>
+{% endfor %}
+</urlset>

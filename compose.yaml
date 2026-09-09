@@ -35,6 +35,11 @@ services:
       APP_SECRET: ${APP_SECRET}
       DATABASE_URL: ${DATABASE_URL}
       DEFAULT_URI: ${DEFAULT_URI}
+      # Not a secret -- it names the host, which is why it cannot be committed
+      # either. The image ships an empty default so that a fork of this AGPL
+      # codebase does not point its canonical tags at beybladexmalta.com, and
+      # REQUIRED_PROD_VARS makes "make deploy" refuse without a real value.
+      SITE_URL: ${SITE_URL}
       PAYMENTS_ADMIN_PASSPHRASE: ${PAYMENTS_ADMIN_PASSPHRASE}
       TOURNAMENTS_ADMIN_PASSPHRASE: ${TOURNAMENTS_ADMIN_PASSPHRASE}
     volumes:

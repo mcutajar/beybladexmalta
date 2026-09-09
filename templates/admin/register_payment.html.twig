@@ -2,6 +2,9 @@
 
 {% block title %}MBC League | Remote Registration Management{% endblock %}
 
+{# A passphrase-gated tool, not content. `robots.txt` disallows /admin/ as well; this is the half that survives a crawler ignoring it. #}
+{% block robots %}noindex, nofollow{% endblock %}
+
 {% block column %}max-w-2xl px-3 py-8 sm:px-4 md:py-16{% endblock %}
 
 {% block body %}

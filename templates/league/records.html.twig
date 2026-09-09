@@ -12,6 +12,10 @@
 
 {% block title %}League records | Malta Beyblade Community League{% endblock %}
 
+{% block description %}League records from Malta's Beyblade X scene{% if current_season %} in {{ current_season.name }}{% endif %}: best finishes, longest runs and the matches behind them.{% endblock %}
+
+{% block canonical %}{{ site_url }}{{ path('records_board', current_season ? {'season': current_season.slug} : {}) }}{% endblock %}
+
 {% block body %}
 
     {# A season-scoped board goes back to that season's table; the Overall
