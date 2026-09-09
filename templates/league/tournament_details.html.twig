@@ -27,6 +27,8 @@
 
 {% block title %}{{ tournament.title }} | {{ tournament.ranked ? 'Standings' : 'Match archive' }}{% endblock %}
 
+{% block description %}{{ tournament.title }}: full standings, matches and placings from Malta's Beyblade X league.{% endblock %}
+
 {% block accent_bar %}
     <div class="h-2 bg-linear-to-r from-flame-strong via-heat-strong to-brand-strong"></div>
 {% endblock %}

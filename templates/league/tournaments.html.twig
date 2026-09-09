@@ -16,6 +16,11 @@
 
 {% block title %}Tournament archive | Malta Beyblade Community League{% endblock %}
 
+{% block description %}Every Beyblade X tournament held in Malta{% if current_season %} in {{ current_season.name }}{% endif %}: entrants, matches and full results.{% endblock %}
+
+{# `?season=` is a different page, not a filtered view of this one, so it is its own canonical rather than pointing at the unscoped archive. #}
+{% block canonical %}{{ site_url }}{{ path('tournament_archive', current_season ? {'season': current_season.slug} : {}) }}{% endblock %}
+
 {% block body %}
 
     <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-6">Return to league framework</twig:BackLink>

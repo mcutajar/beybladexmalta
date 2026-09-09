@@ -2,6 +2,11 @@ twig:
     file_name_pattern: '*.twig'
     form_themes:
         - 'form/theme.html.twig'
+    globals:
+        # The origin every canonical URL, og:url and sitemap entry is built
+        # from. A global rather than something each controller passes down,
+        # because base.html.twig needs it on every page there is.
+        site_url: '%env(SITE_URL)%'
 
 when@test:
     twig:

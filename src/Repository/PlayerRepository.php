@@ -213,6 +213,28 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
             ->getResult();
     }
 
+    /**
+     * Every blader's slug, for the sitemap.
+     *
+     * `findAll()` hydrates the entity and its results; this needs one column
+     * and there is a profile page per row. Ordered by slug so two runs of the
+     * sitemap produce the same file — a crawler that diffs it should see a
+     * change only when the league has one.
+     *
+     * @return list<string>
+     */
+    public function everyBladerSlug(): array
+    {
+        /** @var list<array{slug: string}> $rows */
+        $rows = $this->createQueryBuilder('p')
+            ->select('p.slug')
+            ->orderBy('p.slug', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return array_column($rows, 'slug');
+    }
+
     public function findByName(string $name): ?Player
     {
         return $this->createQueryBuilder('p')

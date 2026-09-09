@@ -19,6 +19,9 @@
 
 {% block title %}MBC Terminal | Review {{ preview.slug }}{% endblock %}
 
+{# A passphrase-gated tool, not content. `robots.txt` disallows /admin/ as well; this is the half that survives a crawler ignoring it. #}
+{% block robots %}noindex, nofollow{% endblock %}
+
 {% block column %}max-w-4xl px-3 py-6 sm:px-4 md:py-12{% endblock %}
 
 {% block body %}
