@@ -5,6 +5,17 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.5.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.5.0) - 2026-09-09
+
+### Features
+
+- New tournament results ([7f3ac30](https://github.com/mcutajar/beybladexmalta/commit/7f3ac30018344566659e3ec4957ef72cf84afb35))
+- Make the league discoverable in search ([5ac26ca](https://github.com/mcutajar/beybladexmalta/commit/5ac26ca9085909bc55c77aa4e3a98170d896b2f6))
+
+### Fixes
+
+- Replay the 5 and 6 September events from the ledger ([d2b7da1](https://github.com/mcutajar/beybladexmalta/commit/d2b7da1ac4f67df9d9d4b35ecfb0af6647c56e72))
+
 ## [1.4.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.4.0) - 2026-09-02
 
 ### Fixes
