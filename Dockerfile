@@ -175,7 +175,13 @@ EOF
 
 COPY --link --exclude=var --from=frankenphp_prod_builder /app /app
 # Group 0 + g=u for arbitrary-UID runtimes (e.g. OpenShift).
-COPY --chown=www-data:0 --from=frankenphp_prod_builder /app/var /app/var
+#
+# var/tailwind is excluded: "tailwind:build" downloads a ~108MB standalone
+# binary there, and it is a build-time tool. The stylesheet it produced was
+# compiled into public/assets by "asset-map:compile" in the same stage, so a
+# prod runtime -- which serves those compiled assets and never runs the
+# AssetMapper compiler chain -- reads neither the binary nor the built CSS.
+COPY --chown=www-data:0 --exclude=tailwind --from=frankenphp_prod_builder /app/var /app/var
 RUN chmod g=u /app/var
 
 COPY --link --chmod=755 frankenphp/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
