@@ -119,17 +119,30 @@
 
        One block per season, each with its own best-14 subtotal on the same
        line as its heading so the figure is never orphaned from the season it
-       belongs to — and no total across them, at any scope. #}
+       belongs to — and no total across them, at any scope.
+
+       Every result is listed. One the cap drops is struck through, and says
+       so to a screen reader too, which hears no strikethrough. The subtotal
+       adds the counted ones only, so it is
+       the leaderboard's figure. The heading only admits to a cap once one
+       has bitten: `best 14 of 15`, and plain `best 14` up to fourteen.
+
+       Three columns, because at 375px the five this used to have put Total
+       off-screen. The date went (the event names carry it and the rows stay
+       newest first) and the bonus became a chip beside the name. #}
     {% for block in points %}
         <twig:Card class="{{ loop.last ? '' : 'mb-6' }}" data-page-section="league-points" data-points-season="{{ block.slug }}">
             <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
                 <twig:SectionHeading
-                    title="{{ block.name }} · best 14"
+                    title="{{ block.name }} · best 14{{ block.results > block.counted ? ' of ' ~ block.results : '' }}"
                     size="md"
                     tone="brand"
-                    class="mb-0"
+                    class="mb-0 w-full justify-center text-center sm:w-auto sm:justify-start sm:text-left"
                 />
-                <span class="font-mono text-lg font-black tabular-nums text-brand" data-season-total>
+                {# On a phone the heading and the total are centred, one above
+                   the other; with room they share a line, the total on the
+                   right. #}
+                <span class="w-full text-center font-mono text-lg font-black tabular-nums text-brand sm:w-auto sm:text-right" data-season-total>
                     {{ block.total }} pts
                 </span>
             </div>
@@ -138,33 +151,51 @@
                 <thead>
                 <tr>
                     <th>Tournament</th>
-                    <th class="text-center">Date held</th>
                     <th class="text-center">Base F1 pts</th>
-                    <th class="text-center">KO/bonus pts</th>
                     <th class="pr-4 text-right font-bold text-brand">Total</th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for match in block.events %}
-                    <tr>
-                        <td>
+                    <tr{{ match.counts ? '' : ' class="is-dropped"' }} data-points-event="{{ match.tournament_name }}" data-counts="{{ match.counts ? 'yes' : 'no' }}">
+                        {# `is-link-cell` keeps the whole cell the link's touch
+                           target now that a chip shares it. #}
+                        <td class="is-link-cell">
                             <a href="{{ path('tournament_page', {'id': match.tournament_id}) }}"
                                class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">
-                                {{ match.tournament_name }}
+                                {{ match.tournament_name }}{% if not match.counts %}<span class="sr-only">, not counted</span>{% endif %}
                             </a>
+                            {# The component draws an em dash at zero, which
+                               beside a name would read as punctuation. #}
+                            {% if match.bonus_points > 0 %}
+                                <span class="whitespace-nowrap" data-bonus-chip><twig:BonusPoints :value="match.bonus_points" chip /></span>
+                            {% endif %}
                         </td>
-                        <td class="text-center font-mono text-xs text-ink-muted">{{ match.held_on|date('Y-m-d') }}</td>
                         <td class="text-center">{{ match.f1_points }}</td>
-                        <td class="text-center">
-                            <twig:BonusPoints :value="match.bonus_points" />
-                        </td>
-                        <td class="pr-4 text-right font-black text-ink">
+                        <td class="pr-4 text-right font-black whitespace-nowrap text-ink">
                             {{ match.total_points }} <span class="text-xs font-normal text-ink-faint">pts</span>
                         </td>
                     </tr>
                 {% endfor %}
                 </tbody>
             </twig:DataTable>
+
+            {# Only the league's newest season: what the next event has to
+               score means nothing for one that is over. "Or more" holds
+               because the most recent of two tied results is the one that
+               counts. #}
+            {% if block.next %}
+                {% set next = block.next %}
+                <p class="mt-4 text-center text-xs text-ink-muted" data-next-result>
+                    {% if next.threshold is not null %}
+                        Next result counts if it scores <b class="font-extrabold tabular-nums text-flame-bright">{{ next.threshold }} {{ next.threshold == 1 ? 'pt' : 'pts' }}</b> or more
+                    {% elseif next.open == 1 %}
+                        The next <b class="font-extrabold tabular-nums text-flame-bright">1</b> result counts whatever it scores
+                    {% else %}
+                        The next <b class="font-extrabold tabular-nums text-flame-bright">{{ next.open }}</b> results count whatever they score
+                    {% endif %}
+                </p>
+            {% endif %}
         </twig:Card>
     {% else %}
         <div data-page-section="league-points-empty">

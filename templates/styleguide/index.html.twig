@@ -20,7 +20,7 @@
         {% for anchor, label in {
             'tokens': 'Tokens', 'radii': 'Radii', 'badge': 'Badge', 'button': 'Button',
             'alert': 'Alert', 'card': 'Card', 'section-heading': 'Section heading',
-            'form-controls': 'Form controls', 'data-table': 'Data table', 'expandable-table': 'Expandable table',
+            'form-controls': 'Form controls', 'data-table': 'Data table', 'dropped-rows': 'Dropped rows', 'expandable-table': 'Expandable table',
             'feature-tiles': 'Feature tiles', 'link-cards': 'Link cards',
             'disclosure': 'Disclosure', 'empty-state': 'Empty state',
             'form-strip': 'Form strip', 'match-log': 'Match log', 'top-cut': 'Top cut',
@@ -200,6 +200,43 @@
                         <td class="font-bold text-ink">{{ row.name }}</td>
                         <td class="text-center"><twig:BonusPoints :value="row.bonus" chip /></td>
                         <td class="pr-4 text-right font-black text-ink">{{ row.total }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </twig:DataTable>
+        </twig:Card>
+
+        <twig:Card id="dropped-rows">
+            <twig:SectionHeading title="Dropped rows" rule />
+            <p class="mb-4 text-xs text-ink-muted">
+                A result the cap drops stays in the table as an <code>is-dropped</code> row, struck through,
+                with hidden text saying so to a screen reader. Its <code>is-link-cell</code> keeps the link's
+                touch target over the chip.
+            </p>
+            <twig:DataTable>
+                <thead>
+                <tr>
+                    <th>Tournament</th>
+                    <th class="text-center">Base F1 pts</th>
+                    <th class="pr-4 text-right font-bold text-brand">Total</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in [
+                    {name: 'Gamesplus 13-09', f1: 15, bonus: 10, counts: true},
+                    {name: 'Gamebreaker 15-08', f1: 11, bonus: 0, counts: true},
+                    {name: 'Gamesplus 09-06', f1: 1, bonus: 10, counts: false},
+                    {name: 'Gamebreaker 04 July', f1: 1, bonus: 0, counts: false},
+                ] %}
+                    <tr{{ row.counts ? '' : ' class="is-dropped"' }}>
+                        <td class="is-link-cell">
+                            <a href="#dropped-rows" class="font-bold text-ink transition-colors outline-none hover:text-brand focus:text-brand">{{ row.name }}{% if not row.counts %}<span class="sr-only">, not counted</span>{% endif %}</a>
+                            {% if row.bonus > 0 %}
+                                <span class="whitespace-nowrap" data-bonus-chip><twig:BonusPoints :value="row.bonus" chip /></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ row.f1 }}</td>
+                        <td class="pr-4 text-right font-black whitespace-nowrap text-ink">{{ row.f1 + row.bonus }} <span class="text-xs font-normal text-ink-faint">pts</span></td>
                     </tr>
                 {% endfor %}
                 </tbody>

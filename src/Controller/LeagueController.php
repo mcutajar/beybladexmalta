@@ -16,6 +16,7 @@ use App\Repository\TournamentTeamRepository;
 use App\Service\LeagueRecordsPresenter;
 use App\Service\PlayerCareerPresenter;
 use App\Service\SeasonIndexPresenter;
+use App\Service\SeasonPointsPresenter;
 use App\Service\TournamentArchivePresenter;
 use App\Service\TournamentShelfPresenter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -93,7 +94,7 @@ class LeagueController extends AbstractController
      *   and no grand total anywhere on the page.
      */
     #[Route('/player/{slug}', name: 'player_page', methods: ['GET'])]
-    public function playerPage(string $slug, Request $request, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects, TournamentStageRepository $stages, TournamentResultRepository $results, PlayerCareerPresenter $careerPresenter): Response
+    public function playerPage(string $slug, Request $request, PlayerRepository $playerRepository, SeasonRepository $seasonRepository, PlayerMergeRedirectRepository $redirects, TournamentStageRepository $stages, TournamentResultRepository $results, PlayerCareerPresenter $careerPresenter, SeasonPointsPresenter $pointsPresenter): Response
     {
         $player = $playerRepository->findOneBy(['slug' => $slug]);
 
@@ -129,6 +130,7 @@ class LeagueController extends AbstractController
         }
 
         $id = (int) $player->getId();
+        $seasons = $seasonRepository->ordered();
 
         return $this->render('league/player_details.html.twig', [
             'player' => $player,
@@ -142,9 +144,17 @@ class LeagueController extends AbstractController
              * render rather than two. A season scope is that season's block on
              * its own; Overall is every season's, each with its own best-14
              * subtotal and no total across them.
+             *
+             * Every result is listed and the ones the best-14 cap drops are
+             * struck; the subtotal adds the counted ones only, so it agrees
+             * with the leaderboard.
              */
-            'points' => $this->pointsBySeason($playerRepository->getPlayerContributionsBySeason($id), $season),
-            'seasons' => $seasonRepository->ordered(),
+            'points' => $pointsPresenter->present(
+                $playerRepository->getPlayerContributionsBySeason($id),
+                $season,
+                [] === $seasons ? null : $seasons[count($seasons) - 1],
+            ),
+            'seasons' => $seasons,
             'current_season' => $season,
         ]);
     }
@@ -172,43 +182,6 @@ class LeagueController extends AbstractController
             ['slug' => $player->getSlug(), 'season' => $slug],
             Response::HTTP_MOVED_PERMANENTLY,
         );
-    }
-
-    /**
-     * One blader's scoring events, filed under the season each scored in.
-     *
-     * **No total across seasons, here or anywhere the page can reach.** The
-     * subtotal belongs to its season and travels with it, which is also why it
-     * is rendered on the same line as the season's heading — a figure orphaned
-     * from its season is exactly the cross-season total this forbids.
-     *
-     * @param list<array<string, mixed>> $rows
-     *
-     * @return list<array{slug: string, name: string, total: int, events: list<array<string, mixed>>}>
-     */
-    private function pointsBySeason(array $rows, ?Season $scope): array
-    {
-        $blocks = [];
-
-        foreach ($rows as $row) {
-            $slug = (string) $row['season_slug'];
-
-            if (null !== $scope && $slug !== $scope->getSlug()) {
-                continue;
-            }
-
-            $blocks[$slug] ??= [
-                'slug' => $slug,
-                'name' => (string) $row['season_name'],
-                'total' => 0,
-                'events' => [],
-            ];
-
-            $blocks[$slug]['total'] += (int) $row['total_points'];
-            $blocks[$slug]['events'][] = $row;
-        }
-
-        return array_values($blocks);
     }
 
     /**

@@ -21,6 +21,12 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
     /**
      * Gets live standings filtering by season slug, dynamically checking matching payment conditions per season.
      *
+     * A season counts each blader's best 14 results. **Among equal scores the
+     * most recent result counts and the oldest drops**, the id settling two
+     * events held on the same day in favour of the later import. All three
+     * best-14 windows here order the same way, so the leaderboard and the
+     * player page can never cut a different one of two tied results.
+     *
      * @return list<array<string, mixed>>
      */
     public function getLeagueLeaderboard(string $seasonSlug): array
@@ -35,7 +41,7 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
                 tr.bonus_points,
                 tr.total_points,
                 t.held_on,
-                ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC) as tournament_nth
+                ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC, t.held_on DESC, tr.tournament_id DESC) as tournament_nth
             FROM tournament_results tr
             JOIN tournaments t ON t.id = tr.tournament_id
             JOIN seasons s ON s.id = t.season_id
@@ -86,7 +92,7 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
                     tr.total_points,
                     t.title as tournament_name,
                     t.held_on,
-                    ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC) as tournament_nth
+                    ROW_NUMBER() OVER (PARTITION BY tr.player_id ORDER BY tr.total_points DESC, t.held_on DESC, tr.tournament_id DESC) as tournament_nth
                 FROM tournament_results tr
                 JOIN tournaments t ON t.id = tr.tournament_id
                 JOIN seasons s ON s.id = t.season_id
@@ -101,7 +107,7 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
                 total_points
             FROM RankedResults
             WHERE tournament_nth <= 14
-            ORDER BY held_on DESC
+            ORDER BY held_on DESC, tournament_id DESC
         ';
 
         $resultSet = $conn->executeQuery($sql, [
@@ -121,6 +127,11 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
      * also why nothing here totals across seasons and the profile shows no
      * grand total — the contract forbids summing points across seasons, and
      * every alternative is a figure the league does not award.
+     *
+     * Every result is returned, not only the counted fourteen: `counts` says
+     * whether the row is inside its season's best 14, so the page can strike
+     * the ones the cap drops rather than silently leaving them out. Anything
+     * that totals these rows has to add the counted ones only.
      *
      * An unranked event cannot appear: it has no `TournamentResult` row, which
      * is what this reads.
@@ -143,7 +154,7 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
                     s.id AS season_id,
                     s.slug AS season_slug,
                     s.name AS season_name,
-                    ROW_NUMBER() OVER (PARTITION BY s.id ORDER BY tr.total_points DESC) AS season_nth
+                    ROW_NUMBER() OVER (PARTITION BY s.id ORDER BY tr.total_points DESC, t.held_on DESC, tr.tournament_id DESC) AS season_nth
                 FROM tournament_results tr
                 JOIN tournaments t ON t.id = tr.tournament_id
                 JOIN seasons s ON s.id = t.season_id
@@ -157,10 +168,10 @@ class PlayerRepository extends ServiceEntityRepository implements PlayerReposito
                 bonus_points,
                 total_points,
                 season_slug,
-                season_name
+                season_name,
+                season_nth <= 14 AS counts
             FROM RankedResults
-            WHERE season_nth <= 14
-            ORDER BY season_id DESC, held_on DESC
+            ORDER BY season_id DESC, held_on DESC, tournament_id DESC
         ';
 
         return $conn->executeQuery($sql, ['playerId' => $playerId])->fetchAllAssociative();
