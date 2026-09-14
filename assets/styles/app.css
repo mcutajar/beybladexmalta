@@ -98,6 +98,41 @@
         @apply -my-4 block py-4;
     }
 
+    /*
+       A link that shares its cell — a bonus chip wrapping inline with the
+       name — cannot be a block without pushing the chip off its line, and
+       stops being `:only-child` besides. So a cell that opts in with
+       `is-link-cell` stretches its leading link over the whole cell instead,
+       and the chip sits under it. The
+       overlay needs its z-index: a dimmed chip's opacity paints it in a
+       layer of its own, above an overlay without one. Opt-in rather than
+       inferred, because a cell holding several links (a 2v2 team's bladers)
+       must not have its first one swallow the rest.
+    */
+    .data-table td.is-link-cell {
+        @apply relative;
+    }
+
+    .data-table td.is-link-cell > a:first-child::after {
+        @apply absolute inset-0 z-1 content-[''];
+    }
+
+    /*
+       A result that counts for nothing — a season's fifteenth, past its best
+       14. Struck rather than hidden, so the page still says it was played.
+       Important, because a row state has to beat the colour utilities its
+       own cells carry. Strikethrough is silent to a screen reader, so a row
+       in this state also carries visually hidden text saying so.
+    */
+    .data-table tbody tr.is-dropped td,
+    .data-table tbody tr.is-dropped td a {
+        @apply text-ink-faint! line-through decoration-flame/70;
+    }
+
+    .data-table tbody tr.is-dropped [data-bonus-chip] {
+        @apply opacity-50;
+    }
+
     /* Reference tables that are read rather than scanned sit tighter. */
     .data-table.is-dense th,
     .data-table.is-dense td {
