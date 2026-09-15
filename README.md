@@ -2,143 +2,123 @@
 
 [![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/mcutajar/beybladexmalta/badges/coverage.json)](https://github.com/mcutajar/beybladexmalta/actions/workflows/ci.yaml)
 
-A Symfony 8.1 application for managing Malta Beyblade league rankings, tournament imports, and seasonal registration payments.
+The website that runs the Malta Beyblade Community League. It keeps the season
+rankings, imports tournament results straight from Challonge brackets, and tracks
+who has paid their seasonal registration — so the leaderboard players see is the
+one the organisers actually agreed on.
 
-## Architecture summary
+## Who it is for
 
-- Symfony 8.1 + PHP 8.5
-- Doctrine ORM entities for players, seasons, tournaments, results and season registrations
-- Custom SQL-based leaderboard aggregation in repository classes
-- Admin import and registration workflows implemented via web forms and CLI commands
-- FrankenPHP / Caddy-based Docker runtime for production-like deployments
-- Tailwind CSS assets built through `symfonycasts/tailwind-bundle`, with design
-  tokens and a Twig component library under `templates/components/`
+- **Players**, who mostly visit on a phone to check where they stand: the season
+  leaderboard, their own results, past seasons and records.
+- **Organisers**, who run the tournaments and keep the league honest: importing a
+  finished bracket, registering payments, and merging a blader who turned up
+  under two names.
 
-## Runtime
+## Why it is useful
 
-The application runs inside Docker using the following services:
+A local league outgrows a spreadsheet quickly. Scores are capped at each player's
+best 14 results, only registered players count towards a season, and the same
+person enters brackets under three different spellings. This app does those rules
+once, in one place:
 
-- `php` – FrankenPHP application container
-- `database` – PostgreSQL 16
-- `tunnel` – optional Cloudflare Tunnel sidecar
+- **Rankings that follow the league's rules** — best-14 scoring and payment gating
+  are applied by the leaderboard itself, and a player's page shows which results
+  the cap dropped.
+- **Imports without retyping** — a Challonge bracket is read, previewed, matched
+  onto known bladers and archived, rather than copied in by hand.
+- **A full history of every admin action** — each one is recorded as a replayable
+  command, so the league's data can be rebuilt from scratch at any time.
+- **Built for the phone first**, because that is where almost everyone reads it.
 
-Startup commands:
+## Getting started
 
-- Production: `make deploy VERSION=1.1.0`
-- Development: `make setup` (see [Local development](#local-development) for where
-  to run it)
+Everything runs in Docker; PHP, Composer and Postgres are not needed on the host.
+You need Docker with Compose, `make`, and `git`.
 
-Both wrap `docker compose` with `--env-file .env --env-file .env.local` and the
-right Compose file. Naming both env files is deliberate: a `--env-file` replaces
-the `.env` Compose would otherwise read, so passing only `.env.local` blanks out
-every variable the committed `.env` defines. Repeated flags layer, with the later
-file winning.
+Run the dev stack from a **git worktree** rather than the checkout that serves
+production — Compose names a project after its directory, so a stack started in
+the production checkout replaces the live container:
 
-## Releases
-
-Production runs a published, versioned image — never a build made on the host.
-A git tag is what publishes one:
-
-```
-make release VERSION=1.1.0   # from the production checkout: checks, tags, pushes
-                             # CI then tests, builds and publishes the image
-make deploy VERSION=1.1.0    # from the production checkout: pulls it, restarts
-make rollback VERSION=1.0.0  # the same, pointed at an earlier version
-make versions                # the releases, with the live one marked
-```
-
-Images are kept at `ghcr.io/mcutajar/beybladexmalta`, one tag per version, and
-nothing prunes them — so any release can be started again, and a rollback is a
-pull rather than a rebuild. Versions follow semantic versioning and are never
-reused.
-
-`make deploy` checks that the deploy actually landed: that the kernel boots, that
-the compiled cache is newer than the code it shipped, and that the container is
-running the version that was asked for. The first two have gone wrong before, and
-neither takes the site down in a way that is obvious from the outside.
-
-Secrets are not in the image. The published image is public and is built by CI
-from a checkout with no `.env.local`, so `APP_SECRET`, `DATABASE_URL` and the
-admin passphrases are passed into the container at run time from the production
-host's env files; `make deploy` refuses to start when one of them is empty.
-
-[`docs/RELEASING.md`](docs/RELEASING.md) has the whole procedure, including what
-to bump and what a rollback does not undo.
-
-## Local development
-
-**Run the dev stack from a git worktree, not the checkout that runs production.**
-Compose derives a project name from the directory, so a dev stack started in the
-production checkout is not a second stack — it replaces the live container. `make
-up`, `down` and `build` refuse when they find a production container, but the habit
-is what keeps you out of trouble:
-
-```
+```bash
 git worktree add .claude/worktrees/<name> -b <branch>
 cd .claude/worktrees/<name>
 make setup
 ```
 
-A worktree gets its own Compose project, network and volumes automatically. Only
-the published ports are shared, so if 80, 443 or 15432 are taken, set `HTTP_PORT`,
-`HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local`.
+`make setup` starts the stack, builds the stylesheet and populates the database,
+and is safe to re-run. If ports 80, 443 or 15432 are taken, set `HTTP_PORT`,
+`HTTPS_PORT` and `DB_PORT` in a gitignored `.env.local`. The dev stack serves plain
+HTTP, so open `http://localhost` (or your `HTTP_PORT`).
 
-All tooling runs inside the container; PHP and Composer are not needed on the host.
-The `Makefile` wraps `docker compose exec` for each tool, and `make help` lists
-every target.
+Day to day:
 
+```bash
+make check     # code style, static analysis and the test suite
+make phpunit   # just the tests
+make help      # every other target
 ```
-make setup     # start the stack, build the stylesheet, populate the database
-make check     # code style, static analysis and tests
+
+## How it is built
+
+- Symfony 8.1 on PHP 8.5, served by FrankenPHP
+- PostgreSQL 16 through Doctrine ORM, with the leaderboard written as raw SQL
+- Twig and Tailwind CSS, with a small component library in
+  [`templates/components/`](templates/components/) and no JavaScript framework
+- Docker Compose services: `php`, `database`, and an optional Cloudflare `tunnel`
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) has the domain model, the services
+and the known weak spots.
+
+## Releases
+
+Production runs a published, versioned image from
+`ghcr.io/mcutajar/beybladexmalta`, never a build made on the host. Tagging a
+release publishes one; deploying pulls it:
+
+```bash
+make release VERSION=1.1.0   # tag it; CI tests, builds and publishes the image
+make deploy VERSION=1.1.0    # pull and start it on the production host
 ```
 
-`make setup` is the whole fresh-clone sequence, and is safe to re-run: it seeds
-only when the database has no schema yet. `make up`, `make tailwind`, `make
-db-create` and `make seed` are available individually.
-
-The Tailwind stylesheet is a build artifact and is not committed. Without it the
-app fails with an AssetMapper error, so build it after cloning; the production
-image builds its own during `docker build`.
-
-## The database schema
-
-The schema is not versioned through migrations — `migrations/` is empty
-deliberately. Tables are created from the current entity mapping with
-`doctrine:schema:create`, and the data is rebuilt by replaying `repeat.sh`, the
-accumulated ledger of every admin action ever taken. Applying a schema change
-therefore means taking the site down, dropping the database, recreating it and
-replaying the ledger.
-
-`make db-reset` runs exactly that sequence against the dev stack. It refuses to
-run unless it is pointed at `compose.override.yaml`, so it cannot drop a
-production database.
-
-## Admin workflows
-
-Admin endpoints currently use environment passphrases instead of a full Symfony security firewall:
-
-- `TOURNAMENTS_ADMIN_PASSPHRASE` protects `/admin/import`
-- `PAYMENTS_ADMIN_PASSPHRASE` protects `/admin/payments`
-
-These values should be set in a local environment file, and the app should be hardened before production.
+[`docs/RELEASING.md`](docs/RELEASING.md) has the full procedure, including
+rollbacks and schema changes. [`CHANGELOG.md`](CHANGELOG.md) lists what each
+release changed.
 
 ## Documentation
 
-- `AGENTS.md` — working conventions: where to run the stack, the rules that
-  apply everywhere, and the traps that are easy to lose an hour to.
-- `.agents/skills/` (also exposed at `.claude/skills/` for Claude Code) — the
-  detail that only matters inside one subsystem, loaded on demand: `dev-stack`,
-  `writing-tests`, `design-system`, `design-proposal`, `challonge-import`,
-  `release-and-deploy`.
-- `docs/ARCHITECTURE.md` — architecture overview, domain model, and
-  refactor/security recommendations.
-- `docs/MOBILE.md` — the mobile-first rule and the measurements the current
-  layout was verified against.
+| Document | What it covers |
+| --- | --- |
+| [`AGENTS.md`](AGENTS.md) | Working conventions: where to run the stack, the rules that apply everywhere, and the traps worth knowing about |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Architecture, domain model and hardening recommendations |
+| [`docs/RELEASING.md`](docs/RELEASING.md) | Versioning, publishing, deploying and rolling back |
+| [`docs/MOBILE.md`](docs/MOBILE.md) | The mobile-first rule and the measurements the layout was checked against |
+| [`docs/DESIGN-PROPOSALS.md`](docs/DESIGN-PROPOSALS.md) | How a new page layout is proposed before it is built |
+| [`.agents/skills/`](.agents/skills/) | Subsystem detail loaded on demand — the dev stack, tests, the design system, Challonge imports, releases |
 
-## Notes
+## Admin access
 
-- The test suite covers the payment and tournament import workflows; run it with `make phpunit`.
-- Import and payment history are currently logged to `var/log/command_ledger.sh`.
+The admin pages are gated by passphrases supplied to the container at run time
+through `TOURNAMENTS_ADMIN_PASSPHRASE` and `PAYMENTS_ADMIN_PASSPHRASE`. Neither is
+committed or baked into the image, and an unset passphrase refuses every request
+rather than letting one through.
+
+If you find a security problem, please don't describe it in a public issue.
+[Report it privately](https://github.com/mcutajar/beybladexmalta/security/advisories/new)
+instead — only the maintainer will see it.
+
+## Getting help
+
+Questions, bugs and suggestions all go to the
+[issue tracker](https://github.com/mcutajar/beybladexmalta/issues). If you run a
+league of your own and want to try this on it, an issue is the place to ask too.
+
+## Maintainer
+
+Maintained by [Matthew Cutajar](https://github.com/mcutajar), who is also the
+person to ask about anything above. Contributions are welcome — open an issue
+first for anything larger than a small fix, so the approach can be agreed before
+the work is done.
 
 ## License
 
