@@ -5,6 +5,21 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.6.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.6.0) - 2026-09-15
+
+### Features
+
+- Add latest tournaments ([04823eb](https://github.com/mcutajar/beybladexmalta/commit/04823eb34827045da1f79c0741db3274ff7a1980))
+- Strike the results a season's best-14 cap drops on the player page ([8b4834a](https://github.com/mcutajar/beybladexmalta/commit/8b4834a65bcf8965a8adc4c624086523488ea2b6))
+
+### Fixes
+
+- Typo ([c21febb](https://github.com/mcutajar/beybladexmalta/commit/c21febb6289bfb312f193f4da7f4c93d5b238d32))
+
+### Maintenance
+
+- Keep the Tailwind binary out of the production image ([7599329](https://github.com/mcutajar/beybladexmalta/commit/7599329f1a479541de753ac069fa53cf7cace5c5))
+
 ## [1.5.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.5.0) - 2026-09-09
 
 ### Features
