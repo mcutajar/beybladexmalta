@@ -574,7 +574,29 @@ final class BracketImportControllerTest extends AdminPageTestCase
          * own placement is the row's place in the list — so the entrant below
          * the dropped one moves up and is paid for third.
          */
-        self::assertResultAtRank($tournament, rank: 3, player: self::MISSPELLED, f1Points: 15);
+        self::assertResultAtRank($tournament, rank: 3, player: 'giglio15', f1Points: 15);
+    }
+
+    public function testAChallongeInvitationStatusNeverBecomesPartOfANewBladersName(): void
+    {
+        $this->league();
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket($client);
+
+        $this->confirm($client, $crawler, [
+            'decision['.self::UNKNOWN_KEY.']' => 'drop',
+            'decision['.self::MISSPELLED_KEY.']' => 'create',
+        ]);
+
+        $this->assertRedirectsToImportedTournament();
+
+        PlayerFactory::assert()->exists(['name' => 'giglio15']);
+        PlayerFactory::assert()->notExists(['name' => self::MISSPELLED]);
+        self::assertContains(
+            sprintf('php bin/console app:create-blader %s', escapeshellarg('giglio15')),
+            $this->ledgerLines(),
+        );
     }
 
     /**

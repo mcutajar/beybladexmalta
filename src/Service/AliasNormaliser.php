@@ -42,11 +42,19 @@ class AliasNormaliser
 
     private const PUNCTUATION = '/[^\p{L}\p{N}]+/u';
 
+    /**
+     * The name the league may use when an operator creates a blader from a
+     * Challonge entrant. Case and punctuation belong to the entrant; the
+     * invitation status belongs only to Challonge.
+     */
+    public function bladerName(string $name): string
+    {
+        return trim((string) preg_replace(self::INVITATION_PENDING, '', trim($name)));
+    }
+
     public function normalise(string $name): string
     {
-        $folded = mb_strtolower(trim($name));
-
-        $folded = (string) preg_replace(self::INVITATION_PENDING, '', $folded);
+        $folded = mb_strtolower($this->bladerName($name));
 
         return (string) preg_replace(self::PUNCTUATION, '', $folded);
     }

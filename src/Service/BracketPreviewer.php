@@ -292,6 +292,7 @@ class BracketPreviewer
         $decision = new BracketDecision(
             key: $normalised,
             name: $name,
+            newBladerName: $this->normaliser->bladerName($name),
             isCollision: $resolution->isAmbiguous(),
             problem: $resolution->problem(),
             suggestions: $resolution->suggestions,
@@ -310,7 +311,7 @@ class BracketPreviewer
 
         $reading = match (true) {
             null !== $blader => ['name' => $name, 'blader' => $blader, 'isNew' => false, 'dropped' => false],
-            BracketAnswers::CREATE === $answer => ['name' => $name, 'blader' => trim($name), 'isNew' => true, 'dropped' => false],
+            BracketAnswers::CREATE === $answer => ['name' => $name, 'blader' => $decision->newBladerName, 'isNew' => true, 'dropped' => false],
             BracketAnswers::DROP === $answer => ['name' => $name, 'blader' => null, 'isNew' => false, 'dropped' => true],
             default => ['name' => $name, 'blader' => null, 'isNew' => false, 'dropped' => false],
         };
@@ -558,7 +559,7 @@ class BracketPreviewer
             }
 
             if (BracketAnswers::CREATE === $decision->answer) {
-                $lines[] = $this->ledgerService->createBladerCommand(trim($decision->name));
+                $lines[] = $this->ledgerService->createBladerCommand($decision->newBladerName);
             }
 
             $blader = $this->bladerNamed($decision->answer);
