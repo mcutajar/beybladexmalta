@@ -57,6 +57,22 @@ final class AliasNormaliserTest extends TestCase
     /**
      * @return iterable<string, array{string, string}>
      */
+    public static function bladerNames(): iterable
+    {
+        yield 'invitation status' => ['Rickey (invitation pending)', 'Rickey'];
+        yield 'repeated invitation status' => ['Myers6 (invitation pending) (invitation pending)', 'Myers6'];
+        yield 'case and punctuation stay' => [' Guy "The {Bracket}" \\o/ ', 'Guy "The {Bracket}" \\o/'];
+    }
+
+    #[DataProvider('bladerNames')]
+    public function testItRemovesOnlyChallongeArtifactsFromABladersName(string $spelling, string $name): void
+    {
+        self::assertSame($name, $this->normaliser->bladerName($spelling));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
     public static function differentBladers(): iterable
     {
         yield 'two letters apart, and two people' => ['Obelix', 'Obelisk'];

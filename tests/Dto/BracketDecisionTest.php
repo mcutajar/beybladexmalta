@@ -52,6 +52,7 @@ final class BracketDecisionTest extends ServiceTestCase
         return new BracketDecision(
             key: 'bladerx',
             name: 'Blader X',
+            newBladerName: 'Blader X',
             isCollision: false,
             problem: '',
             suggestions: array_map(

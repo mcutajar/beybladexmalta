@@ -42,19 +42,22 @@ final readonly class BracketDecision
     public string $answer;
 
     /**
-     * @param string                $key         the field name this is answered under, which is the
-     *                                           normalised spelling — two entrants spelled the same way
-     *                                           in the group stage and the cut are one decision
-     * @param string                $name        as the bracket spelled it
-     * @param list<AliasSuggestion> $suggestions best first; empty when nothing came close
-     * @param ?int                  $rank        where they finished, when the standings say so
-     * @param int                   $matches     how many matches they played, across every stage
-     * @param string                $answer      what has been chosen so far, echoed back so a re-render
-     *                                           does not lose it
+     * @param string                $key           the field name this is answered under, which is the
+     *                                             normalised spelling — two entrants spelled the same way
+     *                                             in the group stage and the cut are one decision
+     * @param string                $name          as the bracket spelled it
+     * @param string                $newBladerName the league-owned name to use if the answer creates a
+     *                                             blader, with Challonge-only artifacts removed
+     * @param list<AliasSuggestion> $suggestions   best first; empty when nothing came close
+     * @param ?int                  $rank          where they finished, when the standings say so
+     * @param int                   $matches       how many matches they played, across every stage
+     * @param string                $answer        what has been chosen so far, echoed back so a re-render
+     *                                             does not lose it
      */
     public function __construct(
         public string $key,
         public string $name,
+        public string $newBladerName,
         public bool $isCollision,
         public string $problem,
         public array $suggestions,

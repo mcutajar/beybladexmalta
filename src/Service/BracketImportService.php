@@ -228,7 +228,7 @@ class BracketImportService
                 continue;
             }
 
-            if (CreateBladerResult::Created !== $this->bladers->create($decision->name)) {
+            if (CreateBladerResult::Created !== $this->bladers->create($decision->newBladerName)) {
                 continue;
             }
 
@@ -244,7 +244,8 @@ class BracketImportService
              * how you find out that the row was never examined.
              */
             $this->logger->info('Blader created from an import preview', [
-                'name' => $decision->name,
+                'name' => $decision->newBladerName,
+                'challonge_name' => $decision->name,
                 'answer' => $decision->wasSeeded() ? 'taken as the default' : 'chosen',
                 'bracket' => $preview->slug,
             ]);
