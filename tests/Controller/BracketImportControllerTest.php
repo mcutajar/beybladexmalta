@@ -129,6 +129,27 @@ final class BracketImportControllerTest extends AdminPageTestCase
         self::assertFileDoesNotExist($this->importPath());
     }
 
+    public function testTrackingJunkNeverEntersTheStoredBracketUrl(): void
+    {
+        $this->league();
+
+        $client = $this->createBrowser();
+        $crawler = $this->fetchBracket(
+            $client,
+            url: 'https://www.challonge.com/'.FakeChallonge::SLUG.'?fbclid=tracking#standings',
+        );
+
+        $this->confirm($client, $crawler, $this->everyNameAnswered());
+
+        $this->assertRedirectsToImportedTournament();
+
+        $canonical = 'https://challonge.com/'.FakeChallonge::SLUG;
+
+        self::assertSame($canonical, self::findTournament(self::TITLE)->getChallongeUrl());
+        self::assertStringContainsString('--challonge='.escapeshellarg($canonical), implode("\n", $this->ledgerLines()));
+        self::assertStringNotContainsString('fbclid', implode("\n", $this->ledgerLines()));
+    }
+
     /**
      * The safe way round. An unnecessary blader is a duplicate row you can see
      * and merge; an unnecessary alias welds two people together and cannot be
@@ -350,7 +371,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
                     escapeshellarg(self::DATE),
                     escapeshellarg($this->importPath()),
                     escapeshellarg(self::SEASON),
-                    escapeshellarg('challonge.com/'.FakeChallonge::SLUG),
+                    escapeshellarg('https://challonge.com/'.FakeChallonge::SLUG),
                     escapeshellarg($this->snapshotPath()),
                     escapeshellarg(self::KNOWN),
                 ),
