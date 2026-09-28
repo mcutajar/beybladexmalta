@@ -5,6 +5,12 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.7.2](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.7.2) - 2026-09-28
+
+### Fixes
+
+- Make Josef the canonical player ([2bb58ee](https://github.com/mcutajar/beybladexmalta/commit/2bb58eefc3a6b5c78dd6ab6e538f5aaadc4dae9b))
+
 ## [1.7.1](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.7.1) - 2026-09-28
 
 ### Fixes
