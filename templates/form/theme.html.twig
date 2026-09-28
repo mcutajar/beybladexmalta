@@ -29,3 +29,22 @@
     {% set attr = attr|merge({class: ('field ' ~ attr.class|default(''))|trim}) %}
     {{ parent() }}
 {% endblock %}
+
+{% block blade_colour_widget %}
+    {% set swatches = {
+        cyan: 'bg-marker-cyan', amber: 'bg-marker-amber', red: 'bg-marker-red',
+        emerald: 'bg-marker-emerald', blue: 'bg-marker-blue', violet: 'bg-marker-violet',
+    } %}
+    {% set attr = attr|merge({class: ('flex flex-wrap gap-2 ' ~ attr.class|default(''))|trim}) %}
+    <div {{ block('widget_container_attributes') }}>
+        {% for child in form %}
+            <label class="flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border border-line bg-canvas p-1 has-checked:border-ink has-checked:ring-2 has-checked:ring-brand-strong/60">
+                {{ form_widget(child, {attr: {class: 'sr-only'}}) }}
+                <span aria-hidden="true" class="flex h-8 w-8 items-center justify-center rounded-full border border-ink-ghost/60 {{ child.vars.value ? swatches[child.vars.value] : 'border-dashed bg-surface text-ink-muted' }}">
+                    {% if not child.vars.value %}×{% endif %}
+                </span>
+                <span class="sr-only">{{ child.vars.label }}</span>
+            </label>
+        {% endfor %}
+    </div>
+{% endblock %}

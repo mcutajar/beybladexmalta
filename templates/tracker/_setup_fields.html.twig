@@ -35,9 +35,11 @@
                     <twig:Field label="Ratchet" controlId="{{ bladeForm.ratchet.vars.id }}" hint="Optional">{{ form_widget(bladeForm.ratchet) }}</twig:Field>
                     <twig:Field label="Bit" controlId="{{ bladeForm.bit.vars.id }}" hint="Optional">{{ form_widget(bladeForm.bit) }}</twig:Field>
                 </div>
-                <twig:Field label="Colour marker" controlId="{{ bladeForm.colour.vars.id }}" hint="Optional; the lane letter always remains visible.">
+                <fieldset class="space-y-2">
+                    <legend class="text-xs font-bold uppercase tracking-wider text-ink-muted">Colour marker</legend>
                     {{ form_widget(bladeForm.colour) }}
-                </twig:Field>
+                    <p class="text-[11px] italic text-ink-faint">Optional; the lane letter always remains visible.</p>
+                </fieldset>
             </div>
         </fieldset>
     {% endfor %}

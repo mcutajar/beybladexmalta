@@ -1,7 +1,7 @@
 {% extends 'base.html.twig' %}
 
 {% block title %}{{ tracker.playerName }} at {{ tracker.tournamentName }} | Performance tracker{% endblock %}
-{% block description %}Read-only match-by-match Beyblade X performance for {{ tracker.playerName }} at {{ tracker.tournamentName }}.{% endblock %}
+{% block description %}Read-only match-and-round Beyblade X performance for {{ tracker.playerName }} at {{ tracker.tournamentName }}.{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 {% block canonical %}{{ site_url }}{{ path('performance_tracker_share', {shareId: tracker.shareId}) }}{% endblock %}
 {% block column %}max-w-7xl overflow-x-clip px-3 py-10 sm:px-4 md:py-16{% endblock %}

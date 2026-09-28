@@ -5,7 +5,12 @@
     <tr>
         <th class="sticky left-0 z-2 min-w-48 bg-surface">Blade</th>
         {% for match in tracker.matches %}
-            <th class="min-w-14 text-center">M{{ match.sequence }}</th>
+            {% for round in match.rounds %}
+                <th class="min-w-16 text-center">
+                    <span class="block">M{{ match.sequence }}</span>
+                    <span class="block text-[10px] font-normal text-ink-faint">R{{ round.sequence }}</span>
+                </th>
+            {% endfor %}
         {% endfor %}
         <th class="sticky right-0 z-2 bg-surface text-right">Total</th>
     </tr>
@@ -18,17 +23,20 @@
                 <twig:BladeId lane="{{ blade.lane.value }}" name="{{ blade.displayName }}" combination="{{ blade.combination }}" colour="{{ blade.colour }}" :total="bladeSummary.total" />
             </td>
             {% for match in tracker.matches %}
-                {% set value = match.resultFor(blade).value %}
-                {% set cellLabel = blade.displayName ~ ', match ' ~ match.sequence %}
-                <td class="text-center">
-                    <twig:ScoreCell
-                        value="{{ value.value }}"
-                        label="{{ cellLabel }}"
-                        href="{{ can_edit ? path('performance_tracker_edit', {token: edit_token, match: match.sequence}) ~ '#match-station' : null }}"
-                        data-match-number="{{ match.sequence }}"
-                        data-lane="{{ blade.lane.value }}"
-                    />
-                </td>
+                {% for round in match.rounds %}
+                    {% set value = round.resultFor(blade).value %}
+                    {% set cellLabel = blade.displayName ~ ', match ' ~ match.sequence ~ ', round ' ~ round.sequence %}
+                    <td class="text-center">
+                        <twig:ScoreCell
+                            value="{{ value.value }}"
+                            label="{{ cellLabel }}"
+                            href="{{ can_edit ? path('performance_tracker_edit', {token: edit_token, match: match.sequence, round: round.sequence}) ~ '#match-station' : null }}"
+                            data-match-number="{{ match.sequence }}"
+                            data-round-number="{{ round.sequence }}"
+                            data-lane="{{ blade.lane.value }}"
+                        />
+                    </td>
+                {% endfor %}
             {% endfor %}
             <td class="sticky right-0 z-1 bg-surface text-right font-mono text-base font-black text-ink" data-blade-total="{{ blade.lane.value }}">
                 {{ bladeSummary.total > 0 ? '+' ~ bladeSummary.total : bladeSummary.total }}

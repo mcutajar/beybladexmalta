@@ -17,6 +17,8 @@ final class PerformanceTrackerData
         public int $expectedMatches = 5,
         public array $blades = [],
     ) {
+        $this->heldOn ??= new \DateTimeImmutable('today');
+
         if ([] === $this->blades) {
             $this->blades = [
                 new PerformanceBladeData('Blade A'),

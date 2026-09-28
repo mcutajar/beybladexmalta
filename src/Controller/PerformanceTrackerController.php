@@ -10,6 +10,7 @@ use App\Dto\PerformanceResultValue;
 use App\Dto\PerformanceTrackerData;
 use App\Dto\ScoreEntryData;
 use App\Entity\PerformanceMatch;
+use App\Entity\PerformanceRound;
 use App\Entity\PerformanceTracker;
 use App\Form\PerformanceMatchType;
 use App\Form\PerformanceTrackerType;
@@ -88,14 +89,16 @@ final class PerformanceTrackerController extends AbstractController
         return $this->renderEdit($request, $tracker, $token, $settings);
     }
 
-    #[Route('/tracker/edit/{token}/match/{sequence}/blade/{lane}', name: 'performance_tracker_score', methods: ['POST'], requirements: ['sequence' => '\\d+', 'lane' => 'A|B|C'])]
-    public function score(Request $request, string $token, int $sequence, string $lane): Response
+    #[Route('/tracker/edit/{token}/match/{sequence}/round/{round}/blade/{lane}', name: 'performance_tracker_score', methods: ['POST'], requirements: ['sequence' => '\\d+', 'round' => '\\d+', 'lane' => 'A|B|C'])]
+    public function score(Request $request, string $token, int $sequence, int $round, string $lane): Response
     {
         $tracker = $this->owned($token);
         $bladeLane = PerformanceBladeLane::from($lane);
-        $result = ($tracker->match($sequence) ?? throw $this->createNotFoundException())->resultFor($tracker->blade($bladeLane));
+        $match = $tracker->match($sequence) ?? throw $this->createNotFoundException();
+        $selectedRound = $match->round($round) ?? throw $this->createNotFoundException();
+        $result = $selectedRound->resultFor($tracker->blade($bladeLane));
         $data = new ScoreEntryData($result->getValue()->value);
-        $form = $this->scoreForm($token, $sequence, $bladeLane, $data);
+        $form = $this->scoreForm($token, $sequence, $round, $bladeLane, $data);
         $form->handleRequest($request);
 
         if (!$form->isSubmitted() || !$form->isValid()) {
@@ -105,16 +108,16 @@ final class PerformanceTrackerController extends AbstractController
 
             $this->addFlash('error', 'Choose one of the listed results.');
 
-            return $this->redirectToRoute('performance_tracker_edit', ['token' => $token, 'match' => $sequence]);
+            return $this->redirectToRoute('performance_tracker_edit', ['token' => $token, 'match' => $sequence, 'round' => $round]);
         }
 
         /** @var ScoreEntryData $entry */
         $entry = $form->getData();
         $value = PerformanceResultValue::from($entry->result);
-        $update = $this->trackerService->record($tracker, $sequence, $bladeLane, $value);
+        $update = $this->trackerService->record($tracker, $sequence, $round, $bladeLane, $value);
         $summary = $this->presenter->summarise($tracker);
         $blade = $summary->forLane($bladeLane);
-        $announcement = sprintf('%s, match %d, saved as %s. New total %s.', $blade->blade->getDisplayName(), $sequence, $value->label(), self::signed($blade->total));
+        $announcement = sprintf('%s, match %d round %d, saved as %s. New total %s.', $blade->blade->getDisplayName(), $sequence, $round, $value->label(), self::signed($blade->total));
 
         if ($request->isXmlHttpRequest()) {
             return new JsonResponse([
@@ -123,6 +126,7 @@ final class PerformanceTrackerController extends AbstractController
                 'label' => $value->label(),
                 'lane' => $lane,
                 'match' => $sequence,
+                'round' => $round,
                 'bladeTotal' => self::signed($blade->total),
                 'bladeAverage' => self::average($blade->average()),
                 'bladeAppearances' => $blade->appearances,
@@ -131,19 +135,14 @@ final class PerformanceTrackerController extends AbstractController
                 'bladeBest' => null === $blade->best ? '—' : self::signed($blade->best),
                 'overallTotal' => self::signed($summary->total),
                 'overallAverage' => self::average($summary->average()),
-                'reload' => $update->stationChanged,
-                'redirect' => $this->generateUrl('performance_tracker_edit', ['token' => $token]),
+                'reload' => $update->roundCompleted,
+                'redirect' => $this->generateUrl('performance_tracker_edit', ['token' => $token, 'match' => $sequence, 'round' => $round]),
             ]);
         }
 
         $this->addFlash('success', $announcement);
 
-        $routeParameters = ['token' => $token];
-        if (!$update->stationChanged) {
-            $routeParameters['match'] = $sequence;
-        }
-
-        return $this->redirectToRoute('performance_tracker_edit', $routeParameters);
+        return $this->redirectToRoute('performance_tracker_edit', ['token' => $token, 'match' => $sequence, 'round' => $round]);
     }
 
     #[Route('/tracker/edit/{token}/match/{sequence}', name: 'performance_tracker_match_update', methods: ['POST'], requirements: ['sequence' => '\\d+'])]
@@ -179,6 +178,55 @@ final class PerformanceTrackerController extends AbstractController
         return $this->redirectToRoute('performance_tracker_edit', ['token' => $token, 'match' => $match->getSequence()]);
     }
 
+    #[Route('/tracker/edit/{token}/match/{sequence}/rounds', name: 'performance_tracker_round_add', methods: ['POST'], requirements: ['sequence' => '\\d+'])]
+    public function addRound(Request $request, string $token, int $sequence): Response
+    {
+        $tracker = $this->owned($token);
+        if (!$this->isCsrfTokenValid('add-performance-round-'.$sequence, $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $round = $this->trackerService->addRound($tracker, $sequence);
+
+        return $this->redirectToRoute('performance_tracker_edit', ['token' => $token, 'match' => $sequence, 'round' => $round->getSequence()]);
+    }
+
+    #[Route('/tracker/edit/{token}/match/{sequence}/round/{round}/remove', name: 'performance_tracker_round_remove', methods: ['POST'], requirements: ['sequence' => '\\d+', 'round' => '\\d+'])]
+    public function removeRound(Request $request, string $token, int $sequence, int $round): Response
+    {
+        $tracker = $this->owned($token);
+        if (!$this->isCsrfTokenValid('remove-performance-round-'.$sequence.'-'.$round, $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException();
+        }
+
+        try {
+            $this->trackerService->removeRound($tracker, $sequence, $round);
+            $this->addFlash('success', sprintf('Round %d removed from match %d. Other round numbers were kept.', $round, $sequence));
+        } catch (\DomainException $exception) {
+            $this->addFlash('error', $exception->getMessage());
+        }
+
+        return $this->redirectToRoute('performance_tracker_edit', ['token' => $token, 'match' => $sequence]);
+    }
+
+    #[Route('/tracker/edit/{token}/match/{sequence}/finish', name: 'performance_tracker_match_finish', methods: ['POST'], requirements: ['sequence' => '\\d+'])]
+    public function finishMatch(Request $request, string $token, int $sequence): Response
+    {
+        $tracker = $this->owned($token);
+        if (!$this->isCsrfTokenValid('finish-performance-match-'.$sequence, $request->request->getString('_token'))) {
+            throw $this->createAccessDeniedException();
+        }
+
+        try {
+            $this->trackerService->finishMatch($tracker, $sequence);
+            $this->addFlash('success', sprintf('Match %d finished.', $sequence));
+        } catch (\DomainException $exception) {
+            $this->addFlash('error', $exception->getMessage());
+        }
+
+        return $this->redirectToRoute('performance_tracker_edit', ['token' => $token]);
+    }
+
     #[Route('/tracker/edit/{token}/match/{sequence}/remove', name: 'performance_tracker_match_remove', methods: ['POST'], requirements: ['sequence' => '\\d+'])]
     public function removeMatch(Request $request, string $token, int $sequence): Response
     {
@@ -206,7 +254,7 @@ final class PerformanceTrackerController extends AbstractController
                 throw $this->createAccessDeniedException();
             }
             $this->trackerService->reset($tracker);
-            $this->addFlash('success', 'Every match result was reset. Your tracker setup was kept.');
+            $this->addFlash('success', 'Every round result was reset. Your tracker setup was kept.');
 
             return $this->redirectToRoute('performance_tracker_edit', ['token' => $token]);
         }
@@ -222,7 +270,7 @@ final class PerformanceTrackerController extends AbstractController
             throw $this->createAccessDeniedException();
         }
         $copy = $this->trackerService->duplicate($tracker);
-        $this->addFlash('success', 'Fresh tracker created. No match results were copied.');
+        $this->addFlash('success', 'Fresh tracker created. No round results were copied.');
 
         return $this->redirectToRoute('performance_tracker_edit', ['token' => $copy->editToken]);
     }
@@ -254,12 +302,14 @@ final class PerformanceTrackerController extends AbstractController
     private function renderEdit(Request $request, PerformanceTracker $tracker, string $token, FormInterface $settings): Response
     {
         $selected = $this->selectedMatch($request, $tracker);
+        $selectedRound = $this->selectedRound($request, $selected);
         $scoreForms = [];
         foreach ($tracker->getBlades() as $blade) {
-            $value = $selected->resultFor($blade)->getValue();
+            $value = $selectedRound->resultFor($blade)->getValue();
             $scoreForms[$blade->getLane()->value] = $this->scoreForm(
                 $token,
                 $selected->getSequence(),
+                $selectedRound->getSequence(),
                 $blade->getLane(),
                 new ScoreEntryData($value->value),
             )->createView();
@@ -269,6 +319,7 @@ final class PerformanceTrackerController extends AbstractController
             'tracker' => $tracker,
             'summary' => $this->presenter->summarise($tracker),
             'selected_match' => $selected,
+            'selected_round' => $selectedRound,
             'score_forms' => $scoreForms,
             'match_form' => $this->matchForm($token, $selected)->createView(),
             'settings_form' => $settings->createView(),
@@ -277,14 +328,14 @@ final class PerformanceTrackerController extends AbstractController
     }
 
     /** @return FormInterface<ScoreEntryData> */
-    private function scoreForm(string $token, int $sequence, PerformanceBladeLane $lane, ScoreEntryData $data): FormInterface
+    private function scoreForm(string $token, int $match, int $round, PerformanceBladeLane $lane, ScoreEntryData $data): FormInterface
     {
         return $this->forms->createNamed(
-            sprintf('score_%d_%s', $sequence, $lane->value),
+            sprintf('score_%d_%d_%s', $match, $round, $lane->value),
             ScoreEntryType::class,
             $data,
             [
-                'action' => $this->generateUrl('performance_tracker_score', ['token' => $token, 'sequence' => $sequence, 'lane' => $lane->value]),
+                'action' => $this->generateUrl('performance_tracker_score', ['token' => $token, 'sequence' => $match, 'round' => $round, 'lane' => $lane->value]),
                 'method' => 'POST',
             ],
         );
@@ -319,6 +370,23 @@ final class PerformanceTrackerController extends AbstractController
         }
 
         return $matches[array_key_last($matches)];
+    }
+
+    private function selectedRound(Request $request, PerformanceMatch $match): PerformanceRound
+    {
+        $requested = $request->query->getInt('round');
+        if (0 < $requested && null !== ($round = $match->round($requested))) {
+            return $round;
+        }
+
+        $rounds = $match->getRounds()->toArray();
+        for ($index = count($rounds) - 1; 0 <= $index; --$index) {
+            if (!$rounds[$index]->isComplete()) {
+                return $rounds[$index];
+            }
+        }
+
+        return $rounds[array_key_last($rounds)];
     }
 
     private function owned(string $token): PerformanceTracker

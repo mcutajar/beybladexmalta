@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Dto\PerformanceResultValue;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -32,8 +31,8 @@ class PerformanceMatch
     #[ORM\Column(length: 40, nullable: true)]
     private ?string $finalScore = null;
 
-    #[ORM\Column(name: 'round_label', length: 100, nullable: true)]
-    private ?string $round = null;
+    #[ORM\Column(name: 'stage_label', length: 100, nullable: true)]
+    private ?string $stage = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $notes = null;
@@ -44,16 +43,20 @@ class PerformanceMatch
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
-    /** @var Collection<int, PerformanceResult> */
-    #[ORM\OneToMany(targetEntity: PerformanceResult::class, mappedBy: 'match', cascade: ['persist'], orphanRemoval: true)]
-    private Collection $results;
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $finishedAt = null;
+
+    /** @var Collection<int, PerformanceRound> */
+    #[ORM\OneToMany(targetEntity: PerformanceRound::class, mappedBy: 'match', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OrderBy(['sequence' => 'ASC'])]
+    private Collection $rounds;
 
     public function __construct(PerformanceTracker $tracker, int $sequence)
     {
         $this->tracker = $tracker;
         $this->sequence = $sequence;
         $this->updatedAt = new \DateTimeImmutable();
-        $this->results = new ArrayCollection();
+        $this->rounds = new ArrayCollection();
         $tracker->addMatch($this);
     }
 
@@ -77,9 +80,9 @@ class PerformanceMatch
         return $this->finalScore;
     }
 
-    public function getRound(): ?string
+    public function getStage(): ?string
     {
-        return $this->round;
+        return $this->stage;
     }
 
     public function getNotes(): ?string
@@ -97,48 +100,88 @@ class PerformanceMatch
         return $this->updatedAt;
     }
 
-    /** @return Collection<int, PerformanceResult> */
-    public function getResults(): Collection
+    public function getFinishedAt(): ?\DateTimeImmutable
     {
-        return $this->results;
+        return $this->finishedAt;
     }
 
-    public function resultFor(PerformanceBlade $blade): PerformanceResult
+    /** @return Collection<int, PerformanceRound> */
+    public function getRounds(): Collection
     {
-        foreach ($this->results as $result) {
-            if ($result->getBlade() === $blade) {
-                return $result;
+        return $this->rounds;
+    }
+
+    public function round(int $sequence): ?PerformanceRound
+    {
+        foreach ($this->rounds as $round) {
+            if ($round->getSequence() === $sequence) {
+                return $round;
             }
         }
 
-        throw new \LogicException(sprintf('Match %d has no result for lane %s.', $this->sequence, $blade->getLane()->value));
+        return null;
     }
 
-    public function addResult(PerformanceResult $result): void
+    public function addRound(PerformanceRound $round): void
     {
-        $this->results->add($result);
+        if (null !== $this->round($round->getSequence())) {
+            throw new \LogicException(sprintf('Round %d already exists in match %d.', $round->getSequence(), $this->sequence));
+        }
+
+        $this->rounds->add($round);
+        $this->finishedAt = null;
+        $this->touch();
+    }
+
+    public function removeRound(PerformanceRound $round): void
+    {
+        $this->rounds->removeElement($round);
+        $this->finishedAt = null;
+        $this->touch();
+    }
+
+    public function nextRoundSequence(): int
+    {
+        $maximum = 0;
+        foreach ($this->rounds as $round) {
+            $maximum = max($maximum, $round->getSequence());
+        }
+
+        return $maximum + 1;
     }
 
     public function isComplete(): bool
     {
-        if (3 !== $this->results->count()) {
-            return false;
+        return null !== $this->finishedAt;
+    }
+
+    public function finish(): void
+    {
+        if ($this->rounds->isEmpty()) {
+            throw new \DomainException(sprintf('Match %d needs at least one round.', $this->sequence));
         }
 
-        foreach ($this->results as $result) {
-            if (PerformanceResultValue::NotRecorded === $result->getValue()) {
-                return false;
+        foreach ($this->rounds as $round) {
+            if (!$round->isComplete()) {
+                throw new \DomainException(sprintf('Finish every result in round %d first.', $round->getSequence()));
             }
         }
 
-        return true;
+        $this->finishedAt = new \DateTimeImmutable();
+        $this->touch();
     }
 
-    public function configure(?string $opponent, ?string $finalScore, ?string $round, ?string $notes, ?\DateTimeImmutable $playedAt): void
+    public function reopen(): void
+    {
+        $this->finishedAt = null;
+        $this->touch();
+    }
+
+    public function configure(?string $opponent, ?string $finalScore, ?string $stage, ?string $notes, ?\DateTimeImmutable $playedAt): void
     {
         $this->opponent = self::optional($opponent);
         $this->finalScore = self::optional($finalScore);
-        $this->round = self::optional($round);
+        $this->stage = self::optional($stage);
         $this->notes = self::optional($notes);
         $this->playedAt = $playedAt;
         $this->touch();

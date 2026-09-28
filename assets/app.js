@@ -108,7 +108,7 @@ document.querySelectorAll('[data-score-form]').forEach((form) => {
                 });
             });
 
-            const cell = document.querySelector(`[data-result-cell][data-match-number="${payload.match}"][data-lane="${payload.lane}"]`);
+            const cell = document.querySelector(`[data-result-cell][data-match-number="${payload.match}"][data-round-number="${payload.round}"][data-lane="${payload.lane}"]`);
             if (cell) {
                 cell.textContent = payload.value === 'unused' ? '—' : payload.label;
                 cell.setAttribute('aria-label', payload.message);

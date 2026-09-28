@@ -6,7 +6,6 @@ namespace App\Form;
 
 use App\Dto\PerformanceBladeData;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -36,11 +35,13 @@ final class PerformanceBladeType extends AbstractType
                 'empty_data' => '',
                 'attr' => ['placeholder' => 'Point'],
             ])
-            ->add('colour', ChoiceType::class, [
+            ->add('colour', BladeColourType::class, [
                 'required' => false,
                 'empty_data' => '',
-                'placeholder' => 'No colour marker',
+                'expanded' => true,
+                'placeholder' => false,
                 'choices' => [
+                    'No marker' => '',
                     'Cyan' => 'cyan',
                     'Amber' => 'amber',
                     'Red' => 'red',

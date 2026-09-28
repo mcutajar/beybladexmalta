@@ -5,8 +5,8 @@
 {% props lane, name, combination = '', colour = null, total = 0, selected = false %}
 
 {% set markers = {
-    cyan: 'bg-brand-strong/20', amber: 'bg-flame-strong/20', red: 'bg-heat-strong/20',
-    emerald: 'bg-positive-strong/20', blue: 'bg-info/20', violet: 'bg-violet-500/20',
+    cyan: 'bg-marker-cyan/30', amber: 'bg-marker-amber/30', red: 'bg-marker-red/30',
+    emerald: 'bg-marker-emerald/30', blue: 'bg-marker-blue/30', violet: 'bg-marker-violet/30',
 } %}
 
 <div {{ attributes.defaults({class: 'flex min-w-0 items-center gap-3 rounded-field border p-3 text-left ' ~ (selected ? 'border-brand-strong bg-brand-strong/5' : 'border-line bg-canvas/50')}) }}>

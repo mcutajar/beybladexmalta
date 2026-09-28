@@ -14,6 +14,7 @@ use App\Dto\PerformanceTrackerData;
 use App\Entity\PerformanceBlade;
 use App\Entity\PerformanceMatch;
 use App\Entity\PerformanceResult;
+use App\Entity\PerformanceRound;
 use App\Entity\PerformanceTracker;
 use App\Repository\PerformanceTrackerRepository;
 
@@ -76,23 +77,22 @@ final class PerformanceTrackerService
         $this->flusher->flush();
     }
 
-    public function record(PerformanceTracker $tracker, int $sequence, PerformanceBladeLane $lane, PerformanceResultValue $value): PerformanceScoreUpdate
+    public function record(PerformanceTracker $tracker, int $matchSequence, int $roundSequence, PerformanceBladeLane $lane, PerformanceResultValue $value): PerformanceScoreUpdate
     {
-        $match = $this->match($tracker, $sequence);
-        $result = $match->resultFor($tracker->blade($lane));
-        $wasComplete = $match->isComplete();
+        $match = $this->match($tracker, $matchSequence);
+        $round = $this->round($match, $roundSequence);
+        $result = $round->resultFor($tracker->blade($lane));
+        $wasComplete = $round->isComplete();
         $result->record($value);
         $tracker->touch();
 
-        $stationChanged = $wasComplete !== $match->isComplete();
-        if (!$wasComplete && $match->isComplete() && $this->shouldAddExpectedMatch($tracker)) {
-            $this->newMatch($tracker);
-            $stationChanged = true;
+        if ($match->isComplete() && !$round->isComplete()) {
+            $match->reopen();
         }
 
         $this->flusher->flush();
 
-        return new PerformanceScoreUpdate($result, $stationChanged);
+        return new PerformanceScoreUpdate($result, !$wasComplete && $round->isComplete());
     }
 
     public function updateMatch(PerformanceTracker $tracker, int $sequence, PerformanceMatchData $data): void
@@ -100,7 +100,7 @@ final class PerformanceTrackerService
         $this->match($tracker, $sequence)->configure(
             $data->opponent,
             $data->finalScore,
-            $data->round,
+            $data->stage,
             $data->notes,
             $data->playedAt,
         );
@@ -114,6 +114,38 @@ final class PerformanceTrackerService
         $this->flusher->flush();
 
         return $match;
+    }
+
+    public function addRound(PerformanceTracker $tracker, int $matchSequence): PerformanceRound
+    {
+        $round = $this->newRound($tracker, $this->match($tracker, $matchSequence));
+        $this->flusher->flush();
+
+        return $round;
+    }
+
+    public function removeRound(PerformanceTracker $tracker, int $matchSequence, int $roundSequence): void
+    {
+        $match = $this->match($tracker, $matchSequence);
+        if (1 >= $match->getRounds()->count()) {
+            throw new \DomainException('A match must keep at least one round. Reset its results instead.');
+        }
+
+        $match->removeRound($this->round($match, $roundSequence));
+        $tracker->touch();
+        $this->flusher->flush();
+    }
+
+    public function finishMatch(PerformanceTracker $tracker, int $matchSequence): void
+    {
+        $this->match($tracker, $matchSequence)->finish();
+        $tracker->touch();
+
+        if ($this->shouldAddExpectedMatch($tracker)) {
+            $this->newMatch($tracker);
+        }
+
+        $this->flusher->flush();
     }
 
     public function removeMatch(PerformanceTracker $tracker, int $sequence): void
@@ -137,9 +169,19 @@ final class PerformanceTrackerService
             return;
         }
 
-        foreach ($first->getResults() as $result) {
+        $rounds = $first->getRounds()->toArray();
+        $firstRound = array_shift($rounds);
+        if (null === $firstRound) {
+            $firstRound = $this->newRound($tracker, $first);
+        }
+
+        foreach ($firstRound->getResults() as $result) {
             $result->record(PerformanceResultValue::NotRecorded);
         }
+        foreach ($rounds as $round) {
+            $first->removeRound($round);
+        }
+        $first->reopen();
         $first->configure(null, null, null, null, null);
 
         foreach ($matches as $match) {
@@ -169,11 +211,19 @@ final class PerformanceTrackerService
     private function newMatch(PerformanceTracker $tracker): PerformanceMatch
     {
         $match = new PerformanceMatch($tracker, $tracker->nextMatchSequence());
-        foreach ($tracker->getBlades() as $blade) {
-            new PerformanceResult($match, $blade);
-        }
+        $this->newRound($tracker, $match);
 
         return $match;
+    }
+
+    private function newRound(PerformanceTracker $tracker, PerformanceMatch $match): PerformanceRound
+    {
+        $round = new PerformanceRound($match, $match->nextRoundSequence());
+        foreach ($tracker->getBlades() as $blade) {
+            new PerformanceResult($round, $blade);
+        }
+
+        return $round;
     }
 
     private function shouldAddExpectedMatch(PerformanceTracker $tracker): bool
@@ -194,6 +244,11 @@ final class PerformanceTrackerService
     private function match(PerformanceTracker $tracker, int $sequence): PerformanceMatch
     {
         return $tracker->match($sequence) ?? throw new \DomainException(sprintf('Match %d does not exist.', $sequence));
+    }
+
+    private function round(PerformanceMatch $match, int $sequence): PerformanceRound
+    {
+        return $match->round($sequence) ?? throw new \DomainException(sprintf('Round %d does not exist in match %d.', $sequence, $match->getSequence()));
     }
 
     private function validate(PerformanceTrackerData $data): void

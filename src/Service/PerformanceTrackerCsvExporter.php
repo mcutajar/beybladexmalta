@@ -15,25 +15,28 @@ final class PerformanceTrackerCsvExporter
             throw new \RuntimeException('Could not open the CSV buffer.');
         }
 
-        $header = ['match', 'opponent', 'final score', 'round / placement', 'notes', 'played at'];
+        $header = ['match', 'round', 'opponent', 'final score', 'stage / placement', 'notes', 'played at'];
         foreach ($tracker->getBlades() as $blade) {
             $header[] = sprintf('%s (%s)', $blade->getDisplayName(), $blade->getLane()->value);
         }
         fputcsv($stream, $header, ',', '"', '');
 
         foreach ($tracker->getMatches() as $match) {
-            $row = [
-                (string) $match->getSequence(),
-                $match->getOpponent() ?? '',
-                $match->getFinalScore() ?? '',
-                $match->getRound() ?? '',
-                $match->getNotes() ?? '',
-                $match->getPlayedAt()?->format(\DateTimeInterface::ATOM) ?? '',
-            ];
-            foreach ($tracker->getBlades() as $blade) {
-                $row[] = $match->resultFor($blade)->getValue()->csvValue();
+            foreach ($match->getRounds() as $round) {
+                $row = [
+                    (string) $match->getSequence(),
+                    (string) $round->getSequence(),
+                    $match->getOpponent() ?? '',
+                    $match->getFinalScore() ?? '',
+                    $match->getStage() ?? '',
+                    $match->getNotes() ?? '',
+                    $match->getPlayedAt()?->format(\DateTimeInterface::ATOM) ?? '',
+                ];
+                foreach ($tracker->getBlades() as $blade) {
+                    $row[] = $round->resultFor($blade)->getValue()->csvValue();
+                }
+                fputcsv($stream, $row, ',', '"', '');
             }
-            fputcsv($stream, $row, ',', '"', '');
         }
 
         rewind($stream);

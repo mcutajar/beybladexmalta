@@ -28,28 +28,34 @@ final class PerformanceTrackerPresenter
             $history = [];
 
             foreach ($tracker->getMatches() as $match) {
-                $value = $match->resultFor($blade)->getValue();
-                $history[] = ['sequence' => $match->getSequence(), 'value' => $value];
+                foreach ($match->getRounds() as $round) {
+                    $value = $round->resultFor($blade)->getValue();
+                    $history[] = [
+                        'match' => $match->getSequence(),
+                        'round' => $round->getSequence(),
+                        'value' => $value,
+                    ];
 
-                if (PerformanceResultValue::Unused === $value) {
-                    ++$unused;
-                }
+                    if (PerformanceResultValue::Unused === $value) {
+                        ++$unused;
+                    }
 
-                $score = $value->score();
-                if (null === $score) {
-                    continue;
-                }
+                    $score = $value->score();
+                    if (null === $score) {
+                        continue;
+                    }
 
-                $bladeTotal += $score;
-                ++$bladeAppearances;
-                $best = null === $best ? $score : max($best, $score);
+                    $bladeTotal += $score;
+                    ++$bladeAppearances;
+                    $best = null === $best ? $score : max($best, $score);
 
-                if (0 < $score) {
-                    ++$positive;
-                } elseif (0 > $score) {
-                    ++$negative;
-                } else {
-                    ++$zero;
+                    if (0 < $score) {
+                        ++$positive;
+                    } elseif (0 > $score) {
+                        ++$negative;
+                    } else {
+                        ++$zero;
+                    }
                 }
             }
 
@@ -74,10 +80,12 @@ final class PerformanceTrackerPresenter
             if ($match->isComplete()) {
                 ++$completed;
             }
-            foreach ($match->getResults() as $result) {
-                if (PerformanceResultValue::NotRecorded !== $result->getValue()) {
-                    ++$recorded;
-                    break;
+            foreach ($match->getRounds() as $round) {
+                foreach ($round->getResults() as $result) {
+                    if (PerformanceResultValue::NotRecorded !== $result->getValue()) {
+                        ++$recorded;
+                        continue 3;
+                    }
                 }
             }
         }

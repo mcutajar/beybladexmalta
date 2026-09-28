@@ -20,7 +20,7 @@ final class PerformanceMatchType extends AbstractType
         $builder
             ->add('opponent', TextType::class, ['required' => false, 'empty_data' => '', 'attr' => ['placeholder' => 'Optional opponent']])
             ->add('finalScore', TextType::class, ['required' => false, 'empty_data' => '', 'attr' => ['placeholder' => 'e.g. 7–5']])
-            ->add('round', TextType::class, ['required' => false, 'empty_data' => '', 'attr' => ['placeholder' => 'e.g. Swiss 3 or Top 8']])
+            ->add('stage', TextType::class, ['required' => false, 'empty_data' => '', 'attr' => ['placeholder' => 'e.g. Swiss 3 or Top 8']])
             ->add('notes', TextareaType::class, ['required' => false, 'empty_data' => '', 'attr' => ['rows' => 3, 'placeholder' => 'Optional notes']])
             ->add('playedAt', DateTimeType::class, [
                 'required' => false,

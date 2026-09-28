@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'performance_results')]
-#[ORM\UniqueConstraint(name: 'uniq_performance_result_match_blade', columns: ['match_id', 'blade_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_performance_result_round_blade', columns: ['round_id', 'blade_id'])]
 class PerformanceResult
 {
     #[ORM\Id]
@@ -19,7 +19,7 @@ class PerformanceResult
 
     #[ORM\ManyToOne(inversedBy: 'results')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private PerformanceMatch $match;
+    private PerformanceRound $round;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -31,12 +31,12 @@ class PerformanceResult
     #[ORM\Column]
     private \DateTimeImmutable $changedAt;
 
-    public function __construct(PerformanceMatch $match, PerformanceBlade $blade)
+    public function __construct(PerformanceRound $round, PerformanceBlade $blade)
     {
-        $this->match = $match;
+        $this->round = $round;
         $this->blade = $blade;
         $this->changedAt = new \DateTimeImmutable();
-        $match->addResult($this);
+        $round->addResult($this);
     }
 
     public function getId(): ?int
@@ -44,9 +44,9 @@ class PerformanceResult
         return $this->id;
     }
 
-    public function getMatch(): PerformanceMatch
+    public function getRound(): PerformanceRound
     {
-        return $this->match;
+        return $this->round;
     }
 
     public function getBlade(): PerformanceBlade
@@ -68,6 +68,6 @@ class PerformanceResult
     {
         $this->value = $value;
         $this->changedAt = new \DateTimeImmutable();
-        $this->match->touch();
+        $this->round->touch();
     }
 }

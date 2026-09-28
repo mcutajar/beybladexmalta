@@ -47,6 +47,14 @@
     --color-silver: var(--color-slate-300);
     --color-bronze: var(--color-amber-700);
 
+    /* User-selected blade markers shown as swatches, not colour names. */
+    --color-marker-cyan: var(--color-cyan-400);
+    --color-marker-amber: var(--color-amber-400);
+    --color-marker-red: var(--color-red-400);
+    --color-marker-emerald: var(--color-emerald-400);
+    --color-marker-blue: var(--color-blue-400);
+    --color-marker-violet: var(--color-violet-400);
+
     /* Corner radii, named for what they wrap. */
     --radius-control: var(--radius-lg);
     --radius-field: var(--radius-xl);

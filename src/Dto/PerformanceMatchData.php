@@ -11,7 +11,7 @@ final class PerformanceMatchData
     public function __construct(
         public string $opponent = '',
         public string $finalScore = '',
-        public string $round = '',
+        public string $stage = '',
         public string $notes = '',
         public ?\DateTimeImmutable $playedAt = null,
     ) {
@@ -22,7 +22,7 @@ final class PerformanceMatchData
         return new self(
             $match->getOpponent() ?? '',
             $match->getFinalScore() ?? '',
-            $match->getRound() ?? '',
+            $match->getStage() ?? '',
             $match->getNotes() ?? '',
             $match->getPlayedAt(),
         );

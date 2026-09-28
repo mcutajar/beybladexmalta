@@ -29,18 +29,25 @@
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
         <twig:Card id="match-station" data-match-station>
-            <div class="mb-5 flex flex-col gap-3 border-b border-line/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
+            <div class="mb-5 border-b border-line/60 pb-5">
                 <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <h2 class="text-2xl font-black text-ink">Match {{ selected_match.sequence }}</h2>
                         <twig:Badge tone="{{ selected_match.complete ? 'positive' : 'flame' }}" size="sm">{{ selected_match.complete ? 'Complete' : 'In progress' }}</twig:Badge>
                     </div>
-                    <p class="mt-1 text-sm text-ink-muted">Tap a blade, choose its result, and save. Every choice also works as a normal form.</p>
+                    <p class="mt-1 text-sm text-ink-muted">Round {{ selected_round.sequence }} · tap a blade, choose its finish, and save. Add as many rounds as the match needs.</p>
                 </div>
-                <form action="{{ path('performance_tracker_match_add', {token: edit_token}) }}" method="post">
-                    <input type="hidden" name="_token" value="{{ csrf_token('add-performance-match') }}">
-                    <twig:Button tone="neutral" class="w-full whitespace-nowrap">Add match</twig:Button>
-                </form>
+
+                <nav class="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Choose round">
+                    {% for round in selected_match.rounds %}
+                        <a href="{{ path('performance_tracker_edit', {token: edit_token, match: selected_match.sequence, round: round.sequence}) }}#match-station"
+                           class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-control border px-3 text-xs font-bold {{ round.sequence == selected_round.sequence ? 'border-brand-strong bg-brand-strong/10 text-brand-bright' : 'border-line bg-canvas text-ink-muted' }}">
+                            Round {{ round.sequence }}
+                            <span aria-hidden="true" class="h-2 w-2 rounded-full {{ round.complete ? 'bg-positive-strong' : 'bg-flame-strong' }}"></span>
+                            <span class="sr-only">{{ round.complete ? 'complete' : 'in progress' }}</span>
+                        </a>
+                    {% endfor %}
+                </nav>
             </div>
 
             <nav class="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Choose blade to score" data-blade-tabs>
@@ -55,16 +62,17 @@
             <div class="mt-5 space-y-6">
                 {% for blade in tracker.blades %}
                     {% set scoreForm = score_forms[blade.lane.value] %}
-                    {% set result = selected_match.resultFor(blade) %}
+                    {% set result = selected_round.resultFor(blade) %}
                     <div id="score-panel-{{ blade.lane.value }}" data-score-panel="{{ blade.lane.value }}">
-                        {{ form_start(scoreForm, {attr: {'data-score-form': '', 'data-lane': blade.lane.value, 'data-match': selected_match.sequence}}) }}
+                        {{ form_start(scoreForm, {attr: {'data-score-form': '', 'data-lane': blade.lane.value, 'data-match': selected_match.sequence, 'data-round': selected_round.sequence}}) }}
                             {{ form_widget(scoreForm._token) }}
                             <twig:ScorePicker
                                 fieldName="{{ scoreForm.result.vars.full_name }}"
-                                idPrefix="score-{{ selected_match.sequence }}-{{ blade.lane.value }}"
+                                idPrefix="score-{{ selected_match.sequence }}-{{ selected_round.sequence }}-{{ blade.lane.value }}"
                                 selected="{{ result.value.value }}"
                                 bladeName="{{ blade.displayName }}"
                                 :matchNumber="selected_match.sequence"
+                                :roundNumber="selected_round.sequence"
                             />
                             <twig:Button class="mt-3 w-full">Save {{ blade.displayName }}</twig:Button>
                         {{ form_end(scoreForm, {render_rest: false}) }}
@@ -72,12 +80,31 @@
                 {% endfor %}
             </div>
 
-            <twig:Disclosure summary="Opponent, round, score, notes & time" tone="neutral" compact class="mt-6">
+            <div class="mt-5 grid grid-cols-1 gap-3 border-t border-line/60 pt-5 sm:grid-cols-3">
+                <form action="{{ path('performance_tracker_round_add', {token: edit_token, sequence: selected_match.sequence}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('add-performance-round-' ~ selected_match.sequence) }}">
+                    <twig:Button tone="neutral" class="w-full">Add round</twig:Button>
+                </form>
+                {% if not selected_match.complete %}
+                    <form action="{{ path('performance_tracker_match_finish', {token: edit_token, sequence: selected_match.sequence}) }}" method="post">
+                        <input type="hidden" name="_token" value="{{ csrf_token('finish-performance-match-' ~ selected_match.sequence) }}">
+                        <twig:Button class="w-full">Finish match</twig:Button>
+                    </form>
+                {% else %}
+                    <div class="flex min-h-11 items-center justify-center rounded-field border border-positive-strong/30 bg-positive-strong/10 text-xs font-bold uppercase tracking-wider text-positive">Match finished</div>
+                {% endif %}
+                <form action="{{ path('performance_tracker_match_add', {token: edit_token}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('add-performance-match') }}">
+                    <twig:Button tone="neutral" class="w-full">Add match</twig:Button>
+                </form>
+            </div>
+
+            <twig:Disclosure summary="Opponent, stage, score, notes & time" tone="neutral" compact class="mt-6">
                 {{ form_start(match_form) }}
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <twig:Field label="Opponent" controlId="{{ match_form.opponent.vars.id }}">{{ form_widget(match_form.opponent) }}</twig:Field>
                         <twig:Field label="Final score" controlId="{{ match_form.finalScore.vars.id }}">{{ form_widget(match_form.finalScore) }}</twig:Field>
-                        <twig:Field label="Round or placement" controlId="{{ match_form.round.vars.id }}">{{ form_widget(match_form.round) }}</twig:Field>
+                        <twig:Field label="Stage or placement" controlId="{{ match_form.stage.vars.id }}">{{ form_widget(match_form.stage) }}</twig:Field>
                         <twig:Field label="Played at" controlId="{{ match_form.playedAt.vars.id }}">{{ form_widget(match_form.playedAt) }}</twig:Field>
                         <twig:Field label="Notes" controlId="{{ match_form.notes.vars.id }}" class="sm:col-span-2">{{ form_widget(match_form.notes) }}</twig:Field>
                     </div>
@@ -91,25 +118,38 @@
                     <button class="min-h-11 rounded-control px-3 text-xs font-bold uppercase tracking-wider text-heat transition-colors hover:text-heat-strong">Remove match {{ selected_match.sequence }}</button>
                 </form>
             {% endif %}
+            {% if selected_match.rounds|length > 1 %}
+                <form action="{{ path('performance_tracker_round_remove', {token: edit_token, sequence: selected_match.sequence, round: selected_round.sequence}) }}" method="post" class="mt-2 text-right">
+                    <input type="hidden" name="_token" value="{{ csrf_token('remove-performance-round-' ~ selected_match.sequence ~ '-' ~ selected_round.sequence) }}">
+                    <button class="min-h-11 rounded-control px-3 text-xs font-bold uppercase tracking-wider text-heat transition-colors hover:text-heat-strong">Remove round {{ selected_round.sequence }}</button>
+                </form>
+            {% endif %}
         </twig:Card>
 
         <twig:Card>
             <twig:SectionHeading title="Recent matches" rule />
             <div class="space-y-3">
                 {% for match in tracker.matches.toArray|reverse|slice(0, 4) %}
-                    <a href="{{ path('performance_tracker_edit', {token: edit_token, match: match.sequence}) }}#match-station" class="block rounded-field border p-3 transition-colors hover:border-brand-strong {{ match.sequence == selected_match.sequence ? 'border-brand-strong bg-brand-strong/5' : 'border-line bg-canvas/50' }}">
-                        <span class="flex items-center justify-between gap-3">
+                    <div class="rounded-field border p-3 {{ match.sequence == selected_match.sequence ? 'border-brand-strong bg-brand-strong/5' : 'border-line bg-canvas/50' }}">
+                        <div class="flex items-start justify-between gap-3">
                             <span>
                                 <strong class="text-sm text-ink">Match {{ match.sequence }}</strong>
-                                <span class="block text-xs text-ink-muted">{{ match.opponent ?: (match.complete ? 'Complete' : 'Not complete') }}</span>
+                                <span class="block text-xs text-ink-muted">{{ match.opponent ?: (match.complete ? 'Complete' : 'Not complete') }} · {{ match.rounds|length }} {{ match.rounds|length == 1 ? 'round' : 'rounds' }}</span>
                             </span>
-                            <span class="flex gap-1">
-                                {% for blade in tracker.blades %}
-                                    <twig:ScoreCell value="{{ match.resultFor(blade).value.value }}" label="{{ blade.displayName ~ ', match ' ~ match.sequence }}" />
-                                {% endfor %}
-                            </span>
-                        </span>
-                    </a>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            {% for round in match.rounds %}
+                                <a href="{{ path('performance_tracker_edit', {token: edit_token, match: match.sequence, round: round.sequence}) }}#match-station" class="flex min-h-11 items-center justify-between gap-2 rounded-control px-2 transition-colors hover:bg-surface-raised">
+                                    <span class="text-xs font-bold text-ink-muted">R{{ round.sequence }}</span>
+                                    <span class="flex gap-1">
+                                    {% for blade in tracker.blades %}
+                                        <twig:ScoreCell value="{{ round.resultFor(blade).value.value }}" label="{{ blade.displayName ~ ', match ' ~ match.sequence ~ ', round ' ~ round.sequence }}" />
+                                    {% endfor %}
+                                    </span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
                 {% endfor %}
             </div>
         </twig:Card>
@@ -148,7 +188,7 @@
                     <twig:Button tone="neutral" class="w-full">Duplicate fresh</twig:Button>
                 </form>
             </div>
-            <a href="{{ path('performance_tracker_reset', {token: edit_token}) }}" class="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-wider text-heat">Reset all match results</a>
+            <a href="{{ path('performance_tracker_reset', {token: edit_token}) }}" class="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-wider text-heat">Reset all round results</a>
         </twig:Card>
     </div>
 {% endblock %}

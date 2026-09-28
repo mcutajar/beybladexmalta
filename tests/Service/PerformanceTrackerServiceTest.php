@@ -17,7 +17,7 @@ final class PerformanceTrackerServiceTest extends ServiceTestCase
 {
     use ResetDatabase;
 
-    public function testItCreatesExactlyThreeStableLanesAndOneBlankMatch(): void
+    public function testItCreatesExactlyThreeStableLanesAndOneBlankRound(): void
     {
         $created = $this->trackerService()->create($this->trackerData());
         $tracker = $created->tracker;
@@ -29,24 +29,31 @@ final class PerformanceTrackerServiceTest extends ServiceTestCase
             $tracker->getBlades()->toArray(),
         ));
         self::assertCount(1, $tracker->getMatches());
-        self::assertCount(3, $tracker->match(1)?->getResults());
-        self::assertFalse($tracker->match(1)?->isComplete());
+        self::assertCount(1, $tracker->match(1)?->getRounds());
+        self::assertCount(3, $tracker->match(1)?->round(1)?->getResults());
+        self::assertFalse($tracker->match(1)?->round(1)?->isComplete());
+        self::assertFalse($tracker->match(1)->isComplete());
     }
 
-    public function testTotalsCountsAndAveragesKeepUnusedAndNotRecordedDistinct(): void
+    public function testABladeCanRecordSeveralFinishesInOneMatch(): void
     {
         $service = $this->trackerService();
         $tracker = $service->create($this->trackerData(expectedMatches: 2))->tracker;
 
-        $service->record($tracker, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusThree);
-        $service->record($tracker, 1, PerformanceBladeLane::B, PerformanceResultValue::Unused);
-        $update = $service->record($tracker, 1, PerformanceBladeLane::C, PerformanceResultValue::Zero);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusThree);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::B, PerformanceResultValue::Unused);
+        $update = $service->record($tracker, 1, 1, PerformanceBladeLane::C, PerformanceResultValue::Zero);
 
-        self::assertTrue($update->stationChanged);
-        self::assertNotNull($tracker->match(2), 'Completing the only match should open the next expected match.');
+        self::assertTrue($update->roundCompleted);
+        self::assertNull($tracker->match(2), 'Completing a round must not finish its match.');
 
-        $service->record($tracker, 2, PerformanceBladeLane::A, PerformanceResultValue::MinusOne);
-        $service->record($tracker, 2, PerformanceBladeLane::C, PerformanceResultValue::PlusTwo);
+        $service->addRound($tracker, 1);
+        $service->record($tracker, 1, 2, PerformanceBladeLane::A, PerformanceResultValue::MinusOne);
+        $service->record($tracker, 1, 2, PerformanceBladeLane::B, PerformanceResultValue::Unused);
+        $service->record($tracker, 1, 2, PerformanceBladeLane::C, PerformanceResultValue::PlusTwo);
+        $service->finishMatch($tracker, 1);
+
+        self::assertNotNull($tracker->match(2), 'Finishing the match should open the next expected match.');
 
         $summary = $this->presenter()->summarise($tracker);
         $bladeA = $summary->forLane(PerformanceBladeLane::A);
@@ -60,12 +67,16 @@ final class PerformanceTrackerServiceTest extends ServiceTestCase
         self::assertSame(1, $bladeA->positive);
         self::assertSame(1, $bladeA->negative);
         self::assertSame(3, $bladeA->best);
-        self::assertSame(1, $bladeB->unused);
+        self::assertSame(2, $bladeB->unused);
         self::assertSame(0, $bladeB->appearances);
         self::assertNull($bladeB->average());
         self::assertSame(1, $summary->completedMatches);
-        self::assertSame(2, $summary->recordedMatches);
-        self::assertSame(PerformanceResultValue::NotRecorded, $tracker->match(2)->resultFor($tracker->blade(PerformanceBladeLane::B))->getValue());
+        self::assertSame(1, $summary->recordedMatches);
+        self::assertSame(PerformanceResultValue::NotRecorded, $tracker->match(2)->round(1)?->resultFor($tracker->blade(PerformanceBladeLane::B))->getValue());
+        self::assertSame(
+            [3, -1, null],
+            array_map(static fn (array $entry): ?int => $entry['value']->score(), $bladeA->history),
+        );
     }
 
     public function testRemovingAndAddingMatchesNeverRenumbersTheOthers(): void
@@ -89,7 +100,7 @@ final class PerformanceTrackerServiceTest extends ServiceTestCase
         $service = $this->trackerService();
         $tracker = $service->create($this->trackerData(expectedMatches: 4))->tracker;
         $service->addMatch($tracker);
-        $service->record($tracker, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusTwo);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusTwo);
 
         $updated = $this->trackerData(expectedMatches: 1);
         $updated->tournamentName = 'Renamed event';
@@ -99,14 +110,14 @@ final class PerformanceTrackerServiceTest extends ServiceTestCase
         self::assertSame('Renamed event', $tracker->getTournamentName());
         self::assertSame('New lane name', $tracker->blade(PerformanceBladeLane::A)->getDisplayName());
         self::assertCount(2, $tracker->getMatches());
-        self::assertSame(PerformanceResultValue::PlusTwo, $tracker->match(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
+        self::assertSame(PerformanceResultValue::PlusTwo, $tracker->match(1)?->round(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
     }
 
     public function testDuplicateCopiesSetupButNoResults(): void
     {
         $service = $this->trackerService();
         $tracker = $service->create($this->trackerData())->tracker;
-        $service->record($tracker, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusThree);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusThree);
 
         $copy = $service->duplicate($tracker);
 
@@ -114,22 +125,49 @@ final class PerformanceTrackerServiceTest extends ServiceTestCase
         self::assertNotSame($tracker->getShareId(), $copy->tracker->getShareId());
         self::assertSame($tracker->getTournamentName(), $copy->tracker->getTournamentName());
         self::assertCount(1, $copy->tracker->getMatches());
-        self::assertSame(PerformanceResultValue::NotRecorded, $copy->tracker->match(1)?->resultFor($copy->tracker->blade(PerformanceBladeLane::A))->getValue());
+        self::assertSame(PerformanceResultValue::NotRecorded, $copy->tracker->match(1)?->round(1)?->resultFor($copy->tracker->blade(PerformanceBladeLane::A))->getValue());
     }
 
     public function testIncreasingTheExpectedCountAfterFinishingOpensANewMatch(): void
     {
         $service = $this->trackerService();
         $tracker = $service->create($this->trackerData(expectedMatches: 1))->tracker;
-        $service->record($tracker, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusOne);
-        $service->record($tracker, 1, PerformanceBladeLane::B, PerformanceResultValue::Unused);
-        $service->record($tracker, 1, PerformanceBladeLane::C, PerformanceResultValue::Zero);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusOne);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::B, PerformanceResultValue::Unused);
+        $service->record($tracker, 1, 1, PerformanceBladeLane::C, PerformanceResultValue::Zero);
+        $service->finishMatch($tracker, 1);
         self::assertNull($tracker->match(2));
 
         $service->update($tracker, $this->trackerData(expectedMatches: 2));
 
         self::assertNotNull($tracker->match(2));
         self::assertFalse($tracker->match(2)->isComplete());
+    }
+
+    public function testRoundsCanBeAddedAndRemovedWithoutRenumbering(): void
+    {
+        $service = $this->trackerService();
+        $tracker = $service->create($this->trackerData())->tracker;
+
+        $service->addRound($tracker, 1);
+        $service->addRound($tracker, 1);
+        $service->removeRound($tracker, 1, 2);
+        $service->addRound($tracker, 1);
+
+        self::assertSame([1, 3, 4], array_values(array_map(
+            static fn ($round): int => $round->getSequence(),
+            $tracker->match(1)?->getRounds()->toArray() ?? [],
+        )));
+    }
+
+    public function testAMatchCannotFinishWhileARoundIsIncomplete(): void
+    {
+        $tracker = $this->trackerService()->create($this->trackerData())->tracker;
+
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Finish every result in round 1 first.');
+
+        $this->trackerService()->finishMatch($tracker, 1);
     }
 
     private function trackerService(): PerformanceTrackerService

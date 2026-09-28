@@ -17,6 +17,17 @@ final class PerformanceTrackerControllerTest extends PageTestCase
 {
     use ResetDatabase;
 
+    public function testSetupDefaultsToTodayAndShowsColourSwatches(): void
+    {
+        $page = $this->createBrowser()->request('GET', '/tracker');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame((new \DateTimeImmutable('today'))->format('Y-m-d'), $page->filter('input[name="performance_tracker[heldOn]"]')->attr('value'));
+        self::assertCount(0, $page->filter('select[name*="[colour]"]'));
+        self::assertCount(21, $page->filter('input[type="radio"][name*="[colour]"]'));
+        self::assertCount(18, $page->filter('[class*="bg-marker-"]'));
+    }
+
     public function testAPlayerCanCreateAndScoreATrackerWithoutJavaScript(): void
     {
         $browser = $this->createBrowser();
@@ -52,41 +63,64 @@ final class PerformanceTrackerControllerTest extends PageTestCase
         $page = $browser->followRedirect();
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('Match 1', $page->text());
+        self::assertStringContainsString('Round 1', $page->filter('#match-station')->text());
         self::assertCount(3, $page->filter('form[data-score-form]'));
         self::assertCount(27, $page->filter('form[data-score-form] input[type="radio"]'));
         self::assertCount(27, $page->filter('form[data-score-form] input[type="radio"][aria-label]'));
         self::assertCount(27, $page->filter('form[data-score-form] label.min-h-11'));
 
         $score = $page->filter('form[data-score-form][data-lane="A"]')->form([
-            'score_1_A[result]' => '+3',
+            'score_1_1_A[result]' => '+3',
         ]);
         $browser->submit($score);
         self::assertResponseRedirects();
 
         $page = $browser->followRedirect();
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('Phoenix Wing, match 1, saved as +3', $page->text());
+        self::assertStringContainsString('Phoenix Wing, match 1 round 1, saved as +3', $page->text());
 
         $token = basename(parse_url($location, PHP_URL_PATH));
         $tracker = $this->repository()->findByEditToken($token);
         self::assertNotNull($tracker);
-        self::assertSame(PerformanceResultValue::PlusThree, $tracker->match(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
+        self::assertSame(PerformanceResultValue::PlusThree, $tracker->match(1)?->round(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
 
         $score = $page->filter('form[data-score-form][data-lane="B"]')->form([
-            'score_1_B[result]' => 'unused',
+            'score_1_1_B[result]' => 'unused',
         ]);
         $browser->submit($score);
         $page = $browser->followRedirect();
 
         $score = $page->filter('form[data-score-form][data-lane="C"]')->form([
-            'score_1_C[result]' => '0',
+            'score_1_1_C[result]' => '0',
         ]);
         $browser->submit($score);
         self::assertResponseRedirects();
-        self::assertStringNotContainsString('?match=', (string) $browser->getResponse()->headers->get('Location'));
+        self::assertStringContainsString('?match=1&round=1', (string) $browser->getResponse()->headers->get('Location'));
 
         $page = $browser->followRedirect();
+        self::assertStringContainsString('Match 1', $page->filter('#match-station')->text());
+        self::assertStringNotContainsString('Match 2', $page->filter('#match-station')->text());
+
+        $browser->submit($page->selectButton('Add round')->form());
+        self::assertResponseRedirects();
+        $page = $browser->followRedirect();
+        self::assertStringContainsString('Round 2', $page->filter('#match-station')->text());
+
+        foreach (['A' => '-1', 'B' => 'unused', 'C' => '+2'] as $lane => $value) {
+            $score = $page->filter(sprintf('form[data-score-form][data-lane="%s"]', $lane))->form([
+                sprintf('score_1_2_%s[result]', $lane) => $value,
+            ]);
+            $browser->submit($score);
+            $page = $browser->followRedirect();
+        }
+
+        $browser->submit($page->selectButton('Finish match')->form());
+        self::assertResponseRedirects('/tracker/edit/'.$token);
+        $page = $browser->followRedirect();
         self::assertStringContainsString('Match 2', $page->filter('#match-station')->text());
+
+        $reloaded = $this->repository()->findByEditToken($token);
+        self::assertSame(PerformanceResultValue::MinusOne, $reloaded?->match(1)?->round(2)?->resultFor($reloaded->blade(PerformanceBladeLane::A))->getValue());
     }
 
     public function testTheSharePageCannotMutateAndNeverLeaksTheEditCapability(): void
@@ -120,7 +154,7 @@ final class PerformanceTrackerControllerTest extends PageTestCase
     public function testCsvRepresentsUnusedAndNotRecordedDifferently(): void
     {
         [$tracker, $token] = $this->createTracker();
-        $this->trackerService()->record($tracker, 1, PerformanceBladeLane::A, PerformanceResultValue::Unused);
+        $this->trackerService()->record($tracker, 1, 1, PerformanceBladeLane::A, PerformanceResultValue::Unused);
         $browser = $this->createBrowser();
         $browser->request('GET', '/tracker/edit/'.$token.'/export.csv');
 
@@ -134,18 +168,18 @@ final class PerformanceTrackerControllerTest extends PageTestCase
     public function testResetNeedsASeparateConfirmationPage(): void
     {
         [$tracker, $token] = $this->createTracker();
-        $this->trackerService()->record($tracker, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusThree);
+        $this->trackerService()->record($tracker, 1, 1, PerformanceBladeLane::A, PerformanceResultValue::PlusThree);
         $browser = $this->createBrowser();
 
         $page = $browser->request('GET', '/tracker/edit/'.$token.'/reset');
         self::assertResponseIsSuccessful();
-        self::assertSame(PerformanceResultValue::PlusThree, $tracker->match(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
+        self::assertSame(PerformanceResultValue::PlusThree, $tracker->match(1)?->round(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
 
-        $browser->submit($page->selectButton('Yes, reset all match results')->form());
+        $browser->submit($page->selectButton('Yes, reset all round results')->form());
         self::assertResponseRedirects('/tracker/edit/'.$token);
 
         $reloaded = $this->repository()->findByEditToken($token);
-        self::assertSame(PerformanceResultValue::NotRecorded, $reloaded?->match(1)?->resultFor($reloaded->blade(PerformanceBladeLane::A))->getValue());
+        self::assertSame(PerformanceResultValue::NotRecorded, $reloaded?->match(1)?->round(1)?->resultFor($reloaded->blade(PerformanceBladeLane::A))->getValue());
     }
 
     public function testUnknownEditAndShareCapabilitiesAreNotFound(): void
@@ -164,14 +198,14 @@ final class PerformanceTrackerControllerTest extends PageTestCase
         $browser = $this->createBrowser();
         $page = $browser->request('GET', '/tracker/edit/'.$token);
         $form = $page->filter('form[data-score-form][data-lane="A"]');
-        $csrf = (string) $form->filter('input[name="score_1_A[_token]"]')->attr('value');
+        $csrf = (string) $form->filter('input[name="score_1_1_A[_token]"]')->attr('value');
 
-        $browser->request('POST', '/tracker/edit/'.$token.'/match/1/blade/A', [
-            'score_1_A' => ['_token' => $csrf, 'result' => '99'],
+        $browser->request('POST', '/tracker/edit/'.$token.'/match/1/round/1/blade/A', [
+            'score_1_1_A' => ['_token' => $csrf, 'result' => '99'],
         ]);
 
         self::assertResponseRedirects();
-        self::assertSame(PerformanceResultValue::NotRecorded, $tracker->match(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
+        self::assertSame(PerformanceResultValue::NotRecorded, $tracker->match(1)?->round(1)?->resultFor($tracker->blade(PerformanceBladeLane::A))->getValue());
     }
 
     /** @return array{\App\Entity\PerformanceTracker, string} */

@@ -8,7 +8,7 @@ use App\Entity\PerformanceBlade;
 
 final readonly class PerformanceBladeSummary
 {
-    /** @param list<array{sequence: int, value: PerformanceResultValue}> $history */
+    /** @param list<array{match: int, round: int, value: PerformanceResultValue}> $history */
     public function __construct(
         public PerformanceBlade $blade,
         public int $total,

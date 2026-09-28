@@ -48,6 +48,9 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
 - `src/Controller/PerformanceTrackerController.php`
   - Public setup, private capability URL and separate read-only share URL for
     an anonymous three-blade tournament tracker.
+  - A match owns one or more independently scored rounds. The same blade can
+    therefore record more than one finish in a match, and only the explicit
+    `Finish match` action advances the tracker to the next expected match.
   - Every score is a normal CSRF-protected form submission; the site script
     only upgrades it to inline saving and live-region feedback.
   - Tracker rows deliberately do not enter `command_ledger.sh` or `repeat.sh`.
@@ -204,7 +207,11 @@ service that owns the domain rules.
 
 - `App\Service\PerformanceTrackerService`
   - Creates exactly three stable blade lanes, owns match numbering, validates
-    the score vocabulary and preserves existing matches when setup changes.
+    the score vocabulary and preserves existing matches and rounds when setup
+    changes.
+  - Creates a blank first round with every match, keeps round numbering stable
+    when one is removed, and refuses to finish a match while any round has an
+    unrecorded blade result.
   - Stores only a hash of the edit capability. A different random identifier
     reaches the read-only share view.
   - Keeps not-recorded and unused as distinct enum values all the way through

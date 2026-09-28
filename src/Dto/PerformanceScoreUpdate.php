@@ -10,7 +10,7 @@ final readonly class PerformanceScoreUpdate
 {
     public function __construct(
         public PerformanceResult $result,
-        public bool $stationChanged,
+        public bool $roundCompleted,
     ) {
     }
 }

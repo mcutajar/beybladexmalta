@@ -16,7 +16,7 @@
         <twig:Alert tone="heat" class="mb-6">This cannot be undone. Export CSV first if you may need the record.</twig:Alert>
         <form method="post">
             <input type="hidden" name="_token" value="{{ csrf_token('reset-performance-tracker') }}">
-            <twig:Button tone="heat" class="w-full">Yes, reset all match results</twig:Button>
+            <twig:Button tone="heat" class="w-full">Yes, reset all round results</twig:Button>
         </form>
     </twig:Card>
 {% endblock %}

@@ -22,7 +22,7 @@ design for) against the dev stack.
 | `/admin/payments` | none | |
 | `/admin/import` | none | two-column field grid collapses to one |
 | `/tracker` | none | setup stays one column; all text controls remain 16px |
-| `/tracker/edit/{capability}` | none | match station is first; the review grid scrolls inside its disclosure |
+| `/tracker/edit/{capability}` | none | match/round station is first; round navigation stays compact and the review grid scrolls inside its disclosure |
 | `/tracker/share/{share}` | none | read-only grid uses the same contained scroll shell |
 | `/_styleguide` | none | |
 
