@@ -5,6 +5,21 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.7.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.7.0) - 2026-09-28
+
+### Documentation
+
+- Lead the README with the league, not the stack ([db50c6f](https://github.com/mcutajar/beybladexmalta/commit/db50c6f641f9bea67bd680465b5f939bbbb8d978))
+
+### Other
+
+- Import September tournaments and clean Challonge names
+
+Add the four locally captured tournament snapshots and placement records through 26 September. Replay Josef as an alias of the existing Yosef, and keep Challonge's invitation status out of newly created blader names while preserving it in snapshots and alias evidence. ([34f6ff5](https://github.com/mcutajar/beybladexmalta/commit/34f6ff5f47a2675782f6dff49dbf0b9cc7c42a63))
+- Import Gamesplus 09-27 and canonicalise bracket URLs
+
+Replay Ricky as an alias of the corrected Rickey player, while keeping the Challonge snapshot verbatim. Store canonical bracket URLs so tracking query parameters cannot enter tournaments or recovery commands. ([34b8a96](https://github.com/mcutajar/beybladexmalta/commit/34b8a96b34ac7a465f2be5c0dfac97fb27f28652))
+
 ## [1.6.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.6.0) - 2026-09-15
 
 ### Features
