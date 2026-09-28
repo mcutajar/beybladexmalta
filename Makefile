@@ -18,6 +18,11 @@ CONTAINER_XML := var/cache/dev/App_KernelDevDebugContainer.xml
 # product of the test run, and CI rebuilds them on each push.
 COVERAGE_DIR ?= var/coverage
 
+# The captured-bracket corpus grows with the league and is exercised by both
+# test modes. Keep their ceiling in one place so a release runs with the same
+# allowance as CI's coverage job.
+PHPUNIT_MEMORY ?= 256M
+
 # PHPStan needs more than the 128M the container's php.ini gives CLI scripts.
 PHPSTAN_MEMORY ?= 1G
 
@@ -145,7 +150,7 @@ db-reset: dev-stack-only ## Rebuild the database from repeat.sh
 ## --- Quality ---------------------------------------------------------------
 
 phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="--filter FooTest"
-	$(EXEC) php vendor/bin/phpunit $(ARGS)
+	$(EXEC) php -d memory_limit=$(PHPUNIT_MEMORY) vendor/bin/phpunit $(ARGS)
 
 test: phpunit ## Alias for phpunit
 
@@ -163,7 +168,7 @@ test: phpunit ## Alias for phpunit
 # CI reads the Cobertura report to build the job summary, the HTML one is what
 # says which lines are missed, and the text one lands in the log.
 coverage: running $(TAILWIND_CSS) ## Run the test suite and write the coverage reports to var/coverage
-	$(EXEC) php -d memory_limit=256M -d pcov.enabled=1 vendor/bin/phpunit \
+	$(EXEC) php -d memory_limit=$(PHPUNIT_MEMORY) -d pcov.enabled=1 vendor/bin/phpunit \
 		--coverage-text \
 		--coverage-cobertura $(COVERAGE_DIR)/cobertura.xml \
 		--coverage-html $(COVERAGE_DIR)/html \
