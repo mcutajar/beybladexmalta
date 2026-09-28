@@ -123,7 +123,7 @@ final class AdminBracketImportController extends AbstractController
             return $this->refuse('The bracket could not be read: '.$exception->getMessage());
         }
 
-        $challongeUrl = trim($data->challongeUrl);
+        $challongeUrl = $url->bracketUrl();
 
         $this->drafts->remember($snapshot, $challongeUrl, $title, $heldOn, $seasonSlug);
 
