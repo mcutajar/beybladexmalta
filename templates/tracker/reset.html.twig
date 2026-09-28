@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Reset {{ tracker.tournamentName }} tracker{% endblock %}
+{% block description %}Confirm reset of a private tournament performance tracker.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block canonical %}{{ site_url }}{{ path('performance_tracker_setup') }}{% endblock %}
+{% block head_extra %}<meta name="referrer" content="no-referrer">{% endblock %}
+
+{% block body %}
+    <twig:BackLink href="{{ path('performance_tracker_edit', {token: edit_token}) }}" class="mb-6">Keep these results</twig:BackLink>
+    <twig:PageHeader eyebrow="Confirmation required" title="Reset every match?" highlight="Your setup will stay" size="md">
+        This removes every result and match note from {{ tracker.tournamentName }}. The tournament and three blade definitions remain.
+    </twig:PageHeader>
+
+    <twig:Card class="mx-auto max-w-xl text-center">
+        <twig:Alert tone="heat" class="mb-6">This cannot be undone. Export CSV first if you may need the record.</twig:Alert>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('reset-performance-tracker') }}">
+            <twig:Button tone="heat" class="w-full">Yes, reset all match results</twig:Button>
+        </form>
+    </twig:Card>
+{% endblock %}

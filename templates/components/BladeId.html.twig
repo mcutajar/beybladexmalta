@@ -1,0 +1,25 @@
+{#
+    One stable tracker lane. The marker is optional; the lane letter and text
+    remain the identity when colour cannot be seen.
+#}
+{% props lane, name, combination = '', colour = null, total = 0, selected = false %}
+
+{% set markers = {
+    cyan: 'bg-brand-strong/20', amber: 'bg-flame-strong/20', red: 'bg-heat-strong/20',
+    emerald: 'bg-positive-strong/20', blue: 'bg-info/20', violet: 'bg-violet-500/20',
+} %}
+
+<div {{ attributes.defaults({class: 'flex min-w-0 items-center gap-3 rounded-field border p-3 text-left ' ~ (selected ? 'border-brand-strong bg-brand-strong/5' : 'border-line bg-canvas/50')}) }}>
+    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line font-mono text-sm font-black text-ink {{ colour ? markers[colour] : 'bg-surface-raised' }}">
+        {{ lane }}
+        {% if colour %}<span class="sr-only">, {{ colour }} marker</span>{% endif %}
+    </span>
+    <span class="min-w-0 flex-1">
+        <span class="block truncate text-sm font-black text-ink">{{ name }}</span>
+        <span class="block truncate text-xs text-ink-muted">{{ combination ?: 'Label only' }}</span>
+    </span>
+    <span class="shrink-0 text-right">
+        <span class="block font-mono text-lg font-black tabular-nums text-ink" data-blade-total="{{ lane }}">{{ total > 0 ? '+' ~ total : total }}</span>
+        <span class="block text-[10px] uppercase tracking-wide text-ink-faint">total</span>
+    </span>
+</div>

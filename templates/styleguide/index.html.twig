@@ -20,7 +20,8 @@
         {% for anchor, label in {
             'tokens': 'Tokens', 'radii': 'Radii', 'badge': 'Badge', 'button': 'Button',
             'alert': 'Alert', 'card': 'Card', 'section-heading': 'Section heading',
-            'form-controls': 'Form controls', 'data-table': 'Data table', 'dropped-rows': 'Dropped rows', 'expandable-table': 'Expandable table',
+            'form-controls': 'Form controls', 'score-cell': 'Score cell', 'score-picker': 'Score picker', 'blade-id': 'Blade ID',
+            'data-table': 'Data table', 'dropped-rows': 'Dropped rows', 'expandable-table': 'Expandable table',
             'feature-tiles': 'Feature tiles', 'link-cards': 'Link cards',
             'disclosure': 'Disclosure', 'empty-state': 'Empty state',
             'form-strip': 'Form strip', 'match-log': 'Match log', 'top-cut': 'Top cut',
@@ -582,6 +583,33 @@
                 The last tile is a record nobody in scope holds. It renders rather than disappearing, so a
                 quiet season is the same board as a busy one.
             </p>
+        </twig:Card>
+
+        <twig:Card id="score-cell">
+            <twig:SectionHeading title="Score cell" rule />
+            <div class="flex flex-wrap gap-2">
+                {% for score in ['not_recorded', 'unused', '-3', '-2', '-1', '0', '+1', '+2', '+3'] %}
+                    <twig:ScoreCell value="{{ score }}" label="Phoenix Wing, match 5" href="#score-cell" />
+                {% endfor %}
+            </div>
+            <p class="mt-4 text-xs text-ink-muted">One focusable result. Every state carries text or a sign, independently of colour.</p>
+        </twig:Card>
+
+        <twig:Card id="score-picker">
+            <twig:SectionHeading title="Score picker" rule />
+            <div class="max-w-md">
+                <twig:ScorePicker fieldName="score-picker-demo" idPrefix="score-picker-demo" selected="+2" bladeName="Phoenix Wing" :matchNumber="5" />
+            </div>
+            <p class="mt-4 text-xs text-ink-muted">The complete result vocabulary as 44px radio controls. “Not recorded” and “unused” are separate choices.</p>
+        </twig:Card>
+
+        <twig:Card id="blade-id">
+            <twig:SectionHeading title="Blade ID" rule />
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <twig:BladeId lane="A" name="Phoenix Wing" combination="Phoenix Wing · 5-60 · Point" colour="cyan" :total="4" />
+                <twig:BladeId lane="B" name="Blade B" :total="-1" />
+            </div>
+            <p class="mt-4 text-xs text-ink-muted">Stable lane, optional marker, name, combination and current total in one narrow-safe row.</p>
         </twig:Card>
 
         {# The commands carry single quotes of their own, so they are built

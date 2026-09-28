@@ -45,6 +45,16 @@ This Symfony 8.1 application provides a public leaderboard and authenticated adm
   - Auto-creates players when a payer is not already present.
   - Marks season registrations as paid and writes a ledger entry.
 
+- `src/Controller/PerformanceTrackerController.php`
+  - Public setup, private capability URL and separate read-only share URL for
+    an anonymous three-blade tournament tracker.
+  - Every score is a normal CSRF-protected form submission; the site script
+    only upgrades it to inline saving and live-region feedback.
+  - Tracker rows deliberately do not enter `command_ledger.sh` or `repeat.sh`.
+    They are disposable, owner-created personal notes rather than league state
+    or an administrator action, and replaying private trackers into a rebuilt
+    league database would be both surprising and unnecessary.
+
 ### Presentation layer
 
 - `assets/styles/app.css`
@@ -177,6 +187,7 @@ service that owns the domain rules.
   - Accepts only strict `YYYY-MM-DD` dates, for web and CLI alike.
   - Writes the recovery artifacts inside the flush transaction, so the tournament
     and its ledger entry either both survive or neither does.
+
   - `importTeamEvent()` is the 2v2 path: one tournament, each entrant's rank
     expanded into one `TournamentResult` per blader in it, and no match, game or
     knockout bonus at all. An entrant with no members is stored and scores
@@ -190,6 +201,14 @@ service that owns the domain rules.
     lines and the rows it produces are not the same number, and a command that
     recounted the file to describe what happened would reimplement all three
     rules that make them differ.
+
+- `App\Service\PerformanceTrackerService`
+  - Creates exactly three stable blade lanes, owns match numbering, validates
+    the score vocabulary and preserves existing matches when setup changes.
+  - Stores only a hash of the edit capability. A different random identifier
+    reaches the read-only share view.
+  - Keeps not-recorded and unused as distinct enum values all the way through
+    persistence, summaries and CSV export.
 
 - `App\Service\TeamListParser`
   - Parses a roster file — `team: blader + blader`, one entrant per line in

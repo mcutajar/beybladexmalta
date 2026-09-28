@@ -16,7 +16,7 @@
         <div class="rounded-card border p-4 {{ tile.highlight|default(false)
             ? 'border-flame-strong/30 bg-flame-strong/5'
             : 'border-line bg-surface' }}">
-            <dd class="font-mono text-2xl font-black tabular-nums {{ tile.highlight|default(false) ? 'text-flame' : 'text-ink' }}">{{ tile.value }}</dd>
+            <dd{% if tile.data is defined %} data-kpi="{{ tile.data }}"{% endif %} class="font-mono text-2xl font-black tabular-nums {{ tile.highlight|default(false) ? 'text-flame' : 'text-ink' }}">{{ tile.value }}</dd>
             <dt class="mt-1 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">{{ tile.label }}</dt>
         </div>
     {% endfor %}

@@ -86,6 +86,15 @@
         </twig:Button>
     </div>
 
+    <div class="mb-12 flex flex-col gap-5 rounded-card border border-brand-strong/20 bg-brand-strong/5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div>
+            <twig:Badge tone="brand" size="sm">Free player tool</twig:Badge>
+            <h2 class="mt-2 text-xl font-black uppercase tracking-tight text-ink sm:text-2xl">Track your three-blade deck</h2>
+            <p class="mt-1 max-w-xl text-sm text-ink-muted">Record each blade's result during a tournament, see totals and per-appearance averages, then share or export the match record. No account required.</p>
+        </div>
+        <twig:Button href="{{ path('performance_tracker_setup') }}" class="whitespace-nowrap">Open performance tracker &rarr;</twig:Button>
+    </div>
+
     <div class="mb-12 space-y-6">
 
         <twig:Card size="lg">

@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ tracker.playerName }} at {{ tracker.tournamentName }} | Performance tracker{% endblock %}
+{% block description %}Read-only match-by-match Beyblade X performance for {{ tracker.playerName }} at {{ tracker.tournamentName }}.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block canonical %}{{ site_url }}{{ path('performance_tracker_share', {shareId: tracker.shareId}) }}{% endblock %}
+{% block column %}max-w-7xl overflow-x-clip px-3 py-10 sm:px-4 md:py-16{% endblock %}
+
+{% block body %}
+    <twig:BackLink href="{{ path('performance_tracker_setup') }}" class="mb-6">Create your own tracker</twig:BackLink>
+    <twig:PageHeader eyebrow="Read-only performance tracker" title="{{ tracker.tournamentName }}" highlight="{{ tracker.playerName }}" size="md">
+        {{ tracker.heldOn|date('j F Y') }}{% if tracker.location %} · {{ tracker.location }}{% endif %}
+    </twig:PageHeader>
+
+    <twig:KpiRow class="mb-6" :tiles="[
+        {value: summary.total > 0 ? '+' ~ summary.total : summary.total, label: 'total score', highlight: true},
+        {value: summary.average is null ? '—' : summary.average|number_format(2), label: 'average / appearance'},
+        {value: summary.completedMatches, label: 'matches complete'},
+        {value: summary.appearances, label: 'blade appearances'},
+    ]" />
+
+    <twig:Card>
+        <twig:SectionHeading title="All results" rule />
+        {{ include('tracker/_performance_grid.html.twig', {tracker: tracker, summary: summary, editable: false}) }}
+    </twig:Card>
+
+    <div class="mt-6">
+        {{ include('tracker/_blade_summaries.html.twig', {summary: summary}) }}
+    </div>
+
+    <div class="mt-6 text-center">
+        <twig:Button href="{{ path('performance_tracker_share_export', {shareId: tracker.shareId}) }}" tone="neutral">Export this tracker as CSV</twig:Button>
+    </div>
+{% endblock %}

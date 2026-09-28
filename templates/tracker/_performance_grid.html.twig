@@ -1,0 +1,39 @@
+{% set can_edit = editable|default(false) %}
+
+<twig:DataTable compact class="performance-grid">
+    <thead>
+    <tr>
+        <th class="sticky left-0 z-2 min-w-48 bg-surface">Blade</th>
+        {% for match in tracker.matches %}
+            <th class="min-w-14 text-center">M{{ match.sequence }}</th>
+        {% endfor %}
+        <th class="sticky right-0 z-2 bg-surface text-right">Total</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for blade in tracker.blades %}
+        {% set bladeSummary = summary.forLane(blade.lane) %}
+        <tr>
+            <td class="sticky left-0 z-1 min-w-48 bg-surface">
+                <twig:BladeId lane="{{ blade.lane.value }}" name="{{ blade.displayName }}" combination="{{ blade.combination }}" colour="{{ blade.colour }}" :total="bladeSummary.total" />
+            </td>
+            {% for match in tracker.matches %}
+                {% set value = match.resultFor(blade).value %}
+                {% set cellLabel = blade.displayName ~ ', match ' ~ match.sequence %}
+                <td class="text-center">
+                    <twig:ScoreCell
+                        value="{{ value.value }}"
+                        label="{{ cellLabel }}"
+                        href="{{ can_edit ? path('performance_tracker_edit', {token: edit_token, match: match.sequence}) ~ '#match-station' : null }}"
+                        data-match-number="{{ match.sequence }}"
+                        data-lane="{{ blade.lane.value }}"
+                    />
+                </td>
+            {% endfor %}
+            <td class="sticky right-0 z-1 bg-surface text-right font-mono text-base font-black text-ink" data-blade-total="{{ blade.lane.value }}">
+                {{ bladeSummary.total > 0 ? '+' ~ bladeSummary.total : bladeSummary.total }}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</twig:DataTable>

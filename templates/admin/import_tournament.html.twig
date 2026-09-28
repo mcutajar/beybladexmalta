@@ -61,6 +61,7 @@
             <twig:Button class="w-full">Fetch &amp; review →</twig:Button>
         </div>
 
+        {{ form_widget(bracket_form._token) }}
         {{ form_end(bracket_form, {'render_rest': false}) }}
     </twig:Card>
 
@@ -114,7 +115,8 @@
             <twig:Button tone="flame" class="w-full">Process calculations &amp; commit ✓</twig:Button>
         </div>
 
-        {# Passing render_rest: false stops Symfony from injecting hidden trailing markup layouts #}
+        {{ form_widget(import_form._token) }}
+        {# Passing render_rest: false stops Symfony from injecting widgets already placed above. #}
         {{ form_end(import_form, {'render_rest': false}) }}
     </twig:Card>
 

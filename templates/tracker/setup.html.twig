@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Tournament performance tracker | Malta Beyblade Community League{% endblock %}
+{% block description %}Track how each of your three Beyblade X combinations performs match by match, with totals and per-appearance averages.{% endblock %}
+{% block canonical %}{{ site_url }}{{ path('performance_tracker_setup') }}{% endblock %}
+
+{% block body %}
+    <twig:BackLink href="{{ path('app_league_proposal_v2') }}" class="mb-6">Return to league home</twig:BackLink>
+
+    <twig:PageHeader eyebrow="Personal tournament tool" title="Track every match" highlight="Three blades. One clear record." size="md">
+        No account is required. Your private edit link keeps the tracker available after you close the page.
+    </twig:PageHeader>
+
+    {% if error %}<twig:Alert tone="heat" class="mb-4">{{ error }}</twig:Alert>{% endif %}
+
+    <twig:Card size="lg">
+        {{ form_start(tracker_form) }}
+            {{ include('tracker/_setup_fields.html.twig', {tracker_form: tracker_form}) }}
+            <twig:Button class="mt-8 w-full">Create tracker</twig:Button>
+        {{ form_end(tracker_form) }}
+    </twig:Card>
+{% endblock %}

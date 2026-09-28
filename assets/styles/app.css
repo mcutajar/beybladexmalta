@@ -158,6 +158,11 @@
     }
 }
 
+/* A freshly saved score is announced as well as highlighted. */
+[data-result-cell][data-recently-changed] {
+    @apply ring-2 ring-flame-strong ring-offset-2 ring-offset-canvas;
+}
+
 /*
     Form controls.
 

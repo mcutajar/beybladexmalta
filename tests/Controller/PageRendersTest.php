@@ -50,6 +50,7 @@ final class PageRendersTest extends PageTestCase
         yield 'season 1 framework' => ['/'];
         yield 'proposal v1' => ['/v1'];
         yield 'proposal v0' => ['/v0'];
+        yield 'performance tracker setup' => ['/tracker'];
     }
 
     public function testTheRegistrationsPageRendersWithNothingToShow(): void
