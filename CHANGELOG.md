@@ -5,6 +5,12 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.7.1](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.7.1) - 2026-09-28
+
+### Fixes
+
+- Align PHPUnit memory limits ([318b193](https://github.com/mcutajar/beybladexmalta/commit/318b1938299c0a1f8bf4a11cc95bebac561b0f39))
+
 ## [1.7.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.7.0) - 2026-09-28
 
 ### Documentation
