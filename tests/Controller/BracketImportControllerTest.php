@@ -680,6 +680,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
 
         $client = $this->createBrowser();
         $crawler = $this->fetchBracket($client);
+        $csrf = (string) $crawler->filter('input[name="bracket_confirm[_token]"]')->attr('value');
 
         $client->submit($crawler->filter('button[name="cancel"]')->form());
 
@@ -688,7 +689,7 @@ final class BracketImportControllerTest extends AdminPageTestCase
 
         // And the draft is gone, so a replayed confirm has nothing to apply.
         $client->request('POST', '/admin/import/bracket/confirm', [
-            'bracket_confirm' => ['slug' => FakeChallonge::SLUG],
+            'bracket_confirm' => ['_token' => $csrf, 'slug' => FakeChallonge::SLUG],
         ]);
 
         self::assertResponseRedirects(self::PAGE);

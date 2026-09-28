@@ -1,0 +1,44 @@
+{{ form_errors(tracker_form) }}
+
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <twig:Field label="Tournament name" controlId="{{ tracker_form.tournamentName.vars.id }}">
+        {{ form_widget(tracker_form.tournamentName) }}
+    </twig:Field>
+    <twig:Field label="Date" controlId="{{ tracker_form.heldOn.vars.id }}">
+        {{ form_widget(tracker_form.heldOn) }}
+    </twig:Field>
+    <twig:Field label="Player name" controlId="{{ tracker_form.playerName.vars.id }}">
+        {{ form_widget(tracker_form.playerName) }}
+    </twig:Field>
+    <twig:Field label="Expected match count" controlId="{{ tracker_form.expectedMatches.vars.id }}" hint="You can change this later; saved matches are never discarded.">
+        {{ form_widget(tracker_form.expectedMatches) }}
+    </twig:Field>
+    <twig:Field label="Location or event" controlId="{{ tracker_form.location.vars.id }}" hint="Optional" class="sm:col-span-2">
+        {{ form_widget(tracker_form.location) }}
+    </twig:Field>
+</div>
+
+<div class="mt-8 space-y-4">
+    <twig:SectionHeading title="Your three blades" rule />
+    <p class="text-sm text-ink-muted">A simple label is enough. Add the combination when it helps you recognise the lane quickly.</p>
+
+    {% set lanes = ['A', 'B', 'C'] %}
+    {% for bladeForm in tracker_form.blades %}
+        <fieldset class="rounded-card border border-line bg-canvas/50 p-4">
+            <legend class="px-2 text-xs font-black uppercase tracking-wider text-brand">Blade {{ lanes[loop.index0] }}</legend>
+            <div class="space-y-4">
+                <twig:Field label="Display name" controlId="{{ bladeForm.displayName.vars.id }}">
+                    {{ form_widget(bladeForm.displayName) }}
+                </twig:Field>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <twig:Field label="Blade" controlId="{{ bladeForm.blade.vars.id }}" hint="Optional">{{ form_widget(bladeForm.blade) }}</twig:Field>
+                    <twig:Field label="Ratchet" controlId="{{ bladeForm.ratchet.vars.id }}" hint="Optional">{{ form_widget(bladeForm.ratchet) }}</twig:Field>
+                    <twig:Field label="Bit" controlId="{{ bladeForm.bit.vars.id }}" hint="Optional">{{ form_widget(bladeForm.bit) }}</twig:Field>
+                </div>
+                <twig:Field label="Colour marker" controlId="{{ bladeForm.colour.vars.id }}" hint="Optional; the lane letter always remains visible.">
+                    {{ form_widget(bladeForm.colour) }}
+                </twig:Field>
+            </div>
+        </fieldset>
+    {% endfor %}
+</div>

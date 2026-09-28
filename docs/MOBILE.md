@@ -21,6 +21,9 @@ design for) against the dev stack.
 | `/registrations` | none | |
 | `/admin/payments` | none | |
 | `/admin/import` | none | two-column field grid collapses to one |
+| `/tracker` | none | setup stays one column; all text controls remain 16px |
+| `/tracker/edit/{capability}` | none | match station is first; the review grid scrolls inside its disclosure |
+| `/tracker/share/{share}` | none | read-only grid uses the same contained scroll shell |
 | `/_styleguide` | none | |
 
 **No page scrolls horizontally at 375px.** That is the cardinal rule: a table may
@@ -39,6 +42,8 @@ scroll inside `overflow-x-auto`, the document may not.
 | Back link height | 44px, `sm:` tighter | `min-h-11` on the component. |
 | Table row link height | fills the cell (~50-68px) | `.data-table td > a:only-child` expands to the row's existing height at no layout cost; the leaderboard's name cell wraps both its lines in the anchor. |
 | `h1` | `text-4xl` (36px), `md:text-6xl` | Sized for the phone and grown. The two admin pages step down to `text-3xl` and `text-2xl`. |
+| Tracker score choice | 70 × 44px (302 × 44px for “not recorded”) | Eight quick result choices plus the distinct unset state; every control meets the 44px target. |
+| Tracker review grid | 252px visible, 438px scroll width with one match | Blade identity and total stay pinned while match columns scroll inside the card. |
 
 ## Known, deliberate
 

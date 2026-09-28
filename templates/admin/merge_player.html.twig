@@ -39,6 +39,7 @@
         <div class="border-t border-line/60 pt-4">
             <twig:Button tone="flame" class="w-full">Review or apply merge</twig:Button>
         </div>
+        {{ form_widget(merge_form._token) }}
         {{ form_end(merge_form, {'render_rest': false}) }}
     </twig:Card>
 

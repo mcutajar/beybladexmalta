@@ -279,6 +279,7 @@
         </div>
     </twig:Card>
 
+    {{ form_widget(confirm_form._token) }}
     {# render_rest: false keeps Symfony from injecting the widgets already placed above. #}
     {{ form_end(confirm_form, {'render_rest': false}) }}
 

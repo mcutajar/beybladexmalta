@@ -144,8 +144,11 @@ db-reset: dev-stack-only ## Rebuild the database from repeat.sh
 
 ## --- Quality ---------------------------------------------------------------
 
+# Twig keeps compiled templates in memory for the process lifetime. The
+# styleguide exercises every component, so the full suite needs the same room
+# already granted to the coverage run below as the component library grows.
 phpunit: running $(TAILWIND_CSS) ## Run the test suite, e.g. make phpunit ARGS="--filter FooTest"
-	$(EXEC) php vendor/bin/phpunit $(ARGS)
+	$(EXEC) php -d memory_limit=256M vendor/bin/phpunit $(ARGS)
 
 test: phpunit ## Alias for phpunit
 

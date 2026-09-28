@@ -1,0 +1,22 @@
+{# One colour-independent, keyboard-reachable performance result. #}
+{% props value = 'not_recorded', href = null, label = null %}
+
+{% set labels = {
+    not_recorded: 'Not recorded', unused: '—', '-3': '−3', '-2': '−2', '-1': '−1',
+    '0': '0', '+1': '+1', '+2': '+2', '+3': '+3',
+} %}
+{% set tones = {
+    not_recorded: 'border-line text-ink-faint', unused: 'border-line text-ink-muted',
+    '-3': 'border-heat-strong/40 text-heat', '-2': 'border-heat-strong/40 text-heat', '-1': 'border-heat-strong/40 text-heat',
+    '0': 'border-line text-ink-muted', '+1': 'border-positive-strong/40 text-positive',
+    '+2': 'border-positive-strong/40 text-positive', '+3': 'border-flame-strong/40 text-flame',
+} %}
+{% set text = labels[value] %}
+{% set accessible = label ? label ~ ': ' ~ (value == 'unused' ? 'unused' : text) : (value == 'unused' ? 'Unused' : text) %}
+{% set classes = 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-control border bg-canvas px-2 font-mono text-xs font-black tabular-nums outline-none transition-colors focus:ring-2 focus:ring-brand-strong/60 ' ~ tones[value] %}
+
+{% if href %}
+    <a href="{{ href }}" aria-label="{{ accessible }}" {{ attributes.defaults({class: classes, 'data-result-cell': ''}) }}>{{ text }}</a>
+{% else %}
+    <span tabindex="0" aria-label="{{ accessible }}" {{ attributes.defaults({class: classes, 'data-result-cell': ''}) }}>{{ text }}</span>
+{% endif %}

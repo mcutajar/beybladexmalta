@@ -18,7 +18,7 @@
                     <span class="block text-[10px] italic text-ink-faint">{{ row.note }}</span>
                 {% endif %}
             </dt>
-            <dd class="shrink-0 font-mono text-xs font-bold tabular-nums text-ink">{{ row.value }}</dd>
+            <dd{% if row.data is defined %} data-total="{{ row.data }}"{% endif %} class="shrink-0 font-mono text-xs font-bold tabular-nums text-ink">{{ row.value }}</dd>
         </div>
     {% endfor %}
 </dl>

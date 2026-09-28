@@ -1,0 +1,154 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ tracker.tournamentName }} tracker | Malta Beyblade Community League{% endblock %}
+{% block description %}Private match entry for a personal Beyblade X tournament performance tracker.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block canonical %}{{ site_url }}{{ path('performance_tracker_setup') }}{% endblock %}
+{% block head_extra %}<meta name="referrer" content="no-referrer">{% endblock %}
+{% block column %}max-w-7xl overflow-x-clip px-3 py-10 sm:px-4 md:py-16{% endblock %}
+
+{% block body %}
+    {# `Disclosure` has a prop named `summary`, so preserve the page's summary
+       before entering that component's rebound content scope. #}
+    {% set trackerSummary = summary %}
+    <twig:BackLink href="{{ path('performance_tracker_setup') }}" class="mb-6">Start another tracker</twig:BackLink>
+
+    <twig:PageHeader eyebrow="Private tracker" title="{{ tracker.tournamentName }}" highlight="{{ tracker.playerName }}" size="md">
+        {{ tracker.heldOn|date('j F Y') }}{% if tracker.location %} · {{ tracker.location }}{% endif %}
+    </twig:PageHeader>
+
+    <twig:Flashes />
+    <p class="sr-only" aria-live="polite" aria-atomic="true" data-score-live></p>
+
+    <twig:KpiRow class="mb-6" :tiles="[
+        {value: summary.total > 0 ? '+' ~ summary.total : summary.total, label: 'total score', highlight: true, data: 'overall-total'},
+        {value: summary.average is null ? '—' : summary.average|number_format(2), label: 'average / appearance', data: 'overall-average'},
+        {value: summary.completedMatches ~ ' / ' ~ tracker.expectedMatches, label: 'matches complete'},
+        {value: summary.appearances, label: 'blade appearances'},
+    ]" />
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+        <twig:Card id="match-station" data-match-station>
+            <div class="mb-5 flex flex-col gap-3 border-b border-line/60 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-2xl font-black text-ink">Match {{ selected_match.sequence }}</h2>
+                        <twig:Badge tone="{{ selected_match.complete ? 'positive' : 'flame' }}" size="sm">{{ selected_match.complete ? 'Complete' : 'In progress' }}</twig:Badge>
+                    </div>
+                    <p class="mt-1 text-sm text-ink-muted">Tap a blade, choose its result, and save. Every choice also works as a normal form.</p>
+                </div>
+                <form action="{{ path('performance_tracker_match_add', {token: edit_token}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('add-performance-match') }}">
+                    <twig:Button tone="neutral" class="w-full whitespace-nowrap">Add match</twig:Button>
+                </form>
+            </div>
+
+            <nav class="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Choose blade to score" data-blade-tabs>
+                {% for blade in tracker.blades %}
+                    {% set bladeSummary = summary.forLane(blade.lane) %}
+                    <a href="#score-panel-{{ blade.lane.value }}" class="rounded-field outline-none focus:ring-2 focus:ring-brand-strong/60" data-blade-select="{{ blade.lane.value }}">
+                        <twig:BladeId lane="{{ blade.lane.value }}" name="{{ blade.displayName }}" combination="{{ blade.combination }}" colour="{{ blade.colour }}" :total="bladeSummary.total" :selected="loop.first" />
+                    </a>
+                {% endfor %}
+            </nav>
+
+            <div class="mt-5 space-y-6">
+                {% for blade in tracker.blades %}
+                    {% set scoreForm = score_forms[blade.lane.value] %}
+                    {% set result = selected_match.resultFor(blade) %}
+                    <div id="score-panel-{{ blade.lane.value }}" data-score-panel="{{ blade.lane.value }}">
+                        {{ form_start(scoreForm, {attr: {'data-score-form': '', 'data-lane': blade.lane.value, 'data-match': selected_match.sequence}}) }}
+                            {{ form_widget(scoreForm._token) }}
+                            <twig:ScorePicker
+                                fieldName="{{ scoreForm.result.vars.full_name }}"
+                                idPrefix="score-{{ selected_match.sequence }}-{{ blade.lane.value }}"
+                                selected="{{ result.value.value }}"
+                                bladeName="{{ blade.displayName }}"
+                                :matchNumber="selected_match.sequence"
+                            />
+                            <twig:Button class="mt-3 w-full">Save {{ blade.displayName }}</twig:Button>
+                        {{ form_end(scoreForm, {render_rest: false}) }}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <twig:Disclosure summary="Opponent, round, score, notes & time" tone="neutral" compact class="mt-6">
+                {{ form_start(match_form) }}
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <twig:Field label="Opponent" controlId="{{ match_form.opponent.vars.id }}">{{ form_widget(match_form.opponent) }}</twig:Field>
+                        <twig:Field label="Final score" controlId="{{ match_form.finalScore.vars.id }}">{{ form_widget(match_form.finalScore) }}</twig:Field>
+                        <twig:Field label="Round or placement" controlId="{{ match_form.round.vars.id }}">{{ form_widget(match_form.round) }}</twig:Field>
+                        <twig:Field label="Played at" controlId="{{ match_form.playedAt.vars.id }}">{{ form_widget(match_form.playedAt) }}</twig:Field>
+                        <twig:Field label="Notes" controlId="{{ match_form.notes.vars.id }}" class="sm:col-span-2">{{ form_widget(match_form.notes) }}</twig:Field>
+                    </div>
+                    <twig:Button class="mt-4 w-full">Save match details</twig:Button>
+                {{ form_end(match_form) }}
+            </twig:Disclosure>
+
+            {% if tracker.matches|length > 1 %}
+                <form action="{{ path('performance_tracker_match_remove', {token: edit_token, sequence: selected_match.sequence}) }}" method="post" class="mt-4 text-right">
+                    <input type="hidden" name="_token" value="{{ csrf_token('remove-performance-match-' ~ selected_match.sequence) }}">
+                    <button class="min-h-11 rounded-control px-3 text-xs font-bold uppercase tracking-wider text-heat transition-colors hover:text-heat-strong">Remove match {{ selected_match.sequence }}</button>
+                </form>
+            {% endif %}
+        </twig:Card>
+
+        <twig:Card>
+            <twig:SectionHeading title="Recent matches" rule />
+            <div class="space-y-3">
+                {% for match in tracker.matches.toArray|reverse|slice(0, 4) %}
+                    <a href="{{ path('performance_tracker_edit', {token: edit_token, match: match.sequence}) }}#match-station" class="block rounded-field border p-3 transition-colors hover:border-brand-strong {{ match.sequence == selected_match.sequence ? 'border-brand-strong bg-brand-strong/5' : 'border-line bg-canvas/50' }}">
+                        <span class="flex items-center justify-between gap-3">
+                            <span>
+                                <strong class="text-sm text-ink">Match {{ match.sequence }}</strong>
+                                <span class="block text-xs text-ink-muted">{{ match.opponent ?: (match.complete ? 'Complete' : 'Not complete') }}</span>
+                            </span>
+                            <span class="flex gap-1">
+                                {% for blade in tracker.blades %}
+                                    <twig:ScoreCell value="{{ match.resultFor(blade).value.value }}" label="{{ blade.displayName ~ ', match ' ~ match.sequence }}" />
+                                {% endfor %}
+                            </span>
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        </twig:Card>
+    </div>
+
+    <twig:Card class="mt-6">
+        <twig:Disclosure summary="Review all results" icon="▦">
+            {{ include('tracker/_performance_grid.html.twig', {tracker: tracker, summary: trackerSummary, editable: true, edit_token: edit_token}) }}
+            <div class="mt-6">
+                {{ include('tracker/_blade_summaries.html.twig', {summary: trackerSummary}) }}
+            </div>
+        </twig:Disclosure>
+    </twig:Card>
+
+    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <twig:Card>
+            <twig:Disclosure summary="Edit tracker setup" tone="neutral">
+                {{ form_start(settings_form) }}
+                    {{ include('tracker/_setup_fields.html.twig', {tracker_form: settings_form}) }}
+                    <twig:Button class="mt-6 w-full">Save setup</twig:Button>
+                {{ form_end(settings_form) }}
+            </twig:Disclosure>
+        </twig:Card>
+
+        <twig:Card class="space-y-4">
+            <twig:SectionHeading title="Finish, share & reuse" rule />
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-ink-muted">Read-only share link</p>
+                <a href="{{ path('performance_tracker_share', {shareId: tracker.shareId}) }}" class="mt-1 block break-all text-sm text-brand underline underline-offset-4">{{ site_url }}{{ path('performance_tracker_share', {shareId: tracker.shareId}) }}</a>
+                <p class="mt-1 text-xs text-ink-faint">Anyone with this link can view results, never edit them.</p>
+            </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <twig:Button href="{{ path('performance_tracker_export', {token: edit_token}) }}" tone="neutral">Export CSV</twig:Button>
+                <form action="{{ path('performance_tracker_duplicate', {token: edit_token}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('duplicate-performance-tracker') }}">
+                    <twig:Button tone="neutral" class="w-full">Duplicate fresh</twig:Button>
+                </form>
+            </div>
+            <a href="{{ path('performance_tracker_reset', {token: edit_token}) }}" class="inline-flex min-h-11 items-center text-xs font-bold uppercase tracking-wider text-heat">Reset all match results</a>
+        </twig:Card>
+    </div>
+{% endblock %}

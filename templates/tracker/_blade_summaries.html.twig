@@ -1,0 +1,21 @@
+<div class="grid grid-cols-1 gap-3 lg:grid-cols-3">
+    {% for bladeSummary in summary.blades %}
+        <div class="rounded-card border border-line bg-canvas/50 p-4">
+            <twig:BladeId
+                lane="{{ bladeSummary.blade.lane.value }}"
+                name="{{ bladeSummary.blade.displayName }}"
+                combination="{{ bladeSummary.blade.combination }}"
+                colour="{{ bladeSummary.blade.colour }}"
+                :total="bladeSummary.total"
+                class="mb-4"
+            />
+            <twig:TotalsList :rows="[
+                {label: 'Average per appearance', value: bladeSummary.average is null ? '—' : bladeSummary.average|number_format(2), data: 'blade-' ~ bladeSummary.blade.lane.value ~ '-average'},
+                {label: 'Appearances', value: bladeSummary.appearances, data: 'blade-' ~ bladeSummary.blade.lane.value ~ '-appearances'},
+                {label: 'Positive · negative · zero', value: bladeSummary.positive ~ ' · ' ~ bladeSummary.negative ~ ' · ' ~ bladeSummary.zero, data: 'blade-' ~ bladeSummary.blade.lane.value ~ '-balance'},
+                {label: 'Unused', value: bladeSummary.unused, data: 'blade-' ~ bladeSummary.blade.lane.value ~ '-unused'},
+                {label: 'Best individual result', value: bladeSummary.best is null ? '—' : (bladeSummary.best > 0 ? '+' ~ bladeSummary.best : bladeSummary.best), data: 'blade-' ~ bladeSummary.blade.lane.value ~ '-best'},
+            ]" />
+        </div>
+    {% endfor %}
+</div>

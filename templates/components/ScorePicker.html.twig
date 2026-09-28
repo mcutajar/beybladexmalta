@@ -1,0 +1,30 @@
+{# The complete, server-validated score vocabulary as nine 44px controls. #}
+{% props fieldName, idPrefix, selected = 'not_recorded', bladeName = 'Blade', matchNumber = 1 %}
+
+{% set choices = [
+    {value: 'unused', text: '—', spoken: 'unused'},
+    {value: '-3', text: '−3', spoken: 'minus 3'},
+    {value: '-2', text: '−2', spoken: 'minus 2'},
+    {value: '-1', text: '−1', spoken: 'minus 1'},
+    {value: '0', text: '0', spoken: '0'},
+    {value: '+1', text: '+1', spoken: 'plus 1'},
+    {value: '+2', text: '+2', spoken: 'plus 2'},
+    {value: '+3', text: '+3', spoken: 'plus 3'},
+] %}
+
+<fieldset {{ attributes.defaults({class: 'space-y-2'}) }}>
+    <legend class="text-xs font-bold uppercase tracking-wider text-ink-muted">Result for {{ bladeName }}</legend>
+    <div class="grid grid-cols-4 gap-2">
+        {% for choice in choices %}
+            {% set inputId = idPrefix ~ '-' ~ loop.index %}
+            <label for="{{ inputId }}" class="relative flex min-h-11 cursor-pointer items-center justify-center rounded-control border border-line bg-canvas font-mono text-sm font-black text-ink transition-colors has-checked:border-brand-strong has-checked:bg-brand-strong/15 has-checked:text-brand-bright focus-within:ring-2 focus-within:ring-brand-strong/60">
+                <input id="{{ inputId }}" name="{{ fieldName }}" type="radio" value="{{ choice.value }}" class="sr-only" {{ selected == choice.value ? 'checked' }} aria-label="{{ bladeName }}, match {{ matchNumber }}, {{ choice.spoken }}">
+                {{ choice.text }}
+            </label>
+        {% endfor %}
+    </div>
+    <label class="flex min-h-11 cursor-pointer items-center gap-2 rounded-control border border-line bg-canvas px-3 text-xs font-semibold text-ink-muted has-checked:border-brand-strong has-checked:text-brand-bright focus-within:ring-2 focus-within:ring-brand-strong/60">
+        <input name="{{ fieldName }}" type="radio" value="not_recorded" {{ selected == 'not_recorded' ? 'checked' }} aria-label="{{ bladeName }}, match {{ matchNumber }}, not recorded">
+        Not recorded yet
+    </label>
+</fieldset>

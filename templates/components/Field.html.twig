@@ -15,7 +15,7 @@
 
     <twig:Field label="Target season context" hint="…" hintTone="caution">
 #}
-{% props label, hint = null, hintTone = 'muted' %}
+{% props label, hint = null, hintTone = 'muted', controlId = null %}
 
 {% set hintTones = {
     muted:   'text-ink-faint',
@@ -23,7 +23,7 @@
 } %}
 
 <div {{ attributes.defaults({class: 'space-y-2'}) }}>
-    <label class="block text-xs font-bold uppercase tracking-wider text-ink-muted">{{ label }}</label>
+    <label{% if controlId %} for="{{ controlId }}"{% endif %} class="block text-xs font-bold uppercase tracking-wider text-ink-muted">{{ label }}</label>
     {% block content %}{% endblock %}
     {% if hint %}
         <p class="text-[11px] italic {{ hintTones[hintTone] }}">{{ hint }}</p>
