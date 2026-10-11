@@ -5,6 +5,21 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.8.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.8.0) - 2026-10-11
+
+### Fixes
+
+- Correct Gamesplus 10-11 score ([ebc9244](https://github.com/mcutajar/beybladexmalta/commit/ebc924438dfdafd548d3bef26d618125ce80f7cc))
+
+### Other
+
+- Import Gamebreaker 10-03 and Gamesplus 10-04
+
+Record both Challonge snapshots and placement lists. Replay the associated aliases and new blader before importing and archiving the events. ([da86030](https://github.com/mcutajar/beybladexmalta/commit/da86030e57bd51b1aaa54a8fac0580244b39bfd0))
+- Import Gamebreaker 10-10
+
+Record the Challonge snapshot and placement list. Replay Toby and the rejected alias suggestions before importing and archiving the event. ([c665fa1](https://github.com/mcutajar/beybladexmalta/commit/c665fa1aa474363da764c424128d8a1160d6761e))
+
 ## [1.7.2](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.7.2) - 2026-09-28
 
 ### Fixes
