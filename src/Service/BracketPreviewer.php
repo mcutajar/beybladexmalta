@@ -53,6 +53,7 @@ class BracketPreviewer
     private ?array $bladerNames = null;
 
     public function __construct(
+        private ChallongeCorrections $corrections,
         private ChallongeStandingsResolver $standings,
         private ChallongeRecordReader $records,
         private AliasResolver $aliases,
@@ -84,6 +85,8 @@ class BracketPreviewer
         // request-local: a previous confirmation may have created a blader
         // that the next bracket must be able to link immediately.
         $this->bladerNames = null;
+
+        $snapshot = $this->corrections->apply($snapshot);
 
         $bracketUrl = trim($challongeUrl);
         $refusal = $this->refuse($snapshot);

@@ -74,6 +74,7 @@ class ChallongeArchiveService
     private const string ADVANCED = 'advanced';
 
     public function __construct(
+        private ChallongeCorrections $corrections,
         private TournamentStageRepository $stages,
         private ChallongeStandingsResolver $standings,
         private ChallongeRecordReader $records,
@@ -114,6 +115,8 @@ class ChallongeArchiveService
      */
     public function transcribe(Tournament $tournament, ChallongeSnapshot $snapshot): ChallongeArchiveOutcome
     {
+        $snapshot = $this->corrections->apply($snapshot);
+
         $refusal = $this->refuse($tournament, $snapshot);
 
         if (null !== $refusal) {

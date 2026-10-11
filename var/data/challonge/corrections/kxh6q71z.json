@@ -1,0 +1,48 @@
+{
+    "bracket": "kxh6q71z",
+    "corrections": [
+        {
+            "stage": 0,
+            "match": 475382253,
+            "from": {
+                "games": [
+                    [
+                        0,
+                        73
+                    ]
+                ],
+                "score": [
+                    0,
+                    73
+                ]
+            },
+            "to": {
+                "games": [
+                    [
+                        0,
+                        7
+                    ]
+                ],
+                "score": [
+                    0,
+                    7
+                ]
+            },
+            "standings": [
+                {
+                    "name": "Markulegend",
+                    "column": "Pts Diff",
+                    "from": "95",
+                    "to": "29"
+                },
+                {
+                    "name": "Josef",
+                    "column": "Pts Diff",
+                    "from": "-69",
+                    "to": "-3"
+                }
+            ],
+            "reason": "The tournament organiser confirmed that Markulegend scored 7, not 73. The league cannot edit this bracket on Challonge."
+        }
+    ]
+}

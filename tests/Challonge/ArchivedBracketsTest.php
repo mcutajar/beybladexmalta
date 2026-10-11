@@ -12,6 +12,7 @@ use App\Repository\PlayerRepository;
 use App\Repository\TournamentStageRepository;
 use App\Service\ChallongeArchiveResult;
 use App\Service\ChallongeArchiveService;
+use App\Service\ChallongeCorrections;
 use App\Service\ChallongeSnapshotFiles;
 use App\Service\ChallongeSnapshotReader;
 use App\Tests\Factory\TournamentFactory;
@@ -209,7 +210,11 @@ final class ArchivedBracketsTest extends ServiceTestCase
                 }
             }
 
-            foreach ($this->service(ChallongeSnapshotReader::class)->read($slug)->stages as $stage) {
+            $snapshot = $this->service(ChallongeCorrections::class)->apply(
+                $this->service(ChallongeSnapshotReader::class)->read($slug),
+            );
+
+            foreach ($snapshot->stages as $stage) {
                 foreach ($stage->matches as $match) {
                     $entrants = [];
 
