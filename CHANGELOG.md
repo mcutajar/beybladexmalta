@@ -5,6 +5,13 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.8.1](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.8.1) - 2026-10-22
+
+### Fixes
+
+- Preserve October 17 and 18 tournament imports ([cda0aeb](https://github.com/mcutajar/beybladexmalta/commit/cda0aeb783b1798045703fe0f8b9ab1d4a8ba502))
+- Update PHP to 8.5.12 for critical RCE fixes ([30f326e](https://github.com/mcutajar/beybladexmalta/commit/30f326e0be10085f4f860b1a5a7537d4de3d94da))
+
 ## [1.8.0](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.8.0) - 2026-10-11
 
 ### Fixes
