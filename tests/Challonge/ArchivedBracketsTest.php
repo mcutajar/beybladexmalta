@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Challonge;
 
 use App\Dto\ChallongeArchiveOutcome;
+use App\Entity\MatchGame;
 use App\Entity\Tournament;
 use App\Entity\TournamentMatch;
 use App\Entity\TournamentStage;
@@ -43,14 +44,6 @@ use Zenstruck\Foundry\Attribute\WithStory;
 final class ArchivedBracketsTest extends ServiceTestCase
 {
     use ReadsTheLeaguesCorpus;
-
-    /**
-     * Zero, on purpose, and a genuine constant rather than a census: every
-     * played solo match in the corpus is a single game, and every multi-game
-     * match is a team match, which is not archived. A backfill that produced
-     * a games row at all would be the sign the rule had been bypassed.
-     */
-    private const GAMES = 0;
 
     private ChallongeArchiveService $archive;
 
@@ -107,14 +100,34 @@ final class ArchivedBracketsTest extends ServiceTestCase
         self::assertSame($first, $this->rowCounts());
     }
 
-    public function testTheGamesTableIsEmptyAfterTheBackfill(): void
+    public function testGameRowsTranscribeOnlyMultiSetMatchesFromTheSnapshots(): void
     {
         $this->archiveEverything();
-
-        self::assertSame(self::GAMES, $this->total(
-            $this->everyMatch(),
-            static fn (TournamentMatch $match): int => $match->getGames()->count(),
-        ));
+        foreach ($this->soloSlugs() as $slug) {
+            $snapshot = $this->service(ChallongeCorrections::class)->apply(
+                $this->service(ChallongeSnapshotReader::class)->read($slug),
+            );
+            $expected = [];
+            foreach ($snapshot->stages as $stage) {
+                foreach ($stage->matches as $match) {
+                    $expected[$match->id] = count($match->games) > 1 ? $match->games : [];
+                }
+            }
+            $stored = [];
+            foreach ($this->stages($this->eventFor($slug)) as $stage) {
+                foreach ($stage->getMatches() as $match) {
+                    $games = $match->getGames()->toArray();
+                    usort($games, static fn (MatchGame $a, MatchGame $b): int => $a->getNumber() <=> $b->getNumber());
+                    $stored[$match->getChallongeId()] = array_map(
+                        static fn (MatchGame $game): array => [$game->getPlayer1Score(), $game->getPlayer2Score()],
+                        $games,
+                    );
+                }
+            }
+            ksort($expected);
+            ksort($stored);
+            self::assertSame($expected, $stored, sprintf('Set points for %s must round-trip without duplicating single games.', $slug));
+        }
     }
 
     /**

@@ -124,9 +124,9 @@ class TournamentStageRepository extends ServiceEntityRepository
      * One query rather than the two `forTournament()` needs, because nothing
      * here fetch-joins a collection — the entrants are reached through the
      * match's own two sides, which are to-one — so there is no cartesian
-     * product to avoid. The games are left out on purpose: `match_games` is
-     * empty for every solo bracket in the corpus, and a career log states the
-     * match's scoreline rather than the sets inside it.
+     * product to avoid. The games are left out on purpose: set detail is
+     * not used by the career log, which states the match's scoreline rather
+     * than the sets inside it.
      *
      * @return list<TournamentMatch>
      */

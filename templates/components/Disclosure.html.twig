@@ -20,14 +20,14 @@
 {% set accent = accents[tone] %}
 
 <details {{ attributes.defaults({
-    class: 'group cursor-pointer rounded-field border border-line/80 bg-canvas transition-all duration-200 open:ring-1 ' ~ accent.ring,
+    class: 'group cursor-pointer [&[open]>summary]:rounded-b-none [&[open]>summary]:border-b [&[open]>summary]:border-line [&[open]>summary>span]:rotate-180 rounded-field border border-line/80 bg-canvas transition-all duration-200 open:ring-1 ' ~ accent.ring,
 }) }}>
-    <summary class="flex list-none select-none items-center justify-between rounded-field {{ compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5' }} text-xs font-bold uppercase tracking-wider transition-colors hover:bg-surface/40 group-open:rounded-b-none group-open:border-b group-open:border-line {{ accent.text }}">
+    <summary class="flex list-none select-none items-center justify-between rounded-field {{ compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5' }} text-xs font-bold uppercase tracking-wider transition-colors hover:bg-surface/40 {{ accent.text }}">
         <div class="flex items-center gap-2">
             {% if icon %}<span aria-hidden="true">{{ icon }}</span>{% endif %}
             <span>{{ summary }}</span>
         </div>
-        <span class="text-xs text-ink-faint transition-transform duration-200 group-open:rotate-180" aria-hidden="true">&#9660;</span>
+        <span class="text-xs text-ink-faint transition-transform duration-200" aria-hidden="true">&#9660;</span>
     </summary>
 
     <div class="rounded-b-field bg-canvas/40 {{ compact ? 'px-3 py-1 sm:px-4 sm:py-2' : 'p-6 sm:p-8' }}">

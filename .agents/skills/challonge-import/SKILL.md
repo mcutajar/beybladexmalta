@@ -71,14 +71,12 @@ joined to participants through the match ids in their match-history cell.
   than layering a second copy over it. `app:import-tournament` has no such
   guard, which is exactly why a second replay of `repeat.sh` doubles every
   result it holds.
-- **A game row is written only when a match had more than one game.** Every one
-  of the 947 played solo matches in the corpus is a single game, so a row per
-  game would restate its own match's scoreline 947 times; all fifty-one
-  multi-game matches are team matches, and a team event archives its entrants
-  and nothing else. So `match_games` starts empty on purpose, and the rule
-  lives on `TournamentMatch::transcribeGames()` rather than in the archive
-  service — a path added later inherits it instead of having to remember it. A
-  backfill that produced 947 rows is the sign it was bypassed.
+- **A game row is written only when a match had more than one game.**
+  Single-game scorelines live on the match without duplicate game rows.
+  Solo multi-set matches keep their individual points in `MatchGame` and their
+  aggregate sets won on `TournamentMatch`. The rule lives on
+  `TournamentMatch::transcribeGames()`. Team events still archive entrants
+  rather than blader-level matches; their snapshot preserves every set.
 - **A bracket that changed after it was imported is found by asking, not by
   noticing.** `app:verify-challonge` re-fetches one and diffs it against the
   snapshot, everything except `fetched_at` — which every fetch rewrites, so a
