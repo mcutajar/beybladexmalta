@@ -163,6 +163,16 @@
         {% for cut in archive.cuts %}
             <twig:Card class="mb-6" data-page-section="top-cut">
                 <twig:TopCut :paths="cut.paths" :columns="cut.columns" :matchCount="cut.match_count" />
+                {% if cut.rounds %}
+                    <div class="mt-6 space-y-3" data-cut-rounds>
+                        <twig:SectionHeading title="Top-cut match details" size="sm" />
+                        {% for cutRound in cut.rounds %}
+                            <twig:Disclosure summary="{{ cutRound.label ~ ' · ' ~ (cutRound.matches|length) ~ ' ' ~ ((cutRound.matches|length) == 1 ? 'match' : 'matches') }}" tone="neutral" compact data-cut-round="{{ cutRound.label }}">
+                                <twig:MatchLog :rows="cutRound.matches" strikeLoser />
+                            </twig:Disclosure>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </twig:Card>
         {% endfor %}
 

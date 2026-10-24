@@ -21,7 +21,8 @@ use App\Entity\TournamentStage;
  * @phpstan-type SwissRound array{number: int, matches: list<MatchRow>, byes: list<ByeRow>}
  * @phpstan-type SwissColumn array{key: string, label: string, title: ?string}
  * @phpstan-type SwissStage array{stage: TournamentStage, label: string, standings: list<array{participant: TournamentParticipant, form: list<string>}>, columns: list<SwissColumn>, rounds: list<SwissRound>}
- * @phpstan-type CutStage array{stage: TournamentStage, match_count: int, columns: list<string>, paths: list<CutPath>}
+ * @phpstan-type CutRound array{label: string, matches: list<MatchRow>}
+ * @phpstan-type CutStage array{stage: TournamentStage, match_count: int, columns: list<string>, paths: list<CutPath>, rounds: list<CutRound>}
  */
 final class TournamentArchivePresenter
 {
@@ -55,6 +56,7 @@ final class TournamentArchivePresenter
                     'match_count' => count($matches),
                     'columns' => $this->cutColumns($stage, $matches),
                     'paths' => $this->cutPaths($stage, $matches),
+                    'rounds' => $this->cutRoundsWithSets($stage, $matches),
                 ];
 
                 continue;
@@ -177,6 +179,41 @@ final class TournamentArchivePresenter
         }
 
         return ['rounds' => $rounds, 'forms' => $forms];
+    }
+
+    /**
+     * The compact scoreboard remains enough for ordinary single-game cuts.
+     * When sets exist, list matches once per round so their detail has a home.
+     *
+     * @param list<TournamentMatch> $matches
+     *
+     * @return list<CutRound>
+     */
+    private function cutRoundsWithSets(TournamentStage $stage, array $matches): array
+    {
+        $hasSets = false;
+        foreach ($matches as $match) {
+            if (!$match->isForfeited() && null !== $match->getPlayer1() && null !== $match->getPlayer2() && $match->getGames()->count() > 1) {
+                $hasSets = true;
+                break;
+            }
+        }
+        if (!$hasSets) {
+            return [];
+        }
+
+        $rounds = [];
+        foreach ($matches as $match) {
+            $label = $this->labels->long($stage, $match);
+            $rounds[$label] ??= ['label' => $label, 'matches' => []];
+            $rounds[$label]['matches'][] = [
+                'match' => $match,
+                'player1_form' => [],
+                'player2_form' => [],
+            ];
+        }
+
+        return array_values($rounds);
     }
 
     /**

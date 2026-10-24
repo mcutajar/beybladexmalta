@@ -9,19 +9,12 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * One game inside a match, written only when a match had more than one.
  *
- * The table starts empty and that is the design rather than an accident.
- * Every one of the 947 played solo matches in the captured corpus is a single
- * game, so a row per game would restate its own match's scoreline 947 times
- * and carry nothing new. All fifty-one multi-game matches are team matches —
- * twenty-nine best-of-2 and twenty-two best-of-3 — and a team event archives
- * its entrants and nothing else, because Challonge records only the aggregate
- * of a team match and nothing in it says which half of either team played
- * which game.
+ * Single-game matches keep their score on TournamentMatch without duplicating
+ * it here. Solo multi-set events preserve each set's points in these rows,
+ * while the match itself records sets won. Team sets remain in the snapshot;
+ * team events do not archive blader-level matches.
  *
- * So the scoreline lives on `TournamentMatch`, and this exists for the first
- * solo best-of-three the league plays. `TournamentMatch::transcribeGames()`
- * owns the rule, so a caller cannot forget it; a backfill that produced 947
- * rows would be the sign it had been bypassed.
+ * TournamentMatch::transcribeGames() owns that distinction.
  *
  * The number is the game's place in the match, one-based, and carries the
  * unique index with it. There are no setters: a game is transcribed by the

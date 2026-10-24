@@ -3,6 +3,10 @@
 <ol {{ attributes.defaults({class: 'divide-y divide-line/70'}) }}>
     {% for row in rows %}
         {% set match = row.match %}
+        {% set setGames = match.games|default([])|sort((a, b) => a.number <=> b.number) %}
+        {% set hasSets = not match.forfeited and match.player1 and match.player2 and setGames|length > 1 %}
+        {% set firstName = match.player1 ? ((match.player1.player ?? null) ? match.player1.player.name : match.player1.name|replace({' (invitation pending)': ''})) : 'Bye' %}
+        {% set secondName = match.player2 ? ((match.player2.player ?? null) ? match.player2.player.name : match.player2.name|replace({' (invitation pending)': ''})) : 'Bye' %}
         <li class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 py-3 text-sm" data-match-id="{{ match.challongeId }}"{% if match.consolation %} data-consolation{% endif %}>
             <span class="flex min-w-0 flex-row-reverse flex-wrap items-center justify-start gap-x-1 gap-y-0.5">
                 <span class="max-w-full truncate text-right {{ match.winner is same as(match.player1) ? 'font-black text-ink-bright' : 'text-ink-muted' }}{{ strikeLoser and match.loser is same as(match.player1) ? ' line-through decoration-flame/70' : '' }}" title="{{ match.player1 ? ((match.player1.player ?? null) ? match.player1.player.name : match.player1.name|replace({' (invitation pending)': ''})) : 'Bye' }}">
@@ -13,6 +17,7 @@
             {% set notableScore = (match.player1Score ?? 0) >= 8 or (match.player2Score ?? 0) >= 8 %}
             <span class="min-w-12 rounded-control border px-1.5 py-1 text-center font-mono font-bold {{ notableScore ? 'border-flame/45 bg-surface-raised text-flame-bright' : 'border-transparent bg-surface-raised text-ink' }}">
                 {% if match.forfeited %}FF{% elseif match.player1Score is not null and match.player2Score is not null %}{{ match.player1Score }}–{{ match.player2Score }}{% else %}—{% endif %}
+                {% if hasSets %}<span class="block text-[11px] font-normal text-ink-muted">sets</span>{% endif %}
             </span>
             <span class="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
                 <span class="max-w-full truncate {{ match.winner is same as(match.player2) ? 'font-black text-ink-bright' : 'text-ink-muted' }}{{ strikeLoser and match.loser is same as(match.player2) ? ' line-through decoration-flame/70' : '' }}" title="{{ match.player2 ? ((match.player2.player ?? null) ? match.player2.player.name : match.player2.name|replace({' (invitation pending)': ''})) : 'Bye' }}">
@@ -20,6 +25,31 @@
                 </span>
                 <twig:FormStrip :results="row.player2_form" size="xs" class="shrink-0" data-match-history="player-2" />
             </span>
+            {% if hasSets %}
+                <div class="col-span-3 min-w-0" data-set-detail>
+                    <twig:Disclosure summary="{{ 'Set scores · ' ~ (setGames|length) ~ ' sets' }}" compact data-set-scores>
+                        <twig:DataTable compact>
+                            <caption class="py-2 text-left text-xs text-ink-muted">Points scored in each set</caption>
+                            <thead>
+                            <tr>
+                                <th>Blader</th>
+                                {% for setGame in setGames %}<th class="text-center">Set {{ setGame.number }}</th>{% endfor %}
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <th scope="row" class="break-words text-left font-bold text-ink">{{ firstName }}</th>
+                                {% for setGame in setGames %}<td class="text-center font-mono">{{ setGame.player1Score }}</td>{% endfor %}
+                            </tr>
+                            <tr>
+                                <th scope="row" class="break-words text-left font-bold text-ink">{{ secondName }}</th>
+                                {% for setGame in setGames %}<td class="text-center font-mono">{{ setGame.player2Score }}</td>{% endfor %}
+                            </tr>
+                            </tbody>
+                        </twig:DataTable>
+                    </twig:Disclosure>
+                </div>
+            {% endif %}
         </li>
     {% endfor %}
     {% for bye in byes %}

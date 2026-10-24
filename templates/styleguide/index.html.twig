@@ -332,6 +332,18 @@
             <div class="mt-4">
                 <twig:MatchLog :rows="matchDemo" strikeLoser />
             </div>
+            <p class="mt-4 text-xs text-ink-muted">Multi-set matches alone offer a collapsed set breakdown. Main scores are sets won; the table records points.</p>
+            <twig:MatchLog :rows="[
+                {match: {challongeId: 3, player1: {name: 'Claude'}, player2: {name: 'Ziggy'}, player1Score: 2, player2Score: 1, winner: null, loser: null, forfeited: false, consolation: false, games: [
+                    {number: 1, player1Score: 4, player2Score: 2},
+                    {number: 2, player1Score: 1, player2Score: 4},
+                    {number: 3, player1Score: 4, player2Score: 2},
+                ]}, player1_form: ['W'], player2_form: ['L']},
+                {match: {challongeId: 4, player1: {name: 'Martha'}, player2: {name: 'Jape'}, player1Score: 0, player2Score: 2, winner: null, loser: null, forfeited: false, consolation: false, games: [
+                    {number: 1, player1Score: 2, player2Score: 5},
+                    {number: 2, player1Score: 0, player2Score: 4},
+                ]}, player1_form: ['L'], player2_form: ['W']},
+            ]" />
         </twig:Card>
 
         <twig:Card id="top-cut">
