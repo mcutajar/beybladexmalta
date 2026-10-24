@@ -5,6 +5,17 @@ Generated from the commit history by [git-cliff](https://git-cliff.org):
 `make release` rewrites it as part of cutting a version, and `make changelog`
 does it on demand. It is not edited by hand.
 
+## [1.8.2](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.8.2) - 2026-10-24
+
+### Fixes
+
+- Reveal recorded set scores on demand ([0427791](https://github.com/mcutajar/beybladexmalta/commit/0427791efa7758b9f673c71050520c1416982d98))
+- Preserve the October 24 tournament import ([de24974](https://github.com/mcutajar/beybladexmalta/commit/de2497440caccb6eedf04cd0ea3c06e4610d7fec))
+
+### Documentation
+
+- Describe set scores and verified mobile layout ([c951e0d](https://github.com/mcutajar/beybladexmalta/commit/c951e0d4e983003bf8dec970df8af086c3d694b8))
+
 ## [1.8.1](https://github.com/mcutajar/beybladexmalta/releases/tag/v1.8.1) - 2026-10-22
 
 ### Fixes
