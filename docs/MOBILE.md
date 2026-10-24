@@ -51,3 +51,11 @@ scroll inside `overflow-x-auto`, the document may not.
   leaderboard is what people come for.
 - **The footer's licence links are ~15px tall.** They are attribution in small
   print rather than a primary action, so they are left as they are.
+
+## Set-score disclosures (24 October 2026)
+
+Verified the leaderboard and the Gamesplus 10-24 event at 375px, and the event
+at desktop width. Neither page gains document overflow. Set-score tables use
+DataTable's own scroll container, and the enclosing grid item has `min-w-0`.
+Round and set disclosures start closed, open independently and work without
+JavaScript. Each disclosure's arrow follows only its own open state.

@@ -522,9 +522,12 @@ service that owns the domain rules.
 
 - `App\Entity\MatchGame`
   - One game inside a match, written **only** when a match had more than one.
-    Every played solo match in the corpus is a single game, so the table starts
-    empty on purpose; the rule lives on `TournamentMatch::transcribeGames()` so
-    that a caller cannot forget it.
+    Solo multi-set matches store each set’s points here while the match stores
+    sets won. Single-game scorelines are not duplicated. The rule lives on
+    `TournamentMatch::transcribeGames()` so that a caller cannot forget it.
+  - The tournament page offers a collapsed “Set scores” table only for matches
+    with multiple recorded games, both entrants and no forfeit. Knockout
+    rounds get match details beneath the compact scoreboard when sets exist.
 
 - `App\Entity\PlayerAlias`
   - One spelling a blader has appeared under, unique on its normalised form, with
