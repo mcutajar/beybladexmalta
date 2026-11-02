@@ -299,8 +299,9 @@ final class CapturedBracketsTest extends TestCase
     }
 
     /**
-     * The criterion the whole import rests on: rank *n* of the bracket is line
-     * *n* of the file somebody typed by hand, for every solo event.
+     * The criterion the whole import rests on: the bracket's finishing order
+     * matches the lines imported for every solo event. Challonge may give
+     * several entrants the same rank; the import uses their order in the list.
      *
      * Where the two spell somebody differently, the alias table has to be the
      * thing that says they are the same person. That list used to live in this
@@ -330,17 +331,11 @@ final class CapturedBracketsTest extends TestCase
             foreach ($imported as $position => $name) {
                 $ranked = $bracket[$position]->name();
 
-                self::assertSame(
-                    $position + 1,
-                    $bracket[$position]->rank(),
-                    sprintf('Line %d of "%s" is not rank %d of the bracket.', $position + 1, $event['file'], $position + 1),
-                );
-
                 if ($this->isTheSameBlader($name, $ranked)) {
                     continue;
                 }
 
-                $undeclared[] = sprintf('%s = %s (rank %d of %s)', $this->fold($name), $this->fold($ranked), $position + 1, $event['slug']);
+                $undeclared[] = sprintf('%s = %s (position %d of %s)', $this->fold($name), $this->fold($ranked), $position + 1, $event['slug']);
             }
         }
 
